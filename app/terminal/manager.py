@@ -231,20 +231,33 @@ class TerminalManager:
     def get_session_logs(session_id):
         """Get logs for an inactive session"""
         from app.terminal.models import TerminalLog
+        from sqlalchemy import desc
         
+        # Get logs for the session ordered by timestamp
         logs = TerminalLog.query.filter_by(
             session_id=session_id
         ).order_by(TerminalLog.timestamp).all()
         
         # Concatenate logs into a buffer
-        buffer = ''
-        for log in logs:
-            if log.event_type == 'command':
-                buffer += f'$ {log.command}\r\n'
-            elif log.event_type == 'output':
-                buffer += f'{log.output}\r\n'
+        buffer = '\r\n=== Session History ===\r\n\r\n'
+        
+        if not logs:
+            buffer += "No logs found for this session.\r\n"
+        else:
+            # Process logs
+            for log in logs:
+                if log.event_type == 'command':
+                    # Add command with prompt
+                    buffer += f'$ {log.command}\r\n'
+                elif log.event_type == 'output' and log.output:
+                    # Add output, ensuring it has proper line endings
+                    output = log.output.replace('\n', '\r\n') if log.output else ''
+                    buffer += f'{output}\r\n'
         
         # Extract command history
         commands = [log.command for log in logs if log.event_type == 'command' and log.command]
+        
+        print(f"Retrieved {len(logs)} logs for session {session_id}")
+        print(f"Buffer length: {len(buffer)}, Commands: {len(commands)}")
         
         return buffer, commands

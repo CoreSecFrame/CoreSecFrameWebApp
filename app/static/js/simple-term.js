@@ -45,8 +45,9 @@ class SimpleTerm {
             }
         });
         
-        // Handle initial buffer
         this.socket.on('terminal_buffer', (data) => {
+            console.log('Received terminal buffer:', data);
+            
             // Update read-only status
             this.readOnly = !!data.read_only;
             
@@ -63,10 +64,19 @@ class SimpleTerm {
                     // Add prompt for interactive mode
                     this.term.write('\r\n$ ');
                 }
+            } else {
+                // No buffer available
+                this.term.clear();
+                if (this.readOnly) {
+                    this.term.write('\r\n\x1b[1;33m[Read-Only Mode: This session is inactive - No logs available]\x1b[0m\r\n');
+                } else {
+                    this.term.write('\r\n$ ');
+                }
             }
             
             // Store command history
             if (data.history && Array.isArray(data.history)) {
+                console.log('Received command history:', data.history.length, 'commands');
                 this.commandHistory = data.history;
                 this.historyIndex = this.commandHistory.length;
             }

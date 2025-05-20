@@ -148,7 +148,7 @@ def register_terminal_handlers(socketio):
         session_id = data.get('session_id')
         command = data.get('command', '')
         
-        print(f"Received command: {command} for session {session_id}")
+        print(f"Received command: '{command}' for session {session_id}")
         
         session = TerminalSession.query.filter_by(
             session_id=session_id, 
@@ -171,6 +171,9 @@ def register_terminal_handlers(socketio):
         )
         db.session.add(log_command)
         db.session.commit()
+        
+        # Debug log to confirm successful logging
+        print(f"Logged command '{command}' for session {session_id}")
         
         # Send command to terminal
         TerminalManager.send_command(session_id, command, socketio)
@@ -214,11 +217,15 @@ def register_terminal_handlers(socketio):
         if not session:
             return
         
+        print(f"Getting buffer for session {session_id}, active: {session.active}")
+        
         # Handle differently based on session status
         if session.active:
             # Get buffer and history from terminal manager for active session
             buffer = TerminalManager.get_buffer(session_id)
             history = TerminalManager.get_history(session_id)
+            
+            print(f"Active session buffer length: {len(buffer) if buffer else 0}")
             
             # Send buffer to client
             emit('terminal_buffer', {
@@ -230,13 +237,14 @@ def register_terminal_handlers(socketio):
             # For inactive sessions, get logs from database
             buffer, history = TerminalManager.get_session_logs(session_id)
             
+            print(f"Inactive session buffer length: {len(buffer) if buffer else 0}")
+            
             # Send buffer to client with read-only flag
             emit('terminal_buffer', {
-                'buffer': buffer if buffer else '\r\n[Inactive Session - No logs available]\r\n',
+                'buffer': buffer,
                 'history': history,
                 'read_only': True
             })
-
 def register_error_handlers(app):
     @app.errorhandler(404)
     def not_found_error(error):

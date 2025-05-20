@@ -114,3 +114,34 @@ def delete(session_id):
     
     flash(f'Terminal session "{session.name}" has been deleted', 'success')
     return redirect(url_for('terminal.index'))
+
+# Add this to app/terminal/routes.py
+@terminal_bp.route('/<session_id>/logs')
+@login_required
+def view_logs(session_id):
+    """View logs for a session (for debugging)"""
+    session = TerminalSession.query.filter_by(session_id=session_id, user_id=current_user.id).first_or_404()
+    
+    # Get logs
+    logs = TerminalLog.query.filter_by(
+        session_id=session.session_id
+    ).order_by(TerminalLog.timestamp).all()
+    
+    # Format for display
+    formatted_logs = []
+    for log in logs:
+        formatted_logs.append({
+            'id': log.id,
+            'timestamp': log.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+            'event_type': log.event_type,
+            'command': log.command,
+            'output': log.output[:100] + '...' if log.output and len(log.output) > 100 else log.output
+        })
+    
+    return jsonify({
+        'session_id': session_id,
+        'session_name': session.name,
+        'active': session.active,
+        'log_count': len(logs),
+        'logs': formatted_logs
+    })
