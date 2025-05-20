@@ -227,9 +227,13 @@ def install(id):
     try:
         module = Module.query.get_or_404(id)
         
+        # Get sudo options
+        use_sudo = request.form.get('use_sudo') == 'on'
+        sudo_password = request.form.get('sudo_password', '')
+        
         # Install the module
         from app.modules.utils import install_module
-        success, message = install_module(module)
+        success, message = install_module(module, use_sudo, sudo_password)
         
         if success:
             flash(f'Module {module.name} installed successfully', 'success')

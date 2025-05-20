@@ -13,6 +13,7 @@ from datetime import datetime
 from flask import current_app
 from app import db
 from app.modules.models import Module, ModuleCategory
+import shlex
 
 def scan_local_modules():
     """
@@ -489,12 +490,14 @@ def download_module(url, name, category):
         current_app.logger.error(traceback.format_exc())
         return False, None, str(e)
         
-def install_module(module):
+def install_module(module, use_sudo=True, sudo_password=None):
     """
     Install a module
     
     Args:
         module: Module object
+        use_sudo: Whether to use sudo for commands
+        sudo_password: Sudo password if needed
         
     Returns:
         tuple: (success, message)
@@ -694,7 +697,16 @@ def install_module(module):
         # Execute installation commands
         all_output = []
         for cmd in commands:
-            current_app.logger.info(f"Executing command: {cmd}")
+            # Modify command to use sudo if needed
+            original_cmd = cmd
+            if use_sudo and not cmd.startswith('sudo ') and sudo_password:
+                # Use echo to pipe password to sudo without showing in logs
+                cmd = f"echo {shlex.quote(sudo_password)} | sudo -S {cmd}"
+            elif use_sudo and not cmd.startswith('sudo '):
+                # Add sudo but without password
+                cmd = f"sudo {cmd}"
+            
+            current_app.logger.info(f"Executing command: {original_cmd}")
             result = subprocess.run(
                 cmd, 
                 shell=True, 
@@ -704,13 +716,16 @@ def install_module(module):
                 text=True
             )
             
-            all_output.append(f"Command: {cmd}")
+            all_output.append(f"Command: {original_cmd}")
             all_output.append(f"Exit code: {result.returncode}")
             all_output.append(f"Output: {result.stdout}")
             
             if result.returncode != 0:
                 all_output.append(f"Error: {result.stderr}")
-                current_app.logger.error(f"Command failed: {cmd}\n{result.stderr}")
+                # Check for sudo password errors
+                if "incorrect password" in result.stderr.lower() or "sorry, try again" in result.stderr.lower():
+                    return False, "Incorrect sudo password. Please try again."
+                current_app.logger.error(f"Command failed: {original_cmd}\n{result.stderr}")
                 return False, "\n".join(all_output)
         
         # Update module status
@@ -722,7 +737,7 @@ def install_module(module):
         current_app.logger.info(f"Module {module_name} installed successfully")
         
         return True, "\n".join(all_output)
-    
+        
     except Exception as e:
         current_app.logger.error(f"Error installing module: {e}")
         current_app.logger.error(traceback.format_exc())

@@ -54,6 +54,17 @@ def create_terminal_process(session):
                 '-n', session.module_name,  # Window name
                 module_cmd  # Command to run
             ], check=True)
+            
+            # Log the start of the module
+            from app.terminal.models import TerminalLog
+            log = TerminalLog(
+                session_id=session.session_id,
+                event_type='system',
+                command=None,
+                output=f"Starting module {session.module_name} in {session.session_type} mode"
+            )
+            db.session.add(log)
+            db.session.commit()
         else:
             return False
             
@@ -71,10 +82,11 @@ def create_terminal_process(session):
         return True
         
     except subprocess.CalledProcessError as e:
-        print(f"Error creating terminal process: {e}")
+        current_app.logger.error(f"Error creating terminal process: {e}")
         return False
     except Exception as e:
-        print(f"Unexpected error: {e}")
+        current_app.logger.error(f"Unexpected error: {e}")
+        current_app.logger.error(traceback.format_exc())
         return False
 
 def build_module_command(module_name, mode):
@@ -90,6 +102,17 @@ def build_module_command(module_name, mode):
         from app.modules.models import Module
         module_obj = Module.query.filter_by(name=module_name).first()
         
+        if not module_obj:
+            current_app.logger.error(f"Module {module_name} not found in database")
+            return None
+            
+        if not module_obj.installed:
+            current_app.logger.error(f"Module {module_name} is not installed")
+            return None
+        
+        module_path = None
+        module_file = None
+        
         if module_obj and module_obj.local_path:
             # Use the path stored in the database
             module_file = Path(module_obj.local_path)
@@ -102,36 +125,55 @@ def build_module_command(module_name, mode):
                     # Module is in a category subdirectory
                     category = module_file.parent.name
                     module_path = f"modules.{category}.{module_name}"
-        else:
-            # Fallback: Try to locate the module file
-            # Check in base modules directory
-            base_module = module_dir / f"{module_name}.py"
-            if base_module.exists():
-                module_path = f"modules.{module_name}"
-            else:
-                # Check in subdirectories
-                for subdir in module_dir.iterdir():
-                    if subdir.is_dir() and subdir.name != '__pycache__':
-                        submodule = subdir / f"{module_name}.py"
-                        if submodule.exists():
-                            module_path = f"modules.{subdir.name}.{module_name}"
-                            break
         
         if not module_path:
+            current_app.logger.error(f"Could not determine module path for {module_name}")
             return None
             
+        # Parse the module file to find the actual class name
+        class_name = module_name.capitalize()  # Default
+        if module_file:
+            try:
+                with open(module_file, 'r') as f:
+                    content = f.read()
+                    
+                # Look for class definitions with the module name or similar
+                import re
+                class_pattern = re.compile(r'class\s+(\w+)\s*[:\(]')
+                matches = class_pattern.findall(content)
+                
+                if matches:
+                    # Try to find a class that's similar to the module name
+                    for match in matches:
+                        if match.lower() == module_name.lower() or \
+                           match.lower() == f"{module_name.lower()}module":
+                            class_name = match
+                            break
+                    # If no match found, use first class
+                    if not class_name and matches:
+                        class_name = matches[0]
+            except Exception as e:
+                current_app.logger.error(f"Error parsing module file: {e}")
+        
         # Build the command
         # Make sure to add the project root to the Python path
         cmd = (f"cd {framework_root} && "
               f"python3 -u -c \""
               f"import sys; "
               f"sys.path.append('{framework_root}'); "
-              f"from {module_path} import * "
-              f"tool = {module_name}(); "  # Use the actual class name rather than capitalized module name
-              f"tool.{'run_guided' if mode == 'guided' else 'run_direct'}()\"; "
+              f"try:\n"
+              f"    from {module_path} import {class_name} \n"
+              f"    tool = {class_name}() \n"
+              f"    print('Starting {class_name} in {mode} mode...\\n') \n"
+              f"    tool.{'run_guided' if mode == 'guided' else 'run_direct'}() \n"
+              f"except Exception as e:\n"
+              f"    print(f'Error running module: {{e}}');\n"
+              f"    import traceback; traceback.print_exc() \n"
+              f"\"; "
               f"echo 'Module execution completed'; "
               f"exec bash -l")
-              
+        
+        current_app.logger.info(f"Built module command: {cmd}")      
         return cmd
         
     except Exception as e:
