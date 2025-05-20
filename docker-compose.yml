@@ -1,0 +1,41 @@
+# docker-compose.yml
+version: '3'
+
+services:
+  web:
+    build: .
+    container_name: coresecframe-web
+    restart: always
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./modules:/app/modules
+      - ./logs:/app/logs
+      - ./app.db:/app/app.db
+    environment:
+      - FLASK_APP=run.py
+      - FLASK_ENV=production
+      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_URL=${DATABASE_URL}
+    networks:
+      - coresecnet
+
+  nginx:
+    image: nginx:latest
+    container_name: coresecframe-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf:/etc/nginx/conf.d:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+      - ./nginx/www:/var/www/html:ro
+    depends_on:
+      - web
+    networks:
+      - coresecnet
+
+networks:
+  coresecnet:
+    driver: bridge

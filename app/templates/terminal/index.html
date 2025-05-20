@@ -1,0 +1,185 @@
+<!-- app/templates/terminal/index.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-md-12 d-flex justify-content-between align-items-center">
+        <h1>Terminal Sessions</h1>
+        <a href="{{ url_for('terminal.new') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> New Terminal
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                Active Sessions
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Start Time</th>
+                                <th>Last Activity</th>
+                                <th>Duration</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for session in sessions if session.active %}
+                            <tr>
+                                <td>{{ session.name }}</td>
+                                <td>
+                                    {% if session.session_type == 'terminal' %}
+                                        <span class="badge bg-secondary">Terminal</span>
+                                    {% elif session.session_type == 'guided' %}
+                                        <span class="badge bg-info">Guided: {{ session.module_name }}</span>
+                                    {% elif session.session_type == 'direct' %}
+                                        <span class="badge bg-warning">Direct: {{ session.module_name }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ session.start_time.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                <td>{{ session.last_activity.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                <td>{{ session.get_duration() }}</td>
+                                <td>
+                                    <span class="badge bg-success">Active</span>
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{{ url_for('terminal.view', session_id=session.session_id) }}" class="btn btn-sm btn-primary">
+                                            <i class="bi bi-display"></i> View
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#closeModal{{ session.id }}">
+                                            <i class="bi bi-x-circle"></i> Close
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- Close Modal -->
+                                    <div class="modal fade" id="closeModal{{ session.id }}" tabindex="-1">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">Close Terminal Session</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <p>Are you sure you want to close the terminal session "{{ session.name }}"?</p>
+                                                    <p class="text-danger">This will terminate all processes running in this session.</p>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                    <form action="{{ url_for('terminal.close', session_id=session.session_id) }}" method="post">
+                                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                        <button type="submit" class="btn btn-danger">Close Session</button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center">No active sessions found</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                Inactive Sessions
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Start Time</th>
+                                <th>Last Activity</th>
+                                <th>Duration</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for session in sessions if not session.active %}
+                            <tr>
+                                <td>{{ session.name }}</td>
+                                <td>
+                                    {% if session.session_type == 'terminal' %}
+                                        <span class="badge bg-secondary">Terminal</span>
+                                    {% elif session.session_type == 'guided' %}
+                                        <span class="badge bg-info">Guided: {{ session.module_name }}</span>
+                                    {% elif session.session_type == 'direct' %}
+                                        <span class="badge bg-warning">Direct: {{ session.module_name }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ session.start_time.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                <td>{{ session.last_activity.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                <td>{{ session.get_duration() }}</td>
+                                <td>
+                                    <span class="badge bg-danger">Inactive</span>
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{{ url_for('terminal.view', session_id=session.session_id) }}" class="btn btn-sm btn-primary">
+                                            <i class="bi bi-display"></i> View Logs
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ session.id }}">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- Delete Modal -->
+                                    <div class="modal fade" id="deleteModal{{ session.id }}" tabindex="-1">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">Delete Terminal Session</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <p>Are you sure you want to delete the terminal session "{{ session.name }}"?</p>
+                                                    <p class="text-danger">This will permanently delete all logs and history for this session.</p>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                    <form action="{{ url_for('terminal.delete', session_id=session.session_id) }}" method="post">
+                                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                        <button type="submit" class="btn btn-danger">Delete Session</button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center">No inactive sessions found</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

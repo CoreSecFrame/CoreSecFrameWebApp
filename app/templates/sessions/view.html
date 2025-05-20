@@ -1,0 +1,186 @@
+<!-- app/templates/sessions/view.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-md-12 d-flex justify-content-between align-items-center">
+        <h1>Session: {{ session.name }}</h1>
+        <div class="btn-group" role="group">
+            <a href="{{ url_for('sessions.index') }}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Sessions
+            </a>
+            {% if session.active %}
+            <a href="{{ url_for('terminal.view', session_id=session.session_id) }}" class="btn btn-primary">
+                <i class="bi bi-terminal"></i> Terminal View
+            </a>
+            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#closeModal">
+                <i class="bi bi-x-circle"></i> Close Session
+            </button>
+            {% else %}
+            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                <i class="bi bi-trash"></i> Delete Session
+            </button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header {% if session.active %}bg-success{% else %}bg-secondary{% endif %} text-white">
+                Session Information
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h5>Status</h5>
+                    <span class="badge {% if session.active %}bg-success{% else %}bg-danger{% endif %} fs-6">
+                        {% if session.active %}Active{% else %}Inactive{% endif %}
+                    </span>
+                </div>
+                
+                <div class="mb-3">
+                    <h5>Type</h5>
+                    {% if session.session_type == 'terminal' %}
+                    <span class="badge bg-secondary fs-6">Terminal</span>
+                    {% elif session.session_type == 'guided' %}
+                    <span class="badge bg-info fs-6">Guided Mode</span>
+                    {% elif session.session_type == 'direct' %}
+                    <span class="badge bg-warning fs-6">Direct Mode</span>
+                    {% endif %}
+                    
+                    {% if session.module_name %}
+                    <p class="mt-2">Module: {{ session.module_name }}</p>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <h5>Timing</h5>
+                    <p><strong>Created:</strong> {{ session.start_time.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                    <p><strong>Last Activity:</strong> {{ session.last_activity.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                    <p><strong>Duration:</strong> {{ session.get_duration() }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                Actions
+            </div>
+            <div class="card-body">
+                {% if session.active %}
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('terminal.view', session_id=session.session_id) }}" class="btn btn-primary">
+                        <i class="bi bi-terminal"></i> Terminal View
+                    </a>
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#closeModal">
+                        <i class="bi bi-x-circle"></i> Close Session
+                    </button>
+                </div>
+                {% else %}
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('terminal.view', session_id=session.session_id) }}" class="btn btn-info">
+                        <i class="bi bi-eye"></i> View Logs
+                    </a>
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                        <i class="bi bi-trash"></i> Delete Session
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                Session Activity
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    {% for log in logs %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">
+                                {% if log.event_type == 'command' %}
+                                <span class="badge bg-primary">Command</span>
+                                {% elif log.event_type == 'output' %}
+                                <span class="badge bg-success">Output</span>
+                                {% elif log.event_type == 'system' %}
+                                <span class="badge bg-warning">System</span>
+                                {% endif %}
+                            </h6>
+                            <small>{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                        </div>
+                        
+                        {% if log.event_type == 'command' %}
+                        <p class="mb-1">
+                            <code>$ {{ log.command }}</code>
+                        </p>
+                        {% elif log.event_type == 'output' %}
+                        <pre class="mb-1" style="white-space: pre-wrap;">{{ log.output }}</pre>
+                        {% elif log.event_type == 'system' %}
+                        <p class="mb-1 text-muted">
+                            <i class="bi bi-info-circle"></i> {{ log.output }}
+                        </p>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div class="list-group-item">
+                        <p class="text-center mb-0">No activity logs found for this session.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if session.active %}
+<!-- Close Modal -->
+<div class="modal fade" id="closeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Close Session</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to close the session "{{ session.name }}"?</p>
+                <p class="text-danger">This will terminate all processes running in this session.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('sessions.close', session_id=session.session_id) }}" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger">Close Session</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Session</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the session "{{ session.name }}"?</p>
+                <p class="text-danger">This will permanently delete all logs and history for this session.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('sessions.delete', session_id=session.session_id) }}" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger">Delete Session</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

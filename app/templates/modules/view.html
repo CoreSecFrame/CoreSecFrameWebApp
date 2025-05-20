@@ -1,0 +1,144 @@
+<!-- app/templates/modules/view.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-md-12 d-flex justify-content-between align-items-center">
+        <h1>{{ module.name }}</h1>
+        <div class="btn-group" role="group">
+            <a href="{{ url_for('modules.index') }}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Modules
+            </a>
+            {% if module.installed %}
+            <a href="{{ url_for('terminal.new') }}?module={{ module.name }}" class="btn btn-success">
+                <i class="bi bi-terminal"></i> Run Module
+            </a>
+            {% else %}
+            <form action="{{ url_for('modules.install', id=module.id) }}" method="post" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-warning">
+                    <i class="bi bi-download"></i> Install Module
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                Module Information
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h5>Description</h5>
+                    <p>{{ module.description }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <h5>Category</h5>
+                    <a href="{{ url_for('modules.category', name=module.category) }}" class="badge bg-primary fs-6 text-decoration-none">
+                        {{ module.category }}
+                    </a>
+                </div>
+                
+                <div class="mb-3">
+                    <h5>Command</h5>
+                    <code>{{ module.command }}</code>
+                </div>
+                
+                <div class="mb-3">
+                    <h5>Path</h5>
+                    <code class="text-break">{{ module.local_path }}</code>
+                </div>
+                
+                {% if module.remote_url %}
+                <div class="mb-3">
+                    <h5>Source</h5>
+                    <a href="{{ module.remote_url }}" target="_blank" class="text-break">{{ module.remote_url }}</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                Usage
+            </div>
+            <div class="card-body">
+                <h5>Running the Module</h5>
+                <p>This module can be run in two modes:</p>
+                
+                <div class="mb-3">
+                    <h6>Guided Mode</h6>
+                    <p>Step-by-step interactive execution with guidance and explanations.</p>
+                    <a href="{{ url_for('terminal.new') }}?module={{ module.name }}&mode=guided" class="btn btn-sm btn-info">
+                        <i class="bi bi-signpost-2"></i> Run in Guided Mode
+                    </a>
+                </div>
+                
+                <div class="mb-3">
+                    <h6>Direct Mode</h6>
+                    <p>Direct execution with full control and minimal guidance.</p>
+                    <a href="{{ url_for('terminal.new') }}?module={{ module.name }}&mode=direct" class="btn btn-sm btn-warning">
+                        <i class="bi bi-lightning"></i> Run in Direct Mode
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header {% if module.installed %}bg-success{% else %}bg-danger{% endif %} text-white">
+                Module Status
+            </div>
+            <div class="card-body text-center">
+                {% if module.installed %}
+                <i class="bi bi-check-circle-fill text-success" style="font-size: 48px;"></i>
+                <h4 class="mt-2">Installed</h4>
+                {% if module.installed_date %}
+                <p class="text-muted">Installed on {{ module.installed_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                {% endif %}
+                <hr>
+                <form action="{{ url_for('modules.uninstall', id=module.id) }}" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger w-100">
+                        <i class="bi bi-trash"></i> Uninstall Module
+                    </button>
+                </form>
+                {% else %}
+                <i class="bi bi-x-circle-fill text-danger" style="font-size: 48px;"></i>
+                <h4 class="mt-2">Not Installed</h4>
+                <p class="text-muted">This module needs to be installed before use</p>
+                <hr>
+                <form action="{{ url_for('modules.install', id=module.id) }}" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-download"></i> Install Module
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                Last Activity
+            </div>
+            <div class="card-body">
+                {% if module.last_used %}
+                <p><strong>Last Used:</strong> {{ module.last_used.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                {% else %}
+                <p class="text-muted">This module has not been used yet.</p>
+                {% endif %}
+                
+                <p><strong>Created:</strong> {{ module.created_at.strftime('%Y-%m-%d') }}</p>
+                <p><strong>Updated:</strong> {{ module.updated_at.strftime('%Y-%m-%d') }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,144 @@
+<!-- app/templates/index.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="row align-items-center py-5">
+        <div class="col-lg-6">
+            <h1 class="display-4 fw-bold">CoreSecFrame</h1>
+            <p class="lead">A comprehensive cybersecurity framework for security professionals.</p>
+            <p class="mb-4">Manage and execute security tools from a centralized web interface. Designed for flexibility and ease of use.</p>
+            <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('core.dashboard') }}" class="btn btn-primary btn-lg px-4 me-md-2">Dashboard</a>
+                {% else %}
+                <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg px-4 me-md-2">Sign In</a>
+                <a href="{{ url_for('auth.register') }}" class="btn btn-outline-secondary btn-lg px-4">Register</a>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-lg-6 d-none d-lg-block">
+            <img src="{{ url_for('static', filename='img/hero-image.png') }}" alt="CoreSecFrame" class="img-fluid">
+        </div>
+    </div>
+</div>
+
+<div class="bg-light py-5">
+    <div class="container">
+        <div class="row text-center mb-5">
+            <div class="col-md-12">
+                <h2 class="display-5">Key Features</h2>
+                <p class="lead">Streamline your security operations with CoreSecFrame</p>
+            </div>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <div class="py-3">
+                            <i class="bi bi-grid-3x3-gap-fill text-primary" style="font-size: 3rem;"></i>
+                        </div>
+                        <h4 class="card-title">Modular Design</h4>
+                        <p class="card-text">Easily extensible architecture with plug-and-play modules for various security tools.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <div class="py-3">
+                            <i class="bi bi-terminal text-primary" style="font-size: 3rem;"></i>
+                        </div>
+                        <h4 class="card-title">Terminal Integration</h4>
+                        <p class="card-text">Seamless integration with terminal applications through web interface.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <div class="py-3">
+                            <i class="bi bi-layers text-primary" style="font-size: 3rem;"></i>
+                        </div>
+                        <h4 class="card-title">Session Management</h4>
+                        <p class="card-text">Manage, monitor, and maintain multiple tool sessions from a central dashboard.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <div class="py-3">
+                            <i class="bi bi-shield-check text-primary" style="font-size: 3rem;"></i>
+                        </div>
+                        <h4 class="card-title">Secure Access</h4>
+                        <p class="card-text">Role-based access control and secure authentication mechanisms.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <div class="py-3">
+                            <i class="bi bi-cloud-download text-primary" style="font-size: 3rem;"></i>
+                        </div>
+                        <h4 class="card-title">Module Marketplace</h4>
+                        <p class="card-text">Discover and install new security modules from the integrated marketplace.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <div class="py-3">
+                            <i class="bi bi-file-earmark-text text-primary" style="font-size: 3rem;"></i>
+                        </div>
+                        <h4 class="card-title">Comprehensive Logging</h4>
+                        <p class="card-text">Detailed logs for all operations and tool executions for audit and review.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="py-5">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6 order-lg-2">
+                <h2>Centralized Security Management</h2>
+                <p class="lead">Unify your security tools under a single interface</p>
+                <p>CoreSecFrame provides a centralized platform to manage all your security tools. No more switching between different terminals and interfaces.</p>
+                <ul class="list-unstyled">
+                    <li><i class="bi bi-check-circle-fill text-success me-2"></i> Integrated tool management</li>
+                    <li><i class="bi bi-check-circle-fill text-success me-2"></i> Automatic dependency installation</li>
+                    <li><i class="bi bi-check-circle-fill text-success me-2"></i> Guided and direct modes for each tool</li>
+                    <li><i class="bi bi-check-circle-fill text-success me-2"></i> Remote execution capabilities</li>
+                </ul>
+            </div>
+            <div class="col-lg-6 order-lg-1">
+                <img src="{{ url_for('static', filename='img/console.png') }}" alt="Centralized Management" class="img-fluid rounded shadow">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="bg-light py-5">
+    <div class="container">
+        <div class="row text-center mb-5">
+            <div class="col-md-12">
+                <h2>Ready to Get Started?</h2>
+                <p class="lead">Join the community of security professionals using CoreSecFrame</p>
+                <div class="mt-4">
+                    {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('core.dashboard') }}" class="btn btn-primary btn-lg">Go to Dashboard</a>
+                    {% else %}
+                    <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg me-2">Create Account</a>
+                    <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary btn-lg">Sign In</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

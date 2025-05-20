@@ -1,0 +1,183 @@
+/* app/static/css/styles.css */
+:root {
+    --primary-color: #1e88e5;
+    --primary-dark: #1565c0;
+    --primary-light: #64b5f6;
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
+    --info-color: #17a2b8;
+    --dark-color: #343a40;
+    --light-color: #f8f9fa;
+}
+
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: #f5f5f5;
+}
+
+main {
+    flex: 1;
+    margin-bottom: 2rem;
+}
+
+.navbar {
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.card {
+    border: none;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+    margin-bottom: 1.5rem;
+}
+
+.card-header {
+    border-radius: 0.5rem 0.5rem 0 0 !important;
+    padding: 0.75rem 1.25rem;
+    font-weight: bold;
+}
+
+.badge {
+    padding: 0.5em 0.75em;
+}
+
+/* Terminal styling */
+.terminal-container {
+    background-color: #1e1e1e;
+    color: #f0f0f0;
+    font-family: 'Courier New', monospace;
+    padding: 10px;
+    overflow-y: auto;
+    border-radius: 5px;
+    height: 400px;
+    max-height: 600px;
+}
+
+.terminal-line {
+    margin: 0;
+    padding: 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.terminal-input {
+    background-color: #2d2d2d;
+    color: #f0f0f0;
+    font-family: 'Courier New', monospace;
+    padding: 8px;
+    width: 100%;
+    border: none;
+    border-radius: 0 0 5px 5px;
+}
+
+.command-text {
+    color: #5bc0de;
+    font-weight: bold;
+}
+
+.output-text {
+    color: #f0f0f0;
+}
+
+.system-text {
+    color: #d9534f;
+    font-style: italic;
+}
+
+/* Dashboard cards */
+.card-stats {
+    text-align: center;
+    padding: 1.5rem 1rem;
+    transition: all 0.3s ease;
+}
+
+.card-stats:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.card-stats .icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+}
+
+.card-stats .number {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.card-stats .label {
+    font-size: 1rem;
+    color: #6c757d;
+}
+
+/* Form styling */
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(30, 136, 229, 0.25);
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-dark);
+    border-color: var(--primary-dark);
+}
+
+/* Progress bars */
+.progress {
+    height: 1.5rem;
+    background-color: #e9ecef;
+    box-shadow: none;
+    border-radius: 0.25rem;
+    overflow: hidden;
+}
+
+.progress-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: bold;
+    transition: width 0.6s ease;
+}
+
+/* Utilities */
+.text-break {
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+}
+
+/* Page title */
+.page-title {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}

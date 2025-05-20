@@ -1,0 +1,82 @@
+<!-- app/templates/terminal/new.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h1>New Terminal Session</h1>
+        <p class="lead">Create a new terminal session or tool execution</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                Session Configuration
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('terminal.new') }}" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="mb-3">
+                        <label for="session_name" class="form-label">Session Name</label>
+                        <input type="text" class="form-control" id="session_name" name="session_name" 
+                               value="Terminal-{{ now().strftime('%Y%m%d-%H%M%S') }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="session_type" class="form-label">Session Type</label>
+                        <select class="form-select" id="session_type" name="session_type" required>
+                            <option value="terminal" selected>Terminal (Shell)</option>
+                            <option value="guided">Guided Tool Mode</option>
+                            <option value="direct">Direct Tool Mode</option>
+                        </select>
+                        <div class="form-text">
+                            <ul>
+                                <li><strong>Terminal:</strong> Standard shell session</li>
+                                <li><strong>Guided Mode:</strong> Interactive step-by-step tool execution</li>
+                                <li><strong>Direct Mode:</strong> Direct tool execution</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div id="module_selection" class="mb-3 d-none">
+                        <label for="module_name" class="form-label">Select Module</label>
+                        <select class="form-select" id="module_name" name="module_name">
+                            <option value="" selected disabled>-- Select a module --</option>
+                            {% for module in modules %}
+                            <option value="{{ module.name }}">{{ module.name }} - {{ module.description }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <a href="{{ url_for('terminal.index') }}" class="btn btn-secondary me-2">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Create Session</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sessionTypeSelect = document.getElementById('session_type');
+    const moduleSelection = document.getElementById('module_selection');
+    
+    sessionTypeSelect.addEventListener('change', function() {
+        if (this.value === 'terminal') {
+            moduleSelection.classList.add('d-none');
+            document.getElementById('module_name').removeAttribute('required');
+        } else {
+            moduleSelection.classList.remove('d-none');
+            document.getElementById('module_name').setAttribute('required', 'required');
+        }
+    });
+});
+</script>
+{% endblock %}
