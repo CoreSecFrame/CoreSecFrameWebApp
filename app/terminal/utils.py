@@ -2,6 +2,7 @@
 import subprocess
 import os
 import signal
+import shutil  # Add this import
 from pathlib import Path
 from flask import current_app
 import psutil

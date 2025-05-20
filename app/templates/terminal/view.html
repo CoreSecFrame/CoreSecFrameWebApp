@@ -68,6 +68,13 @@
     </div>
 </div>
 
+{% if not tmux_installed %}
+<div class="alert alert-warning">
+    <strong>Warning:</strong> TMUX is not installed on the server. Terminal functionality will not work properly.
+    Please install TMUX to use terminal sessions.
+</div>
+{% endif %}
+
 <div class="row mb-3">
     <div class="col-md-12">
         <div class="card">
@@ -87,15 +94,20 @@
             </div>
             <div class="card-body p-0">
                 <div class="terminal-container" id="terminal-output">
-                    {% for log in logs %}
-                    {% if log.event_type == 'command' %}
-                    <p class="terminal-line command-text">$ {{ log.command }}</p>
-                    {% elif log.event_type == 'output' %}
-                    <p class="terminal-line output-text">{{ log.output }}</p>
-                    {% elif log.event_type == 'system' %}
-                    <p class="terminal-line system-text">### {{ log.output }}</p>
+                    {% if logs %}
+                        {% for log in logs %}
+                            {% if log.event_type == 'command' %}
+                            <p class="terminal-line command-text">$ {{ log.command }}</p>
+                            {% elif log.event_type == 'output' %}
+                            <p class="terminal-line output-text">{{ log.output }}</p>
+                            {% elif log.event_type == 'system' %}
+                            <p class="terminal-line system-text">### {{ log.output }}</p>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <p class="terminal-line system-text">### Terminal session created. No command history yet.</p>
+                        <p class="terminal-line system-text">### Type commands below to start interacting with the terminal.</p>
                     {% endif %}
-                    {% endfor %}
                 </div>
 
                 {% if session.active %}

@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container text-center mt-5">
+    <h1 class="display-1">404</h1>
+    <p class="lead">Page Not Found</p>
+    <p>The requested page does not exist.</p>
+    <a href="{{ url_for('core.index') }}" class="btn btn-primary">Return to Home</a>
+</div>
+{% endblock %}

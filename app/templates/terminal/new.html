@@ -13,7 +13,7 @@
     <div class="col-md-8 offset-md-2">
         <div class="card">
             <div class="card-header bg-primary text-white">
-                Session Configuration
+                <h5 class="mb-0">Session Configuration</h5>
             </div>
             <div class="card-body">
                 <form action="{{ url_for('terminal.new') }}" method="post">
@@ -22,15 +22,15 @@
                     <div class="mb-3">
                         <label for="session_name" class="form-label">Session Name</label>
                         <input type="text" class="form-control" id="session_name" name="session_name" 
-                               value="Terminal-{{ now().strftime('%Y%m%d-%H%M%S') }}" required>
+                               value="{{ session_name if session_name else 'Terminal-' + current_time }}" required>
                     </div>
                     
                     <div class="mb-3">
                         <label for="session_type" class="form-label">Session Type</label>
                         <select class="form-select" id="session_type" name="session_type" required>
-                            <option value="terminal" selected>Terminal (Shell)</option>
-                            <option value="guided">Guided Tool Mode</option>
-                            <option value="direct">Direct Tool Mode</option>
+                            <option value="terminal" {% if session_type == 'terminal' %}selected{% endif %}>Terminal (Shell)</option>
+                            <option value="guided" {% if session_type == 'guided' %}selected{% endif %}>Guided Tool Mode</option>
+                            <option value="direct" {% if session_type == 'direct' %}selected{% endif %}>Direct Tool Mode</option>
                         </select>
                         <div class="form-text">
                             <ul>
@@ -41,12 +41,14 @@
                         </div>
                     </div>
                     
-                    <div id="module_selection" class="mb-3 d-none">
+                    <div id="module_selection" class="mb-3 {% if session_type == 'terminal' %}d-none{% endif %}">
                         <label for="module_name" class="form-label">Select Module</label>
-                        <select class="form-select" id="module_name" name="module_name">
-                            <option value="" selected disabled>-- Select a module --</option>
+                        <select class="form-select" id="module_name" name="module_name" {% if session_type != 'terminal' %}required{% endif %}>
+                            <option value="" disabled {% if not selected_module %}selected{% endif %}>-- Select a module --</option>
                             {% for module in modules %}
-                            <option value="{{ module.name }}">{{ module.name }} - {{ module.description }}</option>
+                            <option value="{{ module.name }}" {% if selected_module == module.name %}selected{% endif %}>
+                                {{ module.name }} - {{ module.description }}
+                            </option>
                             {% endfor %}
                         </select>
                     </div>
@@ -67,14 +69,15 @@
 document.addEventListener('DOMContentLoaded', function() {
     const sessionTypeSelect = document.getElementById('session_type');
     const moduleSelection = document.getElementById('module_selection');
+    const moduleNameSelect = document.getElementById('module_name');
     
     sessionTypeSelect.addEventListener('change', function() {
         if (this.value === 'terminal') {
             moduleSelection.classList.add('d-none');
-            document.getElementById('module_name').removeAttribute('required');
+            moduleNameSelect.removeAttribute('required');
         } else {
             moduleSelection.classList.remove('d-none');
-            document.getElementById('module_name').setAttribute('required', 'required');
+            moduleNameSelect.setAttribute('required', 'required');
         }
     });
 });

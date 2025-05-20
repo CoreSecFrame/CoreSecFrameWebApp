@@ -1,0 +1,23 @@
+<!-- app/templates/debug_csrf.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1>CSRF Debug Information</h1>
+    
+    <h2>CSRF Token</h2>
+    <pre>{{ debug_info.csrf_token }}</pre>
+    
+    <h2>Session Data</h2>
+    <pre>{{ debug_info.session_data }}</pre>
+    
+    <h2>Configuration</h2>
+    <pre>{{ debug_info.config }}</pre>
+    
+    <h2>Test Form</h2>
+    <form method="post" action="/debug_csrf">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-primary">Test Submit</button>
+    </form>
+</div>
+{% endblock %}

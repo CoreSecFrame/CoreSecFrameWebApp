@@ -1,0 +1,218 @@
+<!-- app/templates/core/system_info.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h1>System Information</h1>
+        <p class="lead">Detailed system and environment information</p>
+    </div>
+</div>
+
+<div class="row">
+    <!-- CPU Information -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">CPU Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">CPU Usage</label>
+                    <div class="progress mb-2">
+                        <div class="progress-bar" role="progressbar" style="width: {{ system_info.cpu_percent }}%;"
+                            aria-valuenow="{{ system_info.cpu_percent }}" aria-valuemin="0" aria-valuemax="100">
+                            {{ system_info.cpu_percent }}%
+                        </div>
+                    </div>
+                </div>
+                
+                <table class="table table-striped">
+                    <tr>
+                        <th>Physical Cores:</th>
+                        <td>{{ cpu_info.physical_cores }}</td>
+                    </tr>
+                    <tr>
+                        <th>Logical Cores:</th>
+                        <td>{{ cpu_info.logical_cores }}</td>
+                    </tr>
+                    <tr>
+                        <th>Current Frequency:</th>
+                        <td>{{ cpu_info.current_frequency }} MHz</td>
+                    </tr>
+                    <tr>
+                        <th>Architecture:</th>
+                        <td>{{ cpu_info.architecture }}</td>
+                    </tr>
+                    <tr>
+                        <th>Processor:</th>
+                        <td>{{ cpu_info.processor }}</td>
+                    </tr>
+                </table>
+                
+                <h6>CPU Core Usage:</h6>
+                {% for percent in cpu_info.cpu_percent %}
+                <div class="mb-2">
+                    <small>Core {{ loop.index0 }}</small>
+                    <div class="progress">
+                        <div class="progress-bar bg-info" role="progressbar" style="width: {{ percent }}%;"
+                            aria-valuenow="{{ percent }}" aria-valuemin="0" aria-valuemax="100">
+                            {{ percent }}%
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Memory Information -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Memory Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Memory Usage</label>
+                    <div class="progress mb-2">
+                        <div class="progress-bar bg-success" role="progressbar"
+                            style="width: {{ memory_info.percent }}%;"
+                            aria-valuenow="{{ memory_info.percent }}" aria-valuemin="0" aria-valuemax="100">
+                            {{ memory_info.percent }}%
+                        </div>
+                    </div>
+                </div>
+                
+                <table class="table table-striped">
+                    <tr>
+                        <th>Total Memory:</th>
+                        <td>{{ (memory_info.total / (1024 * 1024 * 1024))|round(2) }} GB</td>
+                    </tr>
+                    <tr>
+                        <th>Used Memory:</th>
+                        <td>{{ (memory_info.used / (1024 * 1024 * 1024))|round(2) }} GB</td>
+                    </tr>
+                    <tr>
+                        <th>Available Memory:</th>
+                        <td>{{ (memory_info.available / (1024 * 1024 * 1024))|round(2) }} GB</td>
+                    </tr>
+                </table>
+                
+                <h6>Swap Memory:</h6>
+                <div class="progress mb-2">
+                    <div class="progress-bar bg-warning" role="progressbar"
+                        style="width: {{ swap_info.percent }}%;"
+                        aria-valuenow="{{ swap_info.percent }}" aria-valuemin="0" aria-valuemax="100">
+                        {{ swap_info.percent }}%
+                    </div>
+                </div>
+                
+                <table class="table table-striped">
+                    <tr>
+                        <th>Total Swap:</th>
+                        <td>{{ (swap_info.total / (1024 * 1024 * 1024))|round(2) }} GB</td>
+                    </tr>
+                    <tr>
+                        <th>Used Swap:</th>
+                        <td>{{ (swap_info.used / (1024 * 1024 * 1024))|round(2) }} GB</td>
+                    </tr>
+                    <tr>
+                        <th>Free Swap:</th>
+                        <td>{{ (swap_info.free / (1024 * 1024 * 1024))|round(2) }} GB</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Disk Information -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">Disk Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Overall Disk Usage</label>
+                    <div class="progress mb-2">
+                        <div class="progress-bar bg-warning" role="progressbar"
+                            style="width: {{ system_info.disk_percent }}%;"
+                            aria-valuenow="{{ system_info.disk_percent }}" aria-valuemin="0" aria-valuemax="100">
+                            {{ system_info.disk_percent }}%
+                        </div>
+                    </div>
+                </div>
+                
+                <h6>Mounted Disks:</h6>
+                {% for disk in disk_info %}
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <strong>{{ disk.mountpoint }}</strong> ({{ disk.device }})
+                    </div>
+                    <div class="card-body">
+                        <div class="progress mb-2">
+                            <div class="progress-bar bg-warning" role="progressbar"
+                                style="width: {{ disk.percent }}%;"
+                                aria-valuenow="{{ disk.percent }}" aria-valuemin="0" aria-valuemax="100">
+                                {{ disk.percent }}%
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <small>Total: {{ (disk.total_size / (1024 * 1024 * 1024))|round(2) }} GB</small>
+                            </div>
+                            <div class="col-md-6">
+                                <small>Free: {{ (disk.free_size / (1024 * 1024 * 1024))|round(2) }} GB</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Network Information -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Network Information</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-striped">
+                    <tr>
+                        <th>Hostname:</th>
+                        <td>{{ network_info.hostname }}</td>
+                    </tr>
+                    <tr>
+                        <th>IP Address:</th>
+                        <td>{{ network_info.ip_address }}</td>
+                    </tr>
+                </table>
+                
+                <h6>Network Interfaces:</h6>
+                {% for interface, addrs in network_info.interfaces.items() %}
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <strong>{{ interface }}</strong>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>IP Address</th>
+                                    <th>Netmask</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for addr in addrs %}
+                                <tr>
+                                    <td>{{ addr.address }}</td>
+                                    <td>{{ addr.netmask }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="2">No IPv4 addresses</td>
+                                </tr>
+                                {% endfor %}

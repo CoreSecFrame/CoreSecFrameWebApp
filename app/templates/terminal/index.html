@@ -11,6 +11,13 @@
     </div>
 </div>
 
+{% if not tmux_installed %}
+<div class="alert alert-warning">
+    <strong>Warning:</strong> TMUX is not installed on the server. Terminal functionality will not work properly.
+    Please install TMUX to use terminal sessions.
+</div>
+{% endif %}
+
 <div class="row">
     <div class="col-md-12">
         <div class="card">

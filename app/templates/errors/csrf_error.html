@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container text-center mt-5">
+    <h1 class="display-1">CSRF Error</h1>
+    <p class="lead">Session validation failed</p>
+    <p>This could be because your session expired or because of a cross-site request forgery attempt.</p>
+    <p class="text-muted">{{ reason }}</p>
+    <a href="{{ url_for('core.index') }}" class="btn btn-primary">Return to Home</a>
+</div>
+{% endblock %}

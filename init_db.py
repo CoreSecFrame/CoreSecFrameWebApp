@@ -1,46 +1,34 @@
-# run.py
-from app import create_app, socketio, db
+# init_db.py
+from app import create_app, db
 from app.auth.models import User
-from app.modules.models import Module, ModuleCategory  # Add these imports
-from app.terminal.models import TerminalSession, TerminalLog  # Add these imports
-import click
+from app.modules.models import Module, ModuleCategory
+from app.terminal.models import TerminalSession, TerminalLog
+from datetime import datetime
 
 app = create_app()
 
-@app.shell_context_processor
-def make_shell_context():
-    return {
-        'db': db, 
-        'User': User, 
-        'Module': Module, 
-        'ModuleCategory': ModuleCategory,
-        'TerminalSession': TerminalSession,
-        'TerminalLog': TerminalLog
-    }
-
-@app.cli.command("init-db")
-def init_db():
-    """Initialize the database with tables and sample data."""
-    click.echo("Dropping all tables...")
+with app.app_context():
+    # Drop all tables and recreate
+    print("Dropping all tables...")
     db.drop_all()
     
-    click.echo("Creating all tables...")
+    print("Creating all tables...")
     db.create_all()
     
     # Create admin user
-    click.echo("Creating admin user...")
+    print("Creating admin user...")
     admin = User(username='admin', email='admin@example.com', role='admin')
     admin.set_password('admin')
     db.session.add(admin)
     
     # Create a regular user
-    click.echo("Creating regular user...")
+    print("Creating regular user...")
     user = User(username='user', email='user@example.com', role='user')
     user.set_password('password')
     db.session.add(user)
     
     # Create module categories
-    click.echo("Creating module categories...")
+    print("Creating module categories...")
     categories = [
         ModuleCategory(name='Reconnaissance'),
         ModuleCategory(name='Vulnerability Analysis'),
@@ -52,7 +40,7 @@ def init_db():
     db.session.add_all(categories)
     
     # Create a sample module
-    click.echo("Creating sample module...")
+    print("Creating sample module...")
     example_module = Module(
         name='Example',
         description='Example module for demonstration',
@@ -64,10 +52,7 @@ def init_db():
     db.session.add(example_module)
     
     # Commit the changes
-    click.echo("Committing changes...")
+    print("Committing changes...")
     db.session.commit()
     
-    click.echo("Database initialization complete!")
-
-if __name__ == '__main__':
-    socketio.run(app, debug=True, host='0.0.0.0')
+    print("Database initialization complete!")

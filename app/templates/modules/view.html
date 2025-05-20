@@ -29,7 +29,7 @@
     <div class="col-md-8">
         <div class="card mb-4">
             <div class="card-header bg-primary text-white">
-                Module Information
+                <h5 class="mb-0">Module Information</h5>
             </div>
             <div class="card-body">
                 <div class="mb-3">
@@ -65,7 +65,7 @@
         
         <div class="card">
             <div class="card-header bg-dark text-white">
-                Usage
+                <h5 class="mb-0">Usage</h5>
             </div>
             <div class="card-body">
                 <h5>Running the Module</h5>
@@ -93,7 +93,7 @@
     <div class="col-md-4">
         <div class="card mb-4">
             <div class="card-header {% if module.installed %}bg-success{% else %}bg-danger{% endif %} text-white">
-                Module Status
+                <h5 class="mb-0">Module Status</h5>
             </div>
             <div class="card-body text-center">
                 {% if module.installed %}
@@ -126,7 +126,7 @@
         
         <div class="card">
             <div class="card-header bg-info text-white">
-                Last Activity
+                <h5 class="mb-0">Last Activity</h5>
             </div>
             <div class="card-body">
                 {% if module.last_used %}

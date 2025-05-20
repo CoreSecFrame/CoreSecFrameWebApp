@@ -44,24 +44,24 @@ def scan_local_modules():
                 continue
                 
             module = importlib.util.module_from_spec(spec)
+            sys.modules[module_name] = module  # Add to sys.modules to avoid import errors
             spec.loader.exec_module(module)
             
-            # Find the class inheriting from ToolModule
+            # Find the class inheriting from ToolModule or with special methods
             module_class = None
             for attr_name in dir(module):
                 attr = getattr(module, attr_name)
                 if not isinstance(attr, type):
                     continue
                     
-                # Check if this is a ToolModule class
-                if hasattr(attr, '__init__') and callable(attr.__init__):
-                    try:
-                        instance = attr()
-                        if hasattr(instance, '_get_name') and hasattr(instance, '_get_category'):
-                            module_class = instance
-                            break
-                    except:
-                        pass
+                # Check if this is a ToolModule class or has the required methods
+                try:
+                    instance = attr()
+                    if hasattr(instance, '_get_name') and hasattr(instance, '_get_category'):
+                        module_class = instance
+                        break
+                except:
+                    continue
             
             if not module_class:
                 continue
@@ -69,8 +69,8 @@ def scan_local_modules():
             # Get module info
             name = module_class._get_name()
             category_name = module_class._get_category()
-            description = module_class._get_description() if hasattr(module_class, '_get_description') else ''
-            command = module_class._get_command() if hasattr(module_class, '_get_command') else ''
+            description = getattr(module_class, '_get_description', lambda: '')()
+            command = getattr(module_class, '_get_command', lambda: '')()
             
             # Check if category exists
             category = ModuleCategory.query.filter_by(name=category_name).first()
@@ -101,7 +101,7 @@ def scan_local_modules():
             db.session.commit()
             
         except Exception as e:
-            print(f"Error scanning module {file_path}: {str(e)}")
+            current_app.logger.error(f"Error scanning module {file_path}: {str(e)}")
     
     # Check modules in subdirectories (categories)
     for dir_path in module_path.glob('*/'):
@@ -133,32 +133,32 @@ def scan_local_modules():
                     continue
                     
                 module = importlib.util.module_from_spec(spec)
+                sys.modules[import_path] = module  # Add to sys.modules to avoid import errors
                 spec.loader.exec_module(module)
                 
-                # Find the class inheriting from ToolModule
+                # Find the class inheriting from ToolModule or with special methods
                 module_class = None
                 for attr_name in dir(module):
                     attr = getattr(module, attr_name)
                     if not isinstance(attr, type):
                         continue
                         
-                    # Check if this is a ToolModule class
-                    if hasattr(attr, '__init__') and callable(attr.__init__):
-                        try:
-                            instance = attr()
-                            if hasattr(instance, '_get_name') and hasattr(instance, '_get_category'):
-                                module_class = instance
-                                break
-                        except:
-                            pass
+                    # Check if this is a ToolModule class or has the required methods
+                    try:
+                        instance = attr()
+                        if hasattr(instance, '_get_name') and hasattr(instance, '_get_category'):
+                            module_class = instance
+                            break
+                    except:
+                        continue
                 
                 if not module_class:
                     continue
                 
                 # Get module info
                 name = module_class._get_name()
-                description = module_class._get_description() if hasattr(module_class, '_get_description') else ''
-                command = module_class._get_command() if hasattr(module_class, '_get_command') else ''
+                description = getattr(module_class, '_get_description', lambda: '')()
+                command = getattr(module_class, '_get_command', lambda: '')()
                 
                 # Update or create module
                 if existing_module:
@@ -183,7 +183,7 @@ def scan_local_modules():
                 db.session.commit()
                 
             except Exception as e:
-                print(f"Error scanning module {file_path}: {str(e)}")
+                current_app.logger.error(f"Error scanning module {file_path}: {str(e)}")
     
     return added_count, updated_count
 
@@ -218,7 +218,8 @@ def fetch_remote_modules():
     """
     try:
         # Default repository URL
-        repo_url = "https://github.com/CoreSecFrame/CoreSecFrame-Modules"
+        repo_url = current_app.config.get('MODULES_REPOSITORY_URL', 
+                                         "https://github.com/CoreSecFrame/CoreSecFrame-Modules")
         api_url = repo_url.replace("github.com", "api.github.com/repos")
         if api_url.endswith("/"):
             api_url = api_url[:-1]
@@ -280,11 +281,11 @@ def fetch_remote_modules():
                     "path": item["path"]
                 })
             except Exception as e:
-                print(f"Error processing module {item['name']}: {str(e)}")
+                current_app.logger.error(f"Error processing module {item['name']}: {str(e)}")
         
         return modules
     except Exception as e:
-        print(f"Error fetching remote modules: {str(e)}")
+        current_app.logger.error(f"Error fetching remote modules: {str(e)}")
         return []
 
 def parse_module_info(content):
@@ -404,6 +405,7 @@ def install_module(module):
             return False, "Failed to create module spec"
             
         mod = importlib.util.module_from_spec(spec)
+        sys.modules[import_path] = mod  # Add to sys.modules to avoid import errors
         spec.loader.exec_module(mod)
         
         # Find the module class
@@ -413,144 +415,147 @@ def install_module(module):
             if not isinstance(attr, type):
                 continue
                 
-            # Check if this is a ToolModule class
-            if hasattr(attr, '__init__') and callable(attr.__init__):
-                try
-                   instance = attr()
-                   if hasattr(instance, '_get_name') and hasattr(instance, '_get_category'):
-                       module_class = instance
-                       break
-               except:
-                   pass
+            # Check if this is a ToolModule class or has the required methods
+            try:
+                instance = attr()
+                if hasattr(instance, '_get_name') and hasattr(instance, '_get_category'):
+                    module_class = instance
+                    break
+            except:
+                continue
        
-       if not module_class:
-           return False, "Module class not found"
+        if not module_class:
+            return False, "Module class not found"
        
-       # Get package manager
-       pkg_manager = None
-       if hasattr(module_class, 'get_package_manager'):
-           pkg_manager = module_class.get_package_manager()[0]
+        # Get package manager
+        pkg_manager = None
+        if hasattr(module_class, 'get_package_manager'):
+            pkg_managers = module_class.get_package_manager()
+            if pkg_managers and len(pkg_managers) > 0:
+                pkg_manager = pkg_managers[0]
        
-       if not pkg_manager:
-           # Default to apt
-           pkg_manager = 'apt'
+        if not pkg_manager:
+            # Default to apt
+            pkg_manager = 'apt'
        
-       # Get installation command
-       if not hasattr(module_class, '_get_install_command'):
-           return False, "Module does not support installation"
+        # Get installation command
+        if not hasattr(module_class, '_get_install_command'):
+            return False, "Module does not support installation"
            
-       commands = module_class._get_install_command(pkg_manager)
+        commands = module_class._get_install_command(pkg_manager)
        
-       if not commands:
-           return False, f"No installation command for {pkg_manager}"
+        if not commands:
+            return False, f"No installation command for {pkg_manager}"
        
-       # Convert single command to list
-       if isinstance(commands, str):
-           commands = [commands]
+        # Convert single command to list
+        if isinstance(commands, str):
+            commands = [commands]
        
-       # Execute installation commands
-       for cmd in commands:
-           result = subprocess.run(
-               cmd, 
-               shell=True, 
-               check=True, 
-               stdout=subprocess.PIPE, 
-               stderr=subprocess.PIPE, 
-               text=True
-           )
+        # Execute installation commands
+        for cmd in commands:
+            result = subprocess.run(
+                cmd, 
+                shell=True, 
+                check=True, 
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.PIPE, 
+                text=True
+            )
            
-           if result.returncode != 0:
-               return False, f"Command failed: {cmd}\n{result.stderr}"
+            if result.returncode != 0:
+                return False, f"Command failed: {cmd}\n{result.stderr}"
        
-       return True, "Module installed successfully"
+        return True, "Module installed successfully"
        
-   except Exception as e:
-       return False, str(e)
+    except Exception as e:
+        return False, str(e)
 
 def uninstall_module(module):
-   """
-   Uninstall a module
-   
-   Args:
-       module: Module object
+    """
+    Uninstall a module
+    
+    Args:
+        module: Module object
+        
+    Returns:
+        tuple: (success, message)
+    """
+    try:
+        # Load module
+        file_path = Path(module.local_path)
+        module_name = file_path.stem
+        
+        if not file_path.exists():
+            return False, "Module file not found"
+        
+        # Import module
+        import_path = f"modules.{module.category}.{module_name}" if module.category != "Uncategorized" else f"modules.{module_name}"
+        spec = importlib.util.spec_from_file_location(import_path, str(file_path))
+        if not spec:
+            return False, "Failed to create module spec"
+            
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[import_path] = mod  # Add to sys.modules to avoid import errors
+        spec.loader.exec_module(mod)
+        
+        # Find the module class
+        module_class = None
+        for attr_name in dir(mod):
+            attr = getattr(mod, attr_name)
+            if not isinstance(attr, type):
+                continue
+                
+            # Check if this is a ToolModule class or has the required methods
+            try:
+                instance = attr()
+                if hasattr(instance, '_get_name') and hasattr(instance, '_get_category'):
+                    module_class = instance
+                    break
+            except:
+                continue
        
-   Returns:
-       tuple: (success, message)
-   """
-   try:
-       # Load module
-       file_path = Path(module.local_path)
-       module_name = file_path.stem
+        if not module_class:
+            return False, "Module class not found"
        
-       if not file_path.exists():
-           return False, "Module file not found"
+        # Get package manager
+        pkg_manager = None
+        if hasattr(module_class, 'get_package_manager'):
+            pkg_managers = module_class.get_package_manager()
+            if pkg_managers and len(pkg_managers) > 0:
+                pkg_manager = pkg_managers[0]
        
-       # Import module
-       import_path = f"modules.{module.category}.{module_name}" if module.category != "Uncategorized" else f"modules.{module_name}"
-       spec = importlib.util.spec_from_file_location(import_path, str(file_path))
-       if not spec:
-           return False, "Failed to create module spec"
+        if not pkg_manager:
+            # Default to apt
+            pkg_manager = 'apt'
+       
+        # Get uninstallation command
+        if not hasattr(module_class, '_get_uninstall_command'):
+            return False, "Module does not support uninstallation"
            
-       mod = importlib.util.module_from_spec(spec)
-       spec.loader.exec_module(mod)
+        commands = module_class._get_uninstall_command(pkg_manager)
        
-       # Find the module class
-       module_class = None
-       for attr_name in dir(mod):
-           attr = getattr(mod, attr_name)
-           if not isinstance(attr, type):
-               continue
-               
-           # Check if this is a ToolModule class
-           if hasattr(attr, '__init__') and callable(attr.__init__):
-               try:
-                   instance = attr()
-                   if hasattr(instance, '_get_name') and hasattr(instance, '_get_category'):
-                       module_class = instance
-                       break
-               except:
-                   pass
+        if not commands:
+            return False, f"No uninstallation command for {pkg_manager}"
        
-       if not module_class:
-           return False, "Module class not found"
+        # Convert single command to list
+        if isinstance(commands, str):
+            commands = [commands]
        
-       # Get package manager
-       pkg_manager = None
-       if hasattr(module_class, 'get_package_manager'):
-           pkg_manager = module_class.get_package_manager()[0]
-       
-       if not pkg_manager:
-           # Default to apt
-           pkg_manager = 'apt'
-       
-       # Get uninstallation command
-       if not hasattr(module_class, '_get_uninstall_command'):
-           return False, "Module does not support uninstallation"
+        # Execute uninstallation commands
+        for cmd in commands:
+            result = subprocess.run(
+                cmd, 
+                shell=True, 
+                check=True, 
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.PIPE, 
+                text=True
+            )
            
-       commands = module_class._get_uninstall_command(pkg_manager)
+            if result.returncode != 0:
+                return False, f"Command failed: {cmd}\n{result.stderr}"
        
-       if not commands:
-           return False, f"No uninstallation command for {pkg_manager}"
+        return True, "Module uninstalled successfully"
        
-       # Convert single command to list
-       if isinstance(commands, str):
-           commands = [commands]
-       
-       # Execute uninstallation commands
-       for cmd in commands:
-           result = subprocess.run(
-               cmd, 
-               shell=True, 
-               check=True, 
-               stdout=subprocess.PIPE, 
-               stderr=subprocess.PIPE, 
-               text=True
-           )
-           
-           if result.returncode != 0:
-               return False, f"Command failed: {cmd}\n{result.stderr}"
-       
-       return True, "Module uninstalled successfully"
-       
-   except Exception as e:
-       return False, str(e)
+    except Exception as e:
+        return False, str(e)
