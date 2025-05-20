@@ -85,7 +85,6 @@ def build_module_command(module_name, mode):
         
         # Use the proper modules directory at the project root
         module_dir = Path(current_app.config['MODULES_DIR'])
-        module_path = None
         
         # Get the module from the database to find its correct path
         from app.modules.models import Module
@@ -96,7 +95,7 @@ def build_module_command(module_name, mode):
             module_file = Path(module_obj.local_path)
             if module_file.exists():
                 # Determine the proper import path
-                if 'modules' in str(module_file.parent.name):
+                if module_file.parent.name == 'modules':
                     # Module is in the base modules directory
                     module_path = f"modules.{module_name}"
                 else:
@@ -112,7 +111,7 @@ def build_module_command(module_name, mode):
             else:
                 # Check in subdirectories
                 for subdir in module_dir.iterdir():
-                    if subdir.is_dir():
+                    if subdir.is_dir() and subdir.name != '__pycache__':
                         submodule = subdir / f"{module_name}.py"
                         if submodule.exists():
                             module_path = f"modules.{subdir.name}.{module_name}"
@@ -128,7 +127,7 @@ def build_module_command(module_name, mode):
               f"import sys; "
               f"sys.path.append('{framework_root}'); "
               f"from {module_path} import * "
-              f"tool = {module_name.capitalize()}(); "
+              f"tool = {module_name}(); "  # Use the actual class name rather than capitalized module name
               f"tool.{'run_guided' if mode == 'guided' else 'run_direct'}()\"; "
               f"echo 'Module execution completed'; "
               f"exec bash -l")
@@ -137,6 +136,7 @@ def build_module_command(module_name, mode):
         
     except Exception as e:
         current_app.logger.error(f"Error building module command: {e}")
+        current_app.logger.error(traceback.format_exc())
         return None
 
 def get_process_details(session):

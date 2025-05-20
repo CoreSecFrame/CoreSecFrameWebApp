@@ -1,0 +1,23 @@
+# modules/core/colors.py
+class Colors:
+    """ANSI color codes for terminal output"""
+    HEADER = '\033[95m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+    RED = '\033[31m'
+    YELLOW = '\033[33m'
+    MAGENTA = '\033[35m'
+    WHITE = '\033[37m'
+    BGRED = '\033[41m'
+    BGGREEN = '\033[42m'
+    BGYELLOW = '\033[43m'
+    BGBLUE = '\033[44m'
+    BGMAGENTA = '\033[45m'
+    BGCYAN = '\033[46m'
+    BGWHITE = '\033[47m'

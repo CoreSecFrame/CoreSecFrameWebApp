@@ -90,6 +90,13 @@ def shop():
 @login_required
 def scan():
     try:
+        # First clean up the database
+        from app.modules.utils import clean_module_database, scan_local_modules
+        removed = clean_module_database()
+        if removed > 0:
+            flash(f'Cleaned up database: {removed} duplicate modules removed', 'info')
+        
+        # Then scan for modules
         added, updated = scan_local_modules()
         flash(f'Scan completed: {added} modules added, {updated} modules updated', 'success')
     except Exception as e:
@@ -221,14 +228,10 @@ def install(id):
         module = Module.query.get_or_404(id)
         
         # Install the module
+        from app.modules.utils import install_module
         success, message = install_module(module)
         
         if success:
-            # Update module status
-            module.installed = True
-            module.installed_date = datetime.utcnow()
-            db.session.commit()
-            
             flash(f'Module {module.name} installed successfully', 'success')
         else:
             flash(f'Failed to install module: {message}', 'danger')
@@ -243,18 +246,16 @@ def install(id):
 
 @modules_bp.route('/uninstall/<int:id>', methods=['POST'])
 @login_required
+
 def uninstall(id):
     try:
         module = Module.query.get_or_404(id)
         
         # Uninstall the module
+        from app.modules.utils import uninstall_module
         success, message = uninstall_module(module)
         
         if success:
-            # Update module status
-            module.installed = False
-            db.session.commit()
-            
             flash(f'Module {module.name} uninstalled successfully', 'success')
         else:
             flash(f'Failed to uninstall module: {message}', 'danger')
@@ -267,23 +268,12 @@ def uninstall(id):
         flash(f'Error uninstalling module: {str(e)}', 'danger')
         return redirect(url_for('modules.view', id=id))
 
-@modules_bp.route('/search')
-@login_required
-def search():
-    query = request.args.get('q', '')
-    
-    if not query:
-        return redirect(url_for('modules.index'))
-    
-    # Search modules
-    modules = Module.query
-
 @modules_bp.route('/delete/<int:id>', methods=['POST'])
 @login_required
 def delete(id):
     try:
         module = Module.query.get_or_404(id)
-        module_name = module.name  # Store the name for the flash message
+        module_name = module.name
         
         # Get the file path for logging
         file_path = module.local_path
@@ -305,3 +295,15 @@ def delete(id):
         current_app.logger.error(traceback.format_exc())
         flash(f'Error deleting module: {str(e)}', 'danger')
         return redirect(url_for('modules.index'))
+
+@modules_bp.route('/search')
+@login_required
+def search():
+    query = request.args.get('q', '')
+    
+    if not query:
+        return redirect(url_for('modules.index'))
+    
+    # Search modules
+    modules = Module.query
+

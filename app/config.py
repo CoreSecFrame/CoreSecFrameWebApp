@@ -9,14 +9,14 @@ class Config:
     
     # Set the correct paths
     BASE_DIR = Path(__file__).parent.parent  # This points to the project root
-    MODULES_DIR = os.path.join(BASE_DIR, 'modules')  # This points to /modules in project root
+    MODULES_DIR = str(BASE_DIR / 'modules')  # This points to /modules in project root
     
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
         'sqlite:///' + str(BASE_DIR / 'app.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Logs directory
-    LOGS_DIR = os.path.join(BASE_DIR, 'logs')
+    LOGS_DIR = str(BASE_DIR / 'logs')
     
     # Modules repository URL
     MODULES_REPOSITORY_URL = os.environ.get('MODULES_REPOSITORY_URL') or \

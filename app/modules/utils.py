@@ -6,6 +6,8 @@ import importlib.util
 import requests
 import shutil
 import subprocess
+import traceback
+import types
 from pathlib import Path
 from datetime import datetime
 from flask import current_app
@@ -19,7 +21,7 @@ def scan_local_modules():
     Returns:
         tuple: (added_count, updated_count)
     """
-    # Use root modules directory instead of app/modules/
+    # Use root modules directory
     modules_dir = current_app.config['MODULES_DIR']
     module_path = Path(modules_dir)
     
@@ -36,18 +38,20 @@ def scan_local_modules():
             continue
         
         try:
-            # Check if module exists in database
-            module_name = file_path.stem
-            existing_module = Module.query.filter_by(name=module_name).first()
-            
             # Import the module to get details
+            module_name = file_path.stem
             spec = importlib.util.spec_from_file_location(module_name, str(file_path))
             if not spec:
                 continue
                 
             module = importlib.util.module_from_spec(spec)
             sys.modules[module_name] = module  # Add to sys.modules to avoid import errors
-            spec.loader.exec_module(module)
+            
+            try:
+                spec.loader.exec_module(module)
+            except Exception as e:
+                current_app.logger.error(f"Error executing module {file_path}: {str(e)}")
+                continue
             
             # Find the class inheriting from ToolModule or with special methods
             module_class = None
@@ -62,7 +66,8 @@ def scan_local_modules():
                     if hasattr(instance, '_get_name') and hasattr(instance, '_get_category'):
                         module_class = instance
                         break
-                except:
+                except Exception as e:
+                    current_app.logger.error(f"Error instantiating class {attr_name}: {str(e)}")
                     continue
             
             if not module_class:
@@ -79,6 +84,10 @@ def scan_local_modules():
             if not category:
                 category = ModuleCategory(name=category_name)
                 db.session.add(category)
+                db.session.commit()
+            
+            # Check if module exists in database
+            existing_module = Module.query.filter_by(name=name).first()
             
             # Update or create module
             if existing_module:
@@ -87,7 +96,9 @@ def scan_local_modules():
                 existing_module.command = command
                 existing_module.local_path = str(file_path)
                 existing_module.updated_at = datetime.utcnow()
+                db.session.add(existing_module)
                 updated_count += 1
+                current_app.logger.info(f"Updated module: {name}")
             else:
                 new_module = Module(
                     name=name,
@@ -99,11 +110,18 @@ def scan_local_modules():
                 )
                 db.session.add(new_module)
                 added_count += 1
+                current_app.logger.info(f"Added module: {name}")
             
-            db.session.commit()
+            try:
+                db.session.commit()
+            except sqlalchemy.exc.IntegrityError as e:
+                current_app.logger.error(f"Database integrity error for module {name}: {e}")
+                db.session.rollback()
             
         except Exception as e:
             current_app.logger.error(f"Error scanning module {file_path}: {str(e)}")
+            current_app.logger.error(traceback.format_exc())
+            db.session.rollback()
     
     # Check modules in subdirectories (categories)
     for dir_path in module_path.glob('*/'):
@@ -116,7 +134,11 @@ def scan_local_modules():
         if not category:
             category = ModuleCategory(name=category_name)
             db.session.add(category)
-            db.session.commit()
+            try:
+                db.session.commit()
+            except Exception as e:
+                current_app.logger.error(f"Error adding category {category_name}: {str(e)}")
+                db.session.rollback()
         
         # Create __init__.py in category directory if it doesn't exist
         init_file = dir_path / "__init__.py"
@@ -130,11 +152,8 @@ def scan_local_modules():
                 continue
                 
             try:
-                # Check if module exists in database
-                module_name = file_path.stem
-                existing_module = Module.query.filter_by(name=module_name).first()
-                
                 # Import the module to get details
+                module_name = file_path.stem
                 import_path = f"modules.{category_name}.{module_name}"
                 spec = importlib.util.spec_from_file_location(import_path, str(file_path))
                 if not spec:
@@ -142,7 +161,12 @@ def scan_local_modules():
                     
                 module = importlib.util.module_from_spec(spec)
                 sys.modules[import_path] = module  # Add to sys.modules to avoid import errors
-                spec.loader.exec_module(module)
+                
+                try:
+                    spec.loader.exec_module(module)
+                except Exception as e:
+                    current_app.logger.error(f"Error executing module {file_path}: {str(e)}")
+                    continue
                 
                 # Find the class inheriting from ToolModule or with special methods
                 module_class = None
@@ -157,7 +181,8 @@ def scan_local_modules():
                         if hasattr(instance, '_get_name') and hasattr(instance, '_get_category'):
                             module_class = instance
                             break
-                    except:
+                    except Exception as e:
+                        current_app.logger.error(f"Error instantiating class {attr_name}: {str(e)}")
                         continue
                 
                 if not module_class:
@@ -168,6 +193,9 @@ def scan_local_modules():
                 description = getattr(module_class, '_get_description', lambda: '')()
                 command = getattr(module_class, '_get_command', lambda: '')()
                 
+                # Check if module exists in database
+                existing_module = Module.query.filter_by(name=name).first()
+                
                 # Update or create module
                 if existing_module:
                     existing_module.description = description
@@ -175,7 +203,9 @@ def scan_local_modules():
                     existing_module.command = command
                     existing_module.local_path = str(file_path)
                     existing_module.updated_at = datetime.utcnow()
+                    db.session.add(existing_module)
                     updated_count += 1
+                    current_app.logger.info(f"Updated module: {name}")
                 else:
                     new_module = Module(
                         name=name,
@@ -187,13 +217,63 @@ def scan_local_modules():
                     )
                     db.session.add(new_module)
                     added_count += 1
+                    current_app.logger.info(f"Added module: {name}")
                 
-                db.session.commit()
+                try:
+                    db.session.commit()
+                except sqlalchemy.exc.IntegrityError as e:
+                    current_app.logger.error(f"Database integrity error for module {name}: {e}")
+                    db.session.rollback()
                 
             except Exception as e:
                 current_app.logger.error(f"Error scanning module {file_path}: {str(e)}")
+                current_app.logger.error(traceback.format_exc())
+                db.session.rollback()
     
     return added_count, updated_count
+
+def clean_module_database():
+    """
+    Clean up the module database by removing duplicates
+    
+    Returns:
+        int: Number of modules removed
+    """
+    try:
+        # Get all modules
+        modules = Module.query.all()
+        
+        # Group by name
+        module_dict = {}
+        for module in modules:
+            if module.name in module_dict:
+                module_dict[module.name].append(module)
+            else:
+                module_dict[module.name] = [module]
+        
+        # Find duplicates
+        duplicates = {name: modules for name, modules in module_dict.items() if len(modules) > 1}
+        
+        removed_count = 0
+        for name, module_list in duplicates.items():
+            # Keep the most recently updated one
+            module_list.sort(key=lambda m: m.updated_at if m.updated_at else datetime.min, reverse=True)
+            keep_module = module_list[0]
+            
+            # Remove the rest
+            for module in module_list[1:]:
+                current_app.logger.info(f"Removing duplicate module: {module.name} (id={module.id})")
+                db.session.delete(module)
+                removed_count += 1
+        
+        db.session.commit()
+        return removed_count
+        
+    except Exception as e:
+        current_app.logger.error(f"Error cleaning module database: {str(e)}")
+        current_app.logger.error(traceback.format_exc())
+        db.session.rollback()
+        return 0
 
 def check_module_installed(module_class):
     """
@@ -406,7 +486,9 @@ def download_module(url, name, category):
         
     except Exception as e:
         current_app.logger.error(f"Error downloading module: {str(e)}")
+        current_app.logger.error(traceback.format_exc())
         return False, None, str(e)
+        
 def install_module(module):
     """
     Install a module
@@ -425,56 +507,143 @@ def install_module(module):
         if not file_path.exists():
             return False, "Module file not found"
         
-        # Determine module path for import
+        current_app.logger.info(f"Installing module: {module_name} from {file_path}")
+        
+        # Add modules directory to Python path
+        modules_dir = current_app.config['MODULES_DIR']
+        project_dir = str(Path(modules_dir).parent)
+        
+        # Make sure needed directories are in sys.path
+        if project_dir not in sys.path:
+            sys.path.insert(0, project_dir)
+        
+        if modules_dir not in sys.path:
+            sys.path.insert(0, modules_dir)
+        
+        current_app.logger.info(f"Python path: {sys.path}")
+        
+        # Determine the import path
         if 'modules' in str(file_path.parent.name):
-            # Module is in the base modules directory
+            # Module is in the modules directory
             import_path = f"modules.{module_name}"
         else:
-            # Module is in a category subdirectory
+            # Module is in a subdirectory
             category = file_path.parent.name
             import_path = f"modules.{category}.{module_name}"
         
-        # Add modules directory to Python path if it's not already there
-        modules_dir = current_app.config['MODULES_DIR']
-        if modules_dir not in sys.path:
-            sys.path.insert(0, str(Path(modules_dir).parent))
+        current_app.logger.info(f"Import path: {import_path}")
         
-        # Import module
-        spec = importlib.util.spec_from_file_location(import_path, str(file_path))
-        if not spec:
-            return False, "Failed to create module spec"
-            
-        mod = importlib.util.module_from_spec(spec)
-        sys.modules[import_path] = mod  # Add to sys.modules to avoid import errors
-        spec.loader.exec_module(mod)
+        # Import the module
+        try:
+            # Try direct import first
+            try:
+                mod = importlib.import_module(import_path)
+                current_app.logger.info(f"Imported module using importlib.import_module")
+            except ImportError:
+                # If that fails, use spec_from_file_location
+                spec = importlib.util.spec_from_file_location(import_path, str(file_path))
+                if not spec:
+                    return False, f"Failed to create module spec for {file_path}"
+                
+                mod = importlib.util.module_from_spec(spec)
+                sys.modules[import_path] = mod
+                spec.loader.exec_module(mod)
+                current_app.logger.info(f"Imported module using spec_from_file_location")
+                
+        except ImportError as e:
+            # Check if it's the core module that's missing
+            if "No module named 'core'" in str(e):
+                current_app.logger.error(f"Core module not found: {e}")
+                return False, f"Module depends on 'core' module. Make sure it exists in {modules_dir}/core"
+            else:
+                current_app.logger.error(f"Import error: {e}")
+                return False, f"Error importing module: {str(e)}"
+        except Exception as e:
+            current_app.logger.error(f"Error executing module: {e}")
+            return False, f"Error loading module: {str(e)}"
         
         # Find the module class
         module_class = None
-        for attr_name in dir(mod):
-            attr = getattr(mod, attr_name)
-            if not isinstance(attr, type):
-                continue
+        class_name = None
+        
+        # First, try to find a class with the same name as the module
+        capitalized_name = module_name.capitalize()
+        if hasattr(mod, capitalized_name):
+            class_attr = getattr(mod, capitalized_name)
+            if isinstance(class_attr, type):
+                try:
+                    instance = class_attr()
+                    if hasattr(instance, '_get_name') and hasattr(instance, '_get_category'):
+                        module_class = instance
+                        class_name = capitalized_name
+                        current_app.logger.info(f"Found module class with capitalized name: {class_name}")
+                except Exception as e:
+                    current_app.logger.error(f"Error instantiating class {capitalized_name}: {e}")
+        
+        # If not found, try other classes
+        if module_class is None:
+            for attr_name in dir(mod):
+                if attr_name.startswith('__'):
+                    continue
                 
-            # Check if this is a ToolModule class or has the required methods
-            try:
-                instance = attr()
-                if hasattr(instance, '_get_name') and hasattr(instance, '_get_category'):
+                attr = getattr(mod, attr_name)
+                if not isinstance(attr, type):
+                    continue
+                
+                try:
+                    instance = attr()
+                    if hasattr(instance, '_get_name') and hasattr(instance, '_get_category'):
+                        module_class = instance
+                        class_name = attr_name
+                        current_app.logger.info(f"Found module class: {class_name}")
+                        break
+                except Exception as e:
+                    current_app.logger.error(f"Error instantiating class {attr_name}: {e}")
+        
+        # If still no module class found, try to find any class and make it work
+        if module_class is None:
+            for attr_name in dir(mod):
+                if attr_name.startswith('__'):
+                    continue
+                
+                attr = getattr(mod, attr_name)
+                if not isinstance(attr, type):
+                    continue
+                
+                try:
+                    instance = attr()
+                    class_name = attr_name
+                    # Add missing methods if needed
+                    if not hasattr(instance, '_get_name'):
+                        setattr(instance.__class__, '_get_name', lambda self: module_name)
+                    if not hasattr(instance, '_get_category'):
+                        setattr(instance.__class__, '_get_category', lambda self: "Uncategorized")
+                    if not hasattr(instance, '_get_description'):
+                        setattr(instance.__class__, '_get_description', lambda self: "No description provided")
+                    if not hasattr(instance, '_get_command'):
+                        setattr(instance.__class__, '_get_command', lambda self: "")
+                    if not hasattr(instance, '_get_install_command'):
+                        setattr(instance.__class__, '_get_install_command', lambda self, pkg_manager: [])
+                    
                     module_class = instance
+                    current_app.logger.info(f"Using class with added methods: {class_name}")
                     break
-            except Exception as e:
-                current_app.logger.error(f"Error instantiating module class {attr_name}: {str(e)}")
-                continue
-       
+                except Exception as e:
+                    current_app.logger.error(f"Error using class {attr_name}: {e}")
+        
         if not module_class:
-            return False, "Module class not found"
-       
+            return False, "No suitable module class found in the module file"
+        
         # Get package manager
         pkg_manager = None
         if hasattr(module_class, 'get_package_manager'):
-            pkg_managers = module_class.get_package_manager()
-            if pkg_managers and len(pkg_managers) > 0:
-                pkg_manager = pkg_managers[0]
-       
+            try:
+                pkg_managers = module_class.get_package_manager()
+                if pkg_managers and len(pkg_managers) > 0:
+                    pkg_manager = pkg_managers[0]
+            except Exception as e:
+                current_app.logger.error(f"Error getting package manager: {e}")
+        
         if not pkg_manager:
             # Detect the system's package manager
             if shutil.which('apt-get'):
@@ -487,26 +656,45 @@ def install_module(module):
                 pkg_manager = 'pacman'
             else:
                 pkg_manager = 'apt'  # Default to apt
-       
+        
+        current_app.logger.info(f"Using package manager: {pkg_manager}")
+        
         # Get installation command
         if not hasattr(module_class, '_get_install_command'):
             # If the module doesn't have an install command, consider it already installed
             module.installed = True
             module.installed_date = datetime.utcnow()
             db.session.commit()
-            return True, "Module doesn't require installation"
-           
-        commands = module_class._get_install_command(pkg_manager)
-       
+            return True, f"Module {module_name} installed successfully (no installation needed)"
+        
+        # Get installation commands
+        try:
+            commands = module_class._get_install_command(pkg_manager)
+            
+            # If commands is None, handle it gracefully
+            if commands is None:
+                commands = []
+        except Exception as e:
+            current_app.logger.error(f"Error getting install commands: {e}")
+            return False, f"Error getting installation commands: {str(e)}"
+        
         if not commands:
-            return False, f"No installation command for {pkg_manager}"
-       
+            # If there are no commands, just mark as installed
+            module.installed = True
+            module.installed_date = datetime.utcnow()
+            db.session.commit()
+            return True, f"Module {module_name} installed successfully (no commands needed)"
+        
         # Convert single command to list
         if isinstance(commands, str):
             commands = [commands]
-       
+        
+        current_app.logger.info(f"Installation commands: {commands}")
+        
         # Execute installation commands
+        all_output = []
         for cmd in commands:
+            current_app.logger.info(f"Executing command: {cmd}")
             result = subprocess.run(
                 cmd, 
                 shell=True, 
@@ -515,20 +703,30 @@ def install_module(module):
                 stderr=subprocess.PIPE, 
                 text=True
             )
-           
+            
+            all_output.append(f"Command: {cmd}")
+            all_output.append(f"Exit code: {result.returncode}")
+            all_output.append(f"Output: {result.stdout}")
+            
             if result.returncode != 0:
-                return False, f"Command failed: {cmd}\n{result.stderr}"
+                all_output.append(f"Error: {result.stderr}")
+                current_app.logger.error(f"Command failed: {cmd}\n{result.stderr}")
+                return False, "\n".join(all_output)
         
         # Update module status
         module.installed = True
         module.installed_date = datetime.utcnow()
         db.session.commit()
-       
-        return True, "Module installed successfully"
-       
+        
+        all_output.append(f"Module {module_name} installed successfully")
+        current_app.logger.info(f"Module {module_name} installed successfully")
+        
+        return True, "\n".join(all_output)
+    
     except Exception as e:
-        current_app.logger.error(f"Error installing module: {str(e)}")
-        return False, str(e)
+        current_app.logger.error(f"Error installing module: {e}")
+        current_app.logger.error(traceback.format_exc())
+        return False, f"Error installing module: {str(e)}"
 
 def uninstall_module(module):
     """
@@ -551,8 +749,8 @@ def uninstall_module(module):
             db.session.commit()
             return True, "Module file not found, marked as uninstalled"
         
-        # Determine module path for import
-        if 'modules' in str(file_path.parent.name):
+        # Get the proper import path
+        if str(file_path.parent).endswith('modules'):
             # Module is in the base modules directory
             import_path = f"modules.{module_name}"
         else:
@@ -560,12 +758,15 @@ def uninstall_module(module):
             category = file_path.parent.name
             import_path = f"modules.{category}.{module_name}"
         
-        # Add modules directory to Python path if it's not already there
+        # Add modules directory to Python path
         modules_dir = current_app.config['MODULES_DIR']
-        if modules_dir not in sys.path:
-            sys.path.insert(0, str(Path(modules_dir).parent))
+        modules_parent = str(Path(modules_dir).parent)
+        if modules_parent not in sys.path:
+            sys.path.insert(0, modules_parent)
         
         # Import module
+        current_app.logger.info(f"Importing module from {file_path} with path {import_path}")
+        
         spec = importlib.util.spec_from_file_location(import_path, str(file_path))
         if not spec:
             # If we can't import, just mark as uninstalled
@@ -575,7 +776,15 @@ def uninstall_module(module):
             
         mod = importlib.util.module_from_spec(spec)
         sys.modules[import_path] = mod  # Add to sys.modules to avoid import errors
-        spec.loader.exec_module(mod)
+        
+        try:
+            spec.loader.exec_module(mod)
+        except Exception as e:
+            current_app.logger.error(f"Error executing module: {str(e)}")
+            # If we can't execute the module, just mark as uninstalled
+            module.installed = False
+            db.session.commit()
+            return True, f"Error loading module: {str(e)}, marked as uninstalled"
         
         # Find the module class
         module_class = None
@@ -590,7 +799,8 @@ def uninstall_module(module):
                 if hasattr(instance, '_get_name') and hasattr(instance, '_get_category'):
                     module_class = instance
                     break
-            except:
+            except Exception as e:
+                current_app.logger.error(f"Error instantiating class {attr_name}: {str(e)}")
                 continue
        
         if not module_class:
@@ -598,6 +808,8 @@ def uninstall_module(module):
             module.installed = False
             db.session.commit()
             return True, "Module class not found, marked as uninstalled"
+        
+        current_app.logger.info(f"Found module class: {module_class.__class__.__name__}")
        
         # Get package manager
         pkg_manager = None
@@ -618,6 +830,8 @@ def uninstall_module(module):
                 pkg_manager = 'pacman'
             else:
                 pkg_manager = 'apt'  # Default to apt
+        
+        current_app.logger.info(f"Using package manager: {pkg_manager}")
        
         # Get uninstallation command
         if not hasattr(module_class, '_get_uninstall_command'):
@@ -637,9 +851,13 @@ def uninstall_module(module):
         # Convert single command to list
         if isinstance(commands, str):
             commands = [commands]
+        
+        current_app.logger.info(f"Uninstallation commands: {commands}")
        
         # Execute uninstallation commands
+        all_output = []
         for cmd in commands:
+            current_app.logger.info(f"Executing command: {cmd}")
             result = subprocess.run(
                 cmd, 
                 shell=True, 
@@ -648,18 +866,28 @@ def uninstall_module(module):
                 stderr=subprocess.PIPE, 
                 text=True
             )
-           
+            
+            all_output.append(f"Command: {cmd}")
+            all_output.append(f"Exit code: {result.returncode}")
+            all_output.append(f"Output: {result.stdout}")
+            
             if result.returncode != 0:
-                return False, f"Command failed: {cmd}\n{result.stderr}"
+                all_output.append(f"Error: {result.stderr}")
+                current_app.logger.warning(f"Command failed: {cmd}\n{result.stderr}")
+                # Continue with other commands even if one fails
         
         # Update module status
         module.installed = False
         db.session.commit()
+        
+        all_output.append("Module uninstalled successfully")
+        current_app.logger.info(f"Module {module_name} uninstalled successfully")
        
-        return True, "Module uninstalled successfully"
+        return True, "\n".join(all_output)
        
     except Exception as e:
         current_app.logger.error(f"Error uninstalling module: {str(e)}")
+        current_app.logger.error(traceback.format_exc())
         return False, str(e)
 
 def delete_module(module):
@@ -681,10 +909,10 @@ def delete_module(module):
         
         # Delete the file
         file_path = Path(module.local_path)
-        
-        # Store module name for log message
         module_name = module.name
         category = module.category
+        
+        current_app.logger.info(f"Deleting module file: {file_path}")
         
         if file_path.exists():
             try:
@@ -696,7 +924,7 @@ def delete_module(module):
             
             # Check if directory is empty (except for __init__.py) and remove if needed
             dir_path = file_path.parent
-            if dir_path.name != 'modules':  # Don't delete the main modules directory
+            if not str(dir_path).endswith('modules'):  # Don't delete the main modules directory
                 files = list(dir_path.glob('*'))
                 if len(files) <= 1 and all(f.name == '__init__.py' for f in files):
                     # Directory only has __init__.py or is empty, we can remove __init__.py and the directory
@@ -721,9 +949,106 @@ def delete_module(module):
         db.session.delete(module)
         db.session.commit()
         
+        current_app.logger.info(f"Module {module_name} deleted successfully")
         return True, f"Module {module_name} deleted successfully"
         
     except Exception as e:
         current_app.logger.error(f"Error deleting module: {str(e)}")
+        current_app.logger.error(traceback.format_exc())
         db.session.rollback()
         return False, str(e)
+
+def import_module_from_path(file_path, add_to_path=True):
+    """
+    Import a module from a file path
+    
+    Args:
+        file_path: Path to the module file
+        add_to_path: Whether to add the module's parent directories to sys.path
+        
+    Returns:
+        tuple: (module, error_message)
+    """
+    try:
+        file_path = Path(file_path)
+        module_name = file_path.stem
+        
+        if add_to_path:
+            # Add parent directories to sys.path
+            parent_dir = file_path.parent
+            project_root = parent_dir.parent
+            
+            if str(parent_dir) not in sys.path:
+                sys.path.insert(0, str(parent_dir))
+            
+            if str(project_root) not in sys.path:
+                sys.path.insert(0, str(project_root))
+            
+            # If this is a module in a subdirectory, make sure the subdirectory is in the path
+            if parent_dir.name != 'modules':
+                modules_dir = parent_dir.parent
+                if str(modules_dir) not in sys.path:
+                    sys.path.insert(0, str(modules_dir))
+        
+        # Check if it's part of a package
+        import_path = module_name
+        if 'modules' in str(file_path):
+            if file_path.parent.name == 'modules':
+                import_path = f"modules.{module_name}"
+            else:
+                category = file_path.parent.name
+                import_path = f"modules.{category}.{module_name}"
+        
+        current_app.logger.info(f"Python path: {sys.path}")
+        current_app.logger.info(f"Importing module from {file_path} with path {import_path}")
+        
+        # Try to import the module
+        try:
+            # First try direct import
+            spec = importlib.util.find_spec(import_path)
+            if spec:
+                module = importlib.import_module(import_path)
+                return module, None
+            
+            # If that fails, try spec_from_file_location
+            spec = importlib.util.spec_from_file_location(import_path, str(file_path))
+            if not spec:
+                return None, f"Failed to create module spec for {file_path}"
+            
+            module = importlib.util.module_from_spec(spec)
+            sys.modules[import_path] = module
+            spec.loader.exec_module(module)
+            return module, None
+            
+        except ImportError as e:
+            # Try to handle missing core module
+            if "No module named 'core'" in str(e):
+                # Try to modify the module content to remove core imports
+                with open(file_path, 'r') as f:
+                    content = f.read()
+                
+                # Check if we can patch the imports
+                if "from core." in content:
+                    current_app.logger.info(f"Module uses 'from core.' imports. Attempting to patch...")
+                    
+                    # Create a temporary module with modified imports
+                    temp_content = content.replace("from core.", "# from core.")
+                    
+                    # Create a temporary module
+                    temp_module = types.ModuleType(import_path)
+                    exec(temp_content, temp_module.__dict__)
+                    
+                    return temp_module, None
+                
+                # If we can't patch it, create a basic module without the core dependency
+                return None, f"Module depends on 'core' module. Try installing the core module first."
+            
+            return None, f"ImportError: {str(e)}"
+            
+        except Exception as e:
+            return None, f"Error importing module: {str(e)}"
+    
+    except Exception as e:
+        current_app.logger.error(f"Error in import_module_from_path: {str(e)}")
+        current_app.logger.error(traceback.format_exc())
+        return None, str(e)

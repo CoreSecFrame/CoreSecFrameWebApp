@@ -6,8 +6,10 @@ from flask_login import LoginManager
 from flask_socketio import SocketIO
 from flask_wtf.csrf import CSRFProtect, CSRFError
 import traceback
+import importlib.util
 from pathlib import Path
 import os
+import sys
 from app.config import Config
 
 # Initialize extensions
@@ -16,6 +18,41 @@ migrate = Migrate()
 login_manager = LoginManager()
 csrf = CSRFProtect()
 socketio = SocketIO()
+
+# Setup module import handling
+def setup_module_imports():
+    """Custom import handler for modules"""
+    class CoreImportFinder:
+        """Custom import finder to handle 'core' imports"""
+        
+        @classmethod
+        def find_spec(cls, fullname, path=None, target=None):
+            # Check if this is a 'core' import
+            if fullname == 'core' or fullname.startswith('core.'):
+                # Get the modules directory
+                modules_dir = Path(Config.MODULES_DIR)
+                
+                # If it's 'core' module directly
+                if fullname == 'core':
+                    core_init = modules_dir / 'core' / '__init__.py'
+                    if core_init.exists():
+                        return importlib.util.spec_from_file_location(
+                            fullname, str(core_init),
+                            submodule_search_locations=[str(modules_dir / 'core')]
+                        )
+                # If it's a submodule of 'core'
+                else:
+                    submodule = fullname.split('.', 1)[1]
+                    core_submodule = modules_dir / 'core' / f"{submodule}.py"
+                    if core_submodule.exists():
+                        return importlib.util.spec_from_file_location(
+                            fullname, str(core_submodule)
+                        )
+            
+            return None
+    
+    # Register the custom finder
+    sys.meta_path.insert(0, CoreImportFinder)
 
 def create_app(config_class=Config):
     # Initialize Flask application
@@ -27,6 +64,7 @@ def create_app(config_class=Config):
     migrate.init_app(app, db)
     login_manager.init_app(app)
     csrf.init_app(app)
+    setup_module_imports()
     
     # Configure login
     login_manager.login_view = 'auth.login'
@@ -245,6 +283,7 @@ def register_terminal_handlers(socketio):
                 'history': history,
                 'read_only': True
             })
+
 def register_error_handlers(app):
     @app.errorhandler(404)
     def not_found_error(error):
@@ -260,3 +299,6 @@ def register_error_handlers(app):
     @app.errorhandler(CSRFError)
     def handle_csrf_error(error):
         return render_template('errors/csrf_error.html', reason=error.description), 400
+
+
+

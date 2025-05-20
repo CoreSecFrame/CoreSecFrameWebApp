@@ -1,13 +1,13 @@
 # modules/example.py
-class Example:
-    def __init__(self):
-        pass
-    
+from modules.core.base import ToolModule
+from modules.core.colors import Colors
+
+class Example(ToolModule):
     def _get_name(self):
         return "Example"
     
     def _get_category(self):
-        return "Demo"
+        return "Utils"
     
     def _get_description(self):
         return "Example module for demonstration purposes"
@@ -19,13 +19,13 @@ class Example:
         return []  # No installation needed
     
     def run_guided(self):
-        print("Running in guided mode...")
+        print(f"{Colors.GREEN}Running in guided mode...{Colors.ENDC}")
         print("This is an example module.")
         print("Press any key to continue...")
         input()
-        print("Example completed!")
+        print(f"{Colors.GREEN}Example completed!{Colors.ENDC}")
     
     def run_direct(self):
-        print("Running in direct mode...")
+        print(f"{Colors.BLUE}Running in direct mode...{Colors.ENDC}")
         print("This is an example module.")
-        print("Example completed!")
+        print(f"{Colors.BLUE}Example completed!{Colors.ENDC}")
