@@ -1,4 +1,4 @@
-# app/terminal/manager.py (optimized version)
+# app/terminal/manager.py
 import os
 import pty
 import select
@@ -16,8 +16,14 @@ class TerminalManager:
     """Manages terminal sessions"""
     
     @staticmethod
-    def create_session(session_id, socketio):
-        """Create a new terminal session or return existing one"""
+    def create_session(session_id, socketio, allow_create=True):
+        """Create a new terminal session or return existing one
+        
+        Args:
+            session_id: Session ID
+            socketio: SocketIO instance
+            allow_create: Whether to allow creation of new sessions (set to False for viewing inactive sessions)
+        """
         # If session exists, return it
         if session_id in active_terminals:
             # Check if process is still running
@@ -27,6 +33,10 @@ class TerminalManager:
             else:
                 # Process ended, clean up
                 TerminalManager.close_session(session_id)
+        
+        # If not allowed to create new sessions, return None
+        if not allow_create:
+            return None
         
         try:
             # Create PTY
@@ -216,3 +226,25 @@ class TerminalManager:
         if session_id not in active_terminals:
             return []
         return active_terminals[session_id]['history']
+    
+    @staticmethod
+    def get_session_logs(session_id):
+        """Get logs for an inactive session"""
+        from app.terminal.models import TerminalLog
+        
+        logs = TerminalLog.query.filter_by(
+            session_id=session_id
+        ).order_by(TerminalLog.timestamp).all()
+        
+        # Concatenate logs into a buffer
+        buffer = ''
+        for log in logs:
+            if log.event_type == 'command':
+                buffer += f'$ {log.command}\r\n'
+            elif log.event_type == 'output':
+                buffer += f'{log.output}\r\n'
+        
+        # Extract command history
+        commands = [log.command for log in logs if log.event_type == 'command' and log.command]
+        
+        return buffer, commands

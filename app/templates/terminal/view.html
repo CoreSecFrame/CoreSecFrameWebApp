@@ -9,13 +9,22 @@
     width: 100%;
     background: #000;
 }
+.session-inactive {
+    color: #dc3545;
+    font-weight: bold;
+}
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="row mb-3">
     <div class="col-md-12 d-flex justify-content-between align-items-center">
-        <h1>{{ session.name }}</h1>
+        <h1>
+            {{ session.name }}
+            {% if not session.active %}
+            <span class="badge bg-danger">Inactive</span>
+            {% endif %}
+        </h1>
         <a href="{{ url_for('terminal.index') }}" class="btn btn-secondary">
             <i class="bi bi-arrow-left"></i> Back to Sessions
         </a>
@@ -26,7 +35,12 @@
     <div class="col-md-12">
         <div class="card">
             <div class="card-header bg-dark text-white">
-                <h5 class="mb-0">Terminal Session</h5>
+                <h5 class="mb-0">
+                    Terminal Session
+                    {% if not session.active %}
+                    <span class="badge bg-danger">Read-Only Mode</span>
+                    {% endif %}
+                </h5>
             </div>
             <div class="card-body p-0">
                 <div id="terminal"></div>
@@ -41,7 +55,12 @@
                     </button>
                 </div>
                 <div>
-                    <span class="text-muted">Session ID: {{ session.session_id }}</span>
+                    <span class="text-muted">
+                        Session ID: {{ session.session_id }}
+                        {% if not session.active %}
+                        <span class="session-inactive"> (Inactive - View Only)</span>
+                        {% endif %}
+                    </span>
                 </div>
             </div>
         </div>

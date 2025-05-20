@@ -93,11 +93,16 @@ def register_terminal_handlers(socketio):
         # Join session room
         join_room(session_id)
         
-        # Create or get terminal session
-        terminal = TerminalManager.create_session(session_id, socketio)
-        
-        # Send welcome message
-        emit('terminal_output', '\r\nWelcome to CoreSecFrame Terminal\r\n', room=session_id)
+        # Check if session is active
+        if session.active:
+            # Create or get terminal session
+            terminal = TerminalManager.create_session(session_id, socketio)
+            
+            # Send welcome message
+            emit('terminal_output', '\r\nWelcome to CoreSecFrame Terminal\r\n', room=session_id)
+        else:
+            # For inactive sessions, send a read-only message
+            emit('terminal_output', '\r\n[This session is inactive and in read-only mode]\r\n', room=session_id)
 
     @socketio.on('terminal_input')
     def terminal_input(data):
@@ -209,15 +214,28 @@ def register_terminal_handlers(socketio):
         if not session:
             return
         
-        # Get buffer and history from terminal manager
-        buffer = TerminalManager.get_buffer(session_id)
-        history = TerminalManager.get_history(session_id)
-        
-        # Send buffer to client
-        emit('terminal_buffer', {
-            'buffer': buffer if buffer else '\r\n$ ',
-            'history': history
-        })
+        # Handle differently based on session status
+        if session.active:
+            # Get buffer and history from terminal manager for active session
+            buffer = TerminalManager.get_buffer(session_id)
+            history = TerminalManager.get_history(session_id)
+            
+            # Send buffer to client
+            emit('terminal_buffer', {
+                'buffer': buffer if buffer else '\r\n$ ',
+                'history': history,
+                'read_only': False
+            })
+        else:
+            # For inactive sessions, get logs from database
+            buffer, history = TerminalManager.get_session_logs(session_id)
+            
+            # Send buffer to client with read-only flag
+            emit('terminal_buffer', {
+                'buffer': buffer if buffer else '\r\n[Inactive Session - No logs available]\r\n',
+                'history': history,
+                'read_only': True
+            })
 
 def register_error_handlers(app):
     @app.errorhandler(404)

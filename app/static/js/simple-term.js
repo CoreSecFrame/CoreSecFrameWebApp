@@ -18,6 +18,7 @@ class SimpleTerm {
         this.commandHistory = [];
         this.historyIndex = -1;
         this.initialized = false;
+        this.readOnly = false;  // Default to interactive mode
         
         // Initialize terminal
         this.term.open(element);
@@ -46,11 +47,22 @@ class SimpleTerm {
         
         // Handle initial buffer
         this.socket.on('terminal_buffer', (data) => {
+            // Update read-only status
+            this.readOnly = !!data.read_only;
+            
             if (data.buffer) {
                 // Clear terminal and write buffer
                 this.term.clear();
                 this.term.write(data.buffer);
                 this.initialized = true;
+                
+                // If in read-only mode, add a notice
+                if (this.readOnly) {
+                    this.term.write('\r\n\x1b[1;33m[Read-Only Mode: This session is inactive and cannot accept input]\x1b[0m\r\n');
+                } else {
+                    // Add prompt for interactive mode
+                    this.term.write('\r\n$ ');
+                }
             }
             
             // Store command history
@@ -68,8 +80,13 @@ class SimpleTerm {
             }
         });
         
-        // Handle user input
+        // Handle user input (only when not in read-only mode)
         this.term.onKey(({ key, domEvent }) => {
+            // Skip input handling in read-only mode
+            if (this.readOnly) {
+                return;
+            }
+            
             const printable = !domEvent.altKey && !domEvent.ctrlKey && !domEvent.metaKey;
             
             if (domEvent.keyCode === 13) { // Enter key
@@ -130,6 +147,11 @@ class SimpleTerm {
     }
     
     sendCommand(command) {
+        // Don't send commands in read-only mode
+        if (this.readOnly) {
+            return;
+        }
+        
         console.log('Sending command:', command);
         this.socket.emit('terminal_command', {
             session_id: this.sessionId,
@@ -155,10 +177,16 @@ class SimpleTerm {
     
     clear() {
         this.term.clear();
-        this.term.write('$ ');
+        if (!this.readOnly) {
+            this.term.write('$ ');
+        }
     }
     
     testWrite(text) {
         this.term.write(text);
+    }
+    
+    isReadOnly() {
+        return this.readOnly;
     }
 }
