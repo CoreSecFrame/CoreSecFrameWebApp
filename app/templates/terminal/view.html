@@ -2,48 +2,13 @@
 {% extends "base.html" %}
 
 {% block head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.1.0/css/xterm.min.css" />
 <style>
-    .terminal-container {
-        background-color: #1e1e1e;
-        color: #f0f0f0;
-        font-family: 'Courier New', monospace;
-        padding: 10px;
-        overflow-y: auto;
-        border-radius: 5px;
-        min-height: 400px;
-        max-height: 600px;
-    }
-
-    .terminal-line {
-        margin: 0;
-        padding: 0;
-        white-space: pre-wrap;
-        word-break: break-all;
-    }
-
-    .terminal-input {
-        background-color: #2d2d2d;
-        color: #f0f0f0;
-        font-family: 'Courier New', monospace;
-        padding: 8px;
-        width: 100%;
-        border: none;
-        border-radius: 0 0 5px 5px;
-    }
-
-    .command-text {
-        color: #5bc0de;
-        font-weight: bold;
-    }
-
-    .output-text {
-        color: #f0f0f0;
-    }
-
-    .system-text {
-        color: #d9534f;
-        font-style: italic;
-    }
+#terminal {
+    height: 500px;
+    width: 100%;
+    background: #000;
+}
 </style>
 {% endblock %}
 
@@ -51,245 +16,67 @@
 <div class="row mb-3">
     <div class="col-md-12 d-flex justify-content-between align-items-center">
         <h1>{{ session.name }}</h1>
-        <div class="btn-group" role="group">
-            <a href="{{ url_for('terminal.index') }}" class="btn btn-secondary">
-                <i class="bi bi-arrow-left"></i> Back to Sessions
-            </a>
-            {% if session.active %}
-            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#closeModal">
-                <i class="bi bi-x-circle"></i> Close Session
-            </button>
-            {% else %}
-            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
-                <i class="bi bi-trash"></i> Delete Session
-            </button>
-            {% endif %}
-        </div>
+        <a href="{{ url_for('terminal.index') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Sessions
+        </a>
     </div>
 </div>
-
-{% if not tmux_installed %}
-<div class="alert alert-warning">
-    <strong>Warning:</strong> TMUX is not installed on the server. Terminal functionality will not work properly.
-    Please install TMUX to use terminal sessions.
-</div>
-{% endif %}
 
 <div class="row mb-3">
     <div class="col-md-12">
         <div class="card">
-            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                <div>
-                    Terminal Output
-                    <span class="badge {% if session.active %}bg-success{% else %}bg-danger{% endif %} ms-2">
-                        {% if session.active %}Active{% else %}Inactive{% endif %}
-                    </span>
-                </div>
-                <div>
-                    <span class="badge bg-info">{{ session.session_type|capitalize }}</span>
-                    {% if session.module_name %}
-                    <span class="badge bg-secondary">{{ session.module_name }}</span>
-                    {% endif %}
-                </div>
+            <div class="card-header bg-dark text-white">
+                Terminal Session
             </div>
             <div class="card-body p-0">
-                <div class="terminal-container" id="terminal-output">
-                    {% if logs %}
-                        {% for log in logs %}
-                            {% if log.event_type == 'command' %}
-                            <p class="terminal-line command-text">$ {{ log.command }}</p>
-                            {% elif log.event_type == 'output' %}
-                            <p class="terminal-line output-text">{{ log.output }}</p>
-                            {% elif log.event_type == 'system' %}
-                            <p class="terminal-line system-text">### {{ log.output }}</p>
-                            {% endif %}
-                        {% endfor %}
-                    {% else %}
-                        <p class="terminal-line system-text">### Terminal session created. No command history yet.</p>
-                        <p class="terminal-line system-text">### Type commands below to start interacting with the terminal.</p>
-                    {% endif %}
-                </div>
-
-                {% if session.active %}
-                <div class="terminal-input-container">
-                    <input type="text" id="terminal-input" class="terminal-input"
-                        placeholder="Type command and press Enter..." autofocus>
-                </div>
-                {% endif %}
+                <div id="terminal"></div>
             </div>
-            <div class="card-footer text-muted d-flex justify-content-between">
-                <div>
-                    Started: {{ session.start_time.strftime('%Y-%m-%d %H:%M:%S') }}
-                </div>
-                <div>
-                    Duration: <span id="session-duration">{{ session.get_duration() }}</span>
+            <div class="card-footer">
+                <div class="btn-group">
+                    <button id="btn-clear" class="btn btn-sm btn-secondary">Clear</button>
+                    <button id="btn-focus" class="btn btn-sm btn-secondary">Focus</button>
+                    <button id="btn-test" class="btn btn-sm btn-primary">Test Terminal</button>
+                    <button id="btn-ls" class="btn btn-sm btn-info">Run ls</button>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-{% if session.active %}
-<!-- Close Modal -->
-<div class="modal fade" id="closeModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Close Terminal Session</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to close this terminal session?</p>
-                <p class="text-danger">This will terminate all processes running in this session.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form action="{{ url_for('terminal.close', session_id=session.session_id) }}" method="post">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn btn-danger">Close Session</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-{% else %}
-<!-- Delete Modal -->
-<div class="modal fade" id="deleteModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Delete Terminal Session</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete this terminal session?</p>
-                <p class="text-danger">This will permanently delete all logs and history for this session.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form action="{{ url_for('terminal.delete', session_id=session.session_id) }}" method="post">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn btn-danger">Delete Session</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.1.0/lib/xterm.min.js"></script>
+<script src="{{ url_for('static', filename='js/simple-term.js') }}"></script>
+<!-- Keep the same template, but update the script section -->
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // Auto-scroll to bottom of terminal
-        const terminalOutput = document.getElementById('terminal-output');
-        terminalOutput.scrollTop = terminalOutput.scrollHeight;
-
-        {% if session.active %}
-        // Connect to WebSocket
-        const socket = io();
-        const sessionId = "{{ session.session_id }}";
-        const terminalInput = document.getElementById('terminal-input');
-
-        // Join session room
-        socket.emit('join', {
-            session_id: sessionId
-        });
-
-        // Handle command submission
-        terminalInput.addEventListener('keypress', function (event) {
-            if (event.key === 'Enter') {
-                const command = this.value.trim();
-                if (command) {
-                    // Send command to server
-                    socket.emit('send_command', {
-                        session_id: sessionId,
-                        command: command
-                    });
-
-                    // Clear input
-                    this.value = '';
-
-                    // Add command to terminal output immediately for responsiveness
-                    const commandLine = document.createElement('p');
-                    commandLine.className = 'terminal-line command-text';
-                    commandLine.textContent = '$ ' + command;
-                    terminalOutput.appendChild(commandLine);
-                    terminalOutput.scrollTop = terminalOutput.scrollHeight;
-                }
-            }
-        });
-
-        // Handle terminal output
-        socket.on('terminal_output', function (data) {
-            if (data.session_id === sessionId) {
-                const outputLines = data.output.split('\n');
-
-                // Clear existing output to avoid duplication
-                // This is a simplified approach - in production you might want to append
-                while (terminalOutput.firstChild) {
-                    terminalOutput.removeChild(terminalOutput.firstChild);
-                }
-
-                // Add output lines
-                outputLines.forEach(line => {
-                    const outputLine = document.createElement('p');
-                    outputLine.className = 'terminal-line output-text';
-                    outputLine.textContent = line;
-                    terminalOutput.appendChild(outputLine);
-                });
-
-                terminalOutput.scrollTop = terminalOutput.scrollHeight;
-            }
-        });
-
-        // Handle error messages
-        socket.on('error', function (data) {
-            const errorLine = document.createElement('p');
-            errorLine.className = 'terminal-line system-text';
-            errorLine.textContent = '### Error: ' + data.message;
-            terminalOutput.appendChild(errorLine);
-            terminalOutput.scrollTop = terminalOutput.scrollHeight;
-        });
-
-        // Handle status messages
-        socket.on('status', function (data) {
-            const statusLine = document.createElement('p');
-            statusLine.className = 'terminal-line system-text';
-            statusLine.textContent = '### ' + data.message;
-            terminalOutput.appendChild(statusLine);
-            terminalOutput.scrollTop = terminalOutput.scrollHeight;
-        });
-
-        // Clean up when leaving page
-        window.addEventListener('beforeunload', function () {
-            socket.emit('leave', {
-                session_id: sessionId
-            });
-        });
-
-        // Update session duration periodically
-        const durationElement = document.getElementById('session-duration');
-        const startTime = new Date("{{ session.start_time.isoformat() }}");
-
-        function updateDuration() {
-            const now = new Date();
-            const diff = Math.floor((now - startTime) / 1000); // Difference in seconds
-
-            const hours = Math.floor(diff / 3600);
-            const minutes = Math.floor((diff % 3600) / 60);
-            const seconds = diff % 60;
-
-            durationElement.textContent =
-                hours.toString().padStart(2, '0') + ':' +
-                minutes.toString().padStart(2, '0') + ':' +
-                seconds.toString().padStart(2, '0');
-        }
-
-        // Update every second
-        updateDuration();
-        setInterval(updateDuration, 1000);
-        {% endif %}
+document.addEventListener('DOMContentLoaded', function() {
+    // Create terminal
+    const terminal = new SimpleTerm(
+        "{{ session.session_id }}", 
+        document.getElementById('terminal')
+    );
+    
+    // Button handlers
+    document.getElementById('btn-clear').addEventListener('click', function() {
+        terminal.clear();
     });
+    
+    document.getElementById('btn-focus').addEventListener('click', function() {
+        terminal.focus();
+    });
+    
+    document.getElementById('btn-test').addEventListener('click', function() {
+        // Test writing directly to the terminal
+        terminal.testWrite('\r\nThis is a test message from the client.\r\n$ ');
+    });
+    
+    document.getElementById('btn-ls').addEventListener('click', function() {
+        // Send ls command using our new method
+        terminal.sendCommand('ls -la');
+    });
+    
+    // Focus on load
+    terminal.focus();
+});
 </script>
 {% endblock %}

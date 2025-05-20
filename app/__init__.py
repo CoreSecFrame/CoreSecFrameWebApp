@@ -1,11 +1,11 @@
 # app/__init__.py
-from flask import Flask, render_template  # Add render_template
+from flask import Flask, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager
 from flask_socketio import SocketIO
-from flask_wtf.csrf import CSRFProtect, CSRFError  # Add CSRFError
-import traceback  # Add traceback for error logging
+from flask_wtf.csrf import CSRFProtect, CSRFError
+import traceback
 from pathlib import Path
 import os
 from app.config import Config
@@ -14,8 +14,8 @@ from app.config import Config
 db = SQLAlchemy()
 migrate = Migrate()
 login_manager = LoginManager()
-socketio = SocketIO()
 csrf = CSRFProtect()
+socketio = SocketIO()
 
 def create_app(config_class=Config):
     # Initialize Flask application
@@ -36,43 +36,158 @@ def create_app(config_class=Config):
     os.makedirs(app.config['MODULES_DIR'], exist_ok=True)
     os.makedirs(app.config['LOGS_DIR'], exist_ok=True)
     
-    # Register blueprints
-    from app.auth.routes import auth_bp
-    from app.core.routes import core_bp
-    from app.modules.routes import modules_bp
-    from app.sessions.routes import sessions_bp
-    from app.terminal.routes import terminal_bp
-    from app.admin.routes import admin_bp
-    
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(core_bp)
-    app.register_blueprint(modules_bp)
-    app.register_blueprint(sessions_bp)
-    app.register_blueprint(terminal_bp)
-    app.register_blueprint(admin_bp)
-    
-    # Initialize socketio with app
-    socketio.init_app(app, cors_allowed_origins="*")
-    
-    # Register error handlers
-    register_error_handlers(app)
+    try:
+        # Register blueprints
+        from app.auth.routes import auth_bp
+        from app.core.routes import core_bp
+        from app.modules.routes import modules_bp
+        from app.sessions.routes import sessions_bp
+        from app.terminal.routes import terminal_bp
+        from app.admin.routes import admin_bp
+        
+        app.register_blueprint(auth_bp)
+        app.register_blueprint(core_bp)
+        app.register_blueprint(modules_bp)
+        app.register_blueprint(sessions_bp)
+        app.register_blueprint(terminal_bp)
+        app.register_blueprint(admin_bp)
+        
+        # Initialize socketio with app
+        socketio.init_app(app, cors_allowed_origins="*")
+        
+        # Register terminal socket handlers
+        register_terminal_handlers(socketio)
+        
+        # Register error handlers
+        register_error_handlers(app)
 
-    # Check if tmux is installed
-    import shutil
-    if not shutil.which('tmux'):
-        app.logger.warning("TMUX is not installed. Terminal functionality will not work properly.")
-    
-    # Create modules directory if it doesn't exist
-    os.makedirs(app.config['MODULES_DIR'], exist_ok=True)
-    
-    # Create modules package __init__.py if it doesn't exist
-    modules_init = os.path.join(app.config['MODULES_DIR'], '__init__.py')
-    if not os.path.exists(modules_init):
-        with open(modules_init, 'w') as f:
-            f.write('# This file makes the modules directory a Python package\n')
-    
-    
-    return app
+        return app
+        
+    except Exception as e:
+        print(f"Error creating Flask application: {e}")
+        import traceback
+        traceback.print_exc()
+        return None  # Return None if app creation fails
+
+def register_terminal_handlers(socketio):
+    @socketio.on('terminal_connect')
+    def terminal_connect(data):
+        """Connect to terminal session"""
+        from flask_login import current_user
+        from flask_socketio import emit, join_room
+        from app.terminal.models import TerminalSession
+        from app.terminal.manager import TerminalManager
+        
+        if not current_user.is_authenticated:
+            return
+        
+        session_id = data.get('session_id')
+        session = TerminalSession.query.filter_by(
+            session_id=session_id, 
+            user_id=current_user.id
+        ).first()
+        
+        if not session:
+            return
+        
+        # Join session room
+        join_room(session_id)
+        
+        # Create or get terminal session
+        terminal = TerminalManager.create_session(session_id, socketio)
+        
+        # Send welcome message
+        emit('terminal_output', '\r\nWelcome to CoreSecFrame Terminal\r\n', room=session_id)
+
+    @socketio.on('terminal_input')
+    def terminal_input(data):
+        """Handle terminal input"""
+        from flask_login import current_user
+        from app.terminal.models import TerminalSession
+        from app.terminal.manager import TerminalManager
+        from datetime import datetime
+        
+        if not current_user.is_authenticated:
+            return
+        
+        session_id = data.get('session_id')
+        key = data.get('key')
+        
+        session = TerminalSession.query.filter_by(
+            session_id=session_id, 
+            user_id=current_user.id
+        ).first()
+        
+        if not session:
+            return
+        
+        # Update session activity
+        session.last_activity = datetime.utcnow()
+        db.session.commit()
+        
+        # Send key to terminal
+        TerminalManager.send_input(session_id, key)
+
+    @socketio.on('terminal_command')
+    def terminal_command(data):
+        """Handle terminal command"""
+        from flask_login import current_user
+        from flask_socketio import emit
+        from app.terminal.models import TerminalSession, TerminalLog
+        from app.terminal.manager import TerminalManager
+        from datetime import datetime
+        
+        if not current_user.is_authenticated:
+            return
+        
+        session_id = data.get('session_id')
+        command = data.get('command', '')
+        
+        print(f"Received command: {command} for session {session_id}")
+        
+        session = TerminalSession.query.filter_by(
+            session_id=session_id, 
+            user_id=current_user.id
+        ).first()
+        
+        if not session:
+            return
+        
+        # Update session activity
+        session.last_activity = datetime.utcnow()
+        db.session.commit()
+        
+        # Log the command
+        log_command = TerminalLog(
+            session_id=session_id,
+            event_type='command',
+            command=command,
+            output=None
+        )
+        db.session.add(log_command)
+        db.session.commit()
+        
+        # Send command to terminal
+        TerminalManager.send_command(session_id, command, socketio)
+
+    @socketio.on('terminal_newline')
+    def terminal_newline(data):
+        """Handle empty line submission"""
+        from flask_login import current_user
+        from app.terminal.manager import TerminalManager
+        
+        if not current_user.is_authenticated:
+            return
+        
+        session_id = data.get('session_id')
+        TerminalManager.send_input(session_id, '\n')
+        
+    @socketio.on('disconnect')
+    def on_disconnect():
+        """Handle client disconnect"""
+        # We don't close the terminals when the client disconnects
+        # because they may reconnect later
+        print(f"Client disconnected")
 
 def register_error_handlers(app):
     @app.errorhandler(404)

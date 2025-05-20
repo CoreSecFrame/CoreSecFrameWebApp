@@ -1,0 +1,141 @@
+// app/static/js/simple-term.js
+class SimpleTerm {
+    constructor(sessionId, element) {
+        this.sessionId = sessionId;
+        this.element = element;
+        this.term = new Terminal({
+            cursorBlink: true,
+            fontSize: 14,
+            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+            theme: {
+                background: '#000000',
+                foreground: '#f0f0f0'
+            }
+        });
+        
+        this.socket = io();
+        this.currentLine = '';
+        this.commandHistory = [];
+        this.historyIndex = -1;
+        
+        // Initialize terminal
+        this.term.open(element);
+        this.term.write('Initializing terminal...\r\n');
+        this.term.focus();
+        
+        // Connect to socket
+        this.socket.on('connect', () => {
+            console.log('Socket connected');
+            
+            // Join session
+            this.socket.emit('terminal_connect', { 
+                session_id: this.sessionId 
+            });
+            
+            // Write welcome message
+            this.term.write('\r\nConnecting to terminal...\r\n');
+        });
+        
+        // Handle output from server
+        this.socket.on('terminal_output', (data) => {
+            console.log('Received terminal output:', data);
+            // Force write to the terminal
+            if (typeof data === 'string') {
+                this.term.write(data);
+            }
+        });
+        
+        // Handle user input
+        this.term.onKey(({ key, domEvent }) => {
+            const printable = !domEvent.altKey && !domEvent.ctrlKey && !domEvent.metaKey;
+            
+            if (domEvent.keyCode === 13) { // Enter key
+                // Send the current line as a command
+                this.term.write('\r\n');
+                if (this.currentLine.trim() !== '') {
+                    this.sendCommand(this.currentLine);
+                    this.addToHistory(this.currentLine);
+                } else {
+                    // Empty line, just show prompt
+                    this.socket.emit('terminal_newline', { session_id: this.sessionId });
+                }
+                this.currentLine = '';
+                this.historyIndex = -1;
+            } else if (domEvent.keyCode === 8) { // Backspace
+                // Remove the last character from the current line
+                if (this.currentLine.length > 0) {
+                    this.currentLine = this.currentLine.slice(0, -1);
+                    this.term.write('\b \b');
+                }
+            } else if (domEvent.keyCode === 38) { // Up arrow
+                // Navigate command history
+                if (this.commandHistory.length > 0) {
+                    if (this.historyIndex === -1) {
+                        this.historyIndex = this.commandHistory.length - 1;
+                    } else if (this.historyIndex > 0) {
+                        this.historyIndex--;
+                    }
+                    
+                    // Clear current line
+                    this.term.write('\r\x1B[K$ ' + this.commandHistory[this.historyIndex]);
+                    this.currentLine = this.commandHistory[this.historyIndex];
+                }
+            } else if (domEvent.keyCode === 40) { // Down arrow
+                // Navigate command history
+                if (this.historyIndex < this.commandHistory.length - 1) {
+                    this.historyIndex++;
+                    this.term.write('\r\x1B[K$ ' + this.commandHistory[this.historyIndex]);
+                    this.currentLine = this.commandHistory[this.historyIndex];
+                } else {
+                    // End of history, clear line
+                    this.historyIndex = -1;
+                    this.term.write('\r\x1B[K$ ');
+                    this.currentLine = '';
+                }
+            } else if (printable) {
+                // Add printable characters to the current line
+                this.currentLine += key;
+                this.term.write(key);
+            }
+        });
+        
+        // Socket disconnect
+        this.socket.on('disconnect', () => {
+            console.log('Socket disconnected');
+            this.term.write('\r\n\r\nDisconnected from server. Please refresh the page.\r\n');
+        });
+    }
+    
+    sendCommand(command) {
+        console.log('Sending command:', command);
+        this.socket.emit('terminal_command', {
+            session_id: this.sessionId,
+            command: command
+        });
+    }
+    
+    addToHistory(command) {
+        if (command.trim() !== '' && 
+            (this.commandHistory.length === 0 || 
+             this.commandHistory[this.commandHistory.length - 1] !== command)) {
+            this.commandHistory.push(command);
+            if (this.commandHistory.length > 100) {
+                this.commandHistory.shift(); // Keep history to a reasonable size
+            }
+        }
+    }
+    
+    focus() {
+        this.term.focus();
+    }
+    
+    clear() {
+        this.term.clear();
+        this.term.write('$ ');
+    }
+    
+    // Test method to write directly to the terminal
+    testWrite(text) {
+        this.term.write(text);
+    }
+}
