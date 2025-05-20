@@ -277,3 +277,31 @@ def search():
     
     # Search modules
     modules = Module.query
+
+@modules_bp.route('/delete/<int:id>', methods=['POST'])
+@login_required
+def delete(id):
+    try:
+        module = Module.query.get_or_404(id)
+        module_name = module.name  # Store the name for the flash message
+        
+        # Get the file path for logging
+        file_path = module.local_path
+        current_app.logger.info(f"Attempting to delete module: {module_name} at {file_path}")
+        
+        # Delete the module
+        from app.modules.utils import delete_module
+        success, message = delete_module(module)
+        
+        if success:
+            flash(f'Module {module_name} deleted successfully', 'success')
+        else:
+            flash(f'Failed to delete module: {message}', 'danger')
+        
+        return redirect(url_for('modules.index'))
+        
+    except Exception as e:
+        current_app.logger.error(f"Error deleting module: {str(e)}")
+        current_app.logger.error(traceback.format_exc())
+        flash(f'Error deleting module: {str(e)}', 'danger')
+        return redirect(url_for('modules.index'))

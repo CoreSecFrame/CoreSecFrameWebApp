@@ -80,30 +80,49 @@ def create_terminal_process(session):
 def build_module_command(module_name, mode):
     """Build the command to run a module in guided or direct mode"""
     try:
-        # This will need to be adapted based on your specific module structure
+        # Use the project root directory
         framework_root = current_app.config['BASE_DIR']
         
-        # Try to locate the module file
-        module_dir = Path(framework_root) / 'modules'
+        # Use the proper modules directory at the project root
+        module_dir = Path(current_app.config['MODULES_DIR'])
         module_path = None
         
-        # Check in base modules directory
-        base_module = module_dir / f"{module_name}.py"
-        if base_module.exists():
-            module_path = f"modules.{module_name}"
+        # Get the module from the database to find its correct path
+        from app.modules.models import Module
+        module_obj = Module.query.filter_by(name=module_name).first()
+        
+        if module_obj and module_obj.local_path:
+            # Use the path stored in the database
+            module_file = Path(module_obj.local_path)
+            if module_file.exists():
+                # Determine the proper import path
+                if 'modules' in str(module_file.parent.name):
+                    # Module is in the base modules directory
+                    module_path = f"modules.{module_name}"
+                else:
+                    # Module is in a category subdirectory
+                    category = module_file.parent.name
+                    module_path = f"modules.{category}.{module_name}"
         else:
-            # Check in subdirectories
-            for subdir in module_dir.iterdir():
-                if subdir.is_dir():
-                    submodule = subdir / f"{module_name}.py"
-                    if submodule.exists():
-                        module_path = f"modules.{subdir.name}.{module_name}"
-                        break
+            # Fallback: Try to locate the module file
+            # Check in base modules directory
+            base_module = module_dir / f"{module_name}.py"
+            if base_module.exists():
+                module_path = f"modules.{module_name}"
+            else:
+                # Check in subdirectories
+                for subdir in module_dir.iterdir():
+                    if subdir.is_dir():
+                        submodule = subdir / f"{module_name}.py"
+                        if submodule.exists():
+                            module_path = f"modules.{subdir.name}.{module_name}"
+                            break
         
         if not module_path:
             return None
             
         # Build the command
+        # Make sure to add the project root to the Python path
         cmd = (f"cd {framework_root} && "
               f"python3 -u -c \""
               f"import sys; "
@@ -117,7 +136,7 @@ def build_module_command(module_name, mode):
         return cmd
         
     except Exception as e:
-        print(f"Error building module command: {e}")
+        current_app.logger.error(f"Error building module command: {e}")
         return None
 
 def get_process_details(session):

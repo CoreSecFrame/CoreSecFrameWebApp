@@ -20,6 +20,13 @@
                     <i class="bi bi-download"></i> Install Module
                 </button>
             </form>
+            <form action="{{ url_for('modules.delete', id=module.id) }}" method="post" class="mt-2">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-danger w-100"
+                    onclick="return confirm('Are you sure you want to delete this module? This will remove the module file permanently.');">
+                    <i class="bi bi-trash"></i> Delete Module
+                </button>
+            </form>
             {% endif %}
         </div>
     </div>
@@ -36,24 +43,25 @@
                     <h5>Description</h5>
                     <p>{{ module.description }}</p>
                 </div>
-                
+
                 <div class="mb-3">
                     <h5>Category</h5>
-                    <a href="{{ url_for('modules.category', name=module.category) }}" class="badge bg-primary fs-6 text-decoration-none">
+                    <a href="{{ url_for('modules.category', name=module.category) }}"
+                        class="badge bg-primary fs-6 text-decoration-none">
                         {{ module.category }}
                     </a>
                 </div>
-                
+
                 <div class="mb-3">
                     <h5>Command</h5>
                     <code>{{ module.command }}</code>
                 </div>
-                
+
                 <div class="mb-3">
                     <h5>Path</h5>
                     <code class="text-break">{{ module.local_path }}</code>
                 </div>
-                
+
                 {% if module.remote_url %}
                 <div class="mb-3">
                     <h5>Source</h5>
@@ -62,7 +70,7 @@
                 {% endif %}
             </div>
         </div>
-        
+
         <div class="card">
             <div class="card-header bg-dark text-white">
                 <h5 class="mb-0">Usage</h5>
@@ -70,26 +78,28 @@
             <div class="card-body">
                 <h5>Running the Module</h5>
                 <p>This module can be run in two modes:</p>
-                
+
                 <div class="mb-3">
                     <h6>Guided Mode</h6>
                     <p>Step-by-step interactive execution with guidance and explanations.</p>
-                    <a href="{{ url_for('terminal.new') }}?module={{ module.name }}&mode=guided" class="btn btn-sm btn-info">
+                    <a href="{{ url_for('terminal.new') }}?module={{ module.name }}&mode=guided"
+                        class="btn btn-sm btn-info">
                         <i class="bi bi-signpost-2"></i> Run in Guided Mode
                     </a>
                 </div>
-                
+
                 <div class="mb-3">
                     <h6>Direct Mode</h6>
                     <p>Direct execution with full control and minimal guidance.</p>
-                    <a href="{{ url_for('terminal.new') }}?module={{ module.name }}&mode=direct" class="btn btn-sm btn-warning">
+                    <a href="{{ url_for('terminal.new') }}?module={{ module.name }}&mode=direct"
+                        class="btn btn-sm btn-warning">
                         <i class="bi bi-lightning"></i> Run in Direct Mode
                     </a>
                 </div>
             </div>
         </div>
     </div>
-    
+
     <div class="col-md-4">
         <div class="card mb-4">
             <div class="card-header {% if module.installed %}bg-success{% else %}bg-danger{% endif %} text-white">
@@ -123,7 +133,7 @@
                 {% endif %}
             </div>
         </div>
-        
+
         <div class="card">
             <div class="card-header bg-info text-white">
                 <h5 class="mb-0">Last Activity</h5>
@@ -134,7 +144,7 @@
                 {% else %}
                 <p class="text-muted">This module has not been used yet.</p>
                 {% endif %}
-                
+
                 <p><strong>Created:</strong> {{ module.created_at.strftime('%Y-%m-%d') }}</p>
                 <p><strong>Updated:</strong> {{ module.updated_at.strftime('%Y-%m-%d') }}</p>
             </div>

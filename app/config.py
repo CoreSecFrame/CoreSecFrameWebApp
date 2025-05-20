@@ -6,14 +6,17 @@ from pathlib import Path
 class Config:
     """Base configuration"""
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'development-key-do-not-use-in-production'
+    
+    # Set the correct paths
+    BASE_DIR = Path(__file__).parent.parent  # This points to the project root
+    MODULES_DIR = os.path.join(BASE_DIR, 'modules')  # This points to /modules in project root
+    
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        'sqlite:///' + str(Path(__file__).parent / 'app.db')
+        'sqlite:///' + str(BASE_DIR / 'app.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
-    # Application specific paths
-    BASE_DIR = Path(__file__).parent
-    MODULES_DIR = BASE_DIR / 'modules'
-    LOGS_DIR = BASE_DIR / 'logs'
+    # Logs directory
+    LOGS_DIR = os.path.join(BASE_DIR, 'logs')
     
     # Modules repository URL
     MODULES_REPOSITORY_URL = os.environ.get('MODULES_REPOSITORY_URL') or \
