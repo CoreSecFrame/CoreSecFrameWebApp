@@ -92,27 +92,18 @@ def get_logs(session_id):
 @login_required
 def close(session_id):
     try:
-        # Get session with proper error handling
+        # Get session
         session = TerminalSession.query.filter_by(
             session_id=session_id,
             user_id=current_user.id
-        ).first()
+        ).first_or_404()
         
-        if not session:
-            flash('Session not found or not authorized', 'danger')
-            return redirect(url_for('sessions.index'))
-        
-        if not session.active:
-            flash(f'Session "{session.name}" is already closed', 'info')
-            return redirect(url_for('sessions.index'))
-        
-        # Kill the tmux session
-        try:
-            subprocess.run(['tmux', 'kill-session', '-t', session.session_id], check=False, 
-                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        except Exception as e:
-            current_app.logger.warning(f"Error killing tmux session: {str(e)}")
-            # Continue anyway - still mark it as inactive
+        # Kill the tmux session if active
+        if session.active:
+            try:
+                subprocess.run(['tmux', 'kill-session', '-t', session.session_id], check=True)
+            except:
+                pass  # Ignore errors if session already dead
         
         # Update session status
         session.active = False
@@ -120,82 +111,55 @@ def close(session_id):
         db.session.commit()
         
         # Log the session close
-        try:
-            log = TerminalLog(
-                session_id=session.session_id,
-                event_type='system',
-                command=None,
-                output=f"Session closed: {session.name}"
-            )
-            db.session.add(log)
-            db.session.commit()
-        except Exception as e:
-            current_app.logger.error(f"Error logging session close: {str(e)}")
-            db.session.rollback()  # Roll back the log entry, but keep the session closure
+        log = TerminalLog(
+            session_id=session.session_id,
+            event_type='system',
+            command=None,
+            output=f"Session closed: {session.name}"
+        )
+        db.session.add(log)
+        db.session.commit()
         
-        flash(f'Session "{session.name}" has been closed successfully', 'success')
-        return redirect(url_for('sessions.index'))
-        
+        flash(f'Session "{session.name}" has been closed', 'success')
     except Exception as e:
         current_app.logger.error(f"Error closing session: {str(e)}")
         current_app.logger.error(traceback.format_exc())
-        flash('An error occurred while closing the session', 'danger')
-        return redirect(url_for('sessions.index'))
+        flash(f'Error closing session: {str(e)}', 'danger')
+    
+    return redirect(url_for('sessions.index'))
 
 @sessions_bp.route('/<session_id>/delete', methods=['POST'])
 @login_required
 def delete(session_id):
     try:
-        # Get session with proper error handling
+        # Get session
         session = TerminalSession.query.filter_by(
             session_id=session_id,
             user_id=current_user.id
-        ).first()
+        ).first_or_404()
         
-        if not session:
-            flash('Session not found or not authorized', 'danger')
-            return redirect(url_for('sessions.index'))
-        
-        # Make sure session is closed first if it's active
+        # First make sure the session is closed
         if session.active:
             try:
-                subprocess.run(['tmux', 'kill-session', '-t', session.session_id], check=False,
-                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                
-                # Mark as inactive before deletion
-                session.active = False
-                db.session.commit()
-            except Exception as e:
-                current_app.logger.warning(f"Error killing tmux session before deletion: {str(e)}")
-                # Continue with deletion anyway
+                subprocess.run(['tmux', 'kill-session', '-t', session.session_id], check=True)
+            except:
+                pass  # Ignore errors if session already dead
         
-        # Store name for flash message
+        # Store session name for flash message
         session_name = session.name
         
         # Delete logs
-        try:
-            TerminalLog.query.filter_by(session_id=session.session_id).delete()
-            db.session.commit()
-        except Exception as e:
-            current_app.logger.error(f"Error deleting session logs: {str(e)}")
-            db.session.rollback()
-            # Continue with session deletion
+        TerminalLog.query.filter_by(session_id=session.session_id).delete()
         
         # Delete session
-        try:
-            db.session.delete(session)
-            db.session.commit()
-        except Exception as e:
-            current_app.logger.error(f"Error deleting session: {str(e)}")
-            db.session.rollback()
-            flash('Error deleting session: Database error', 'danger')
-            return redirect(url_for('sessions.index'))
+        db.session.delete(session)
+        db.session.commit()
         
-        flash(f'Session "{session_name}" has been deleted successfully', 'success')
-        return redirect(url_for('sessions.index'))
-        
+        flash(f'Session "{session_name}" has been deleted', 'success')
     except Exception as e:
         current_app.logger.error(f"Error deleting session: {str(e)}")
         current_app.logger.error(traceback.format_exc())
-        flash('An error occurred while deleting the session', 'danger')
-        return redirect(url_for('sessions.index'))
+        flash(f'Error deleting session: {str(e)}', 'danger')
+        db.session.rollback()  # Rollback in case of error
+    
+    return redirect(url_for('sessions.index'))
