@@ -1,154 +1,95 @@
-# app/terminal/routes.py
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, current_app
+# app/terminal/routes.py (simplified)
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
-from app import db, socketio
+from app import db
 from app.terminal.models import TerminalSession, TerminalLog
-from app.terminal.utils import create_terminal_process, get_process_details
-import subprocess
-import os
-import json
-import traceback  # Add this import
-from datetime import datetime
 from app.terminal.manager import TerminalManager
+from datetime import datetime
 
 terminal_bp = Blueprint('terminal', __name__, url_prefix='/terminal')
 
-# In app/terminal/routes.py
 @terminal_bp.route('/')
 @login_required
 def index():
-   # Check if tmux is installed
-   import shutil
-   tmux_installed = shutil.which('tmux') is not None
-   
-   # Get all terminal sessions for the current user
-   sessions = TerminalSession.query.filter_by(user_id=current_user.id).order_by(TerminalSession.last_activity.desc()).all()
-   return render_template('terminal/index.html', title='Terminal Sessions', sessions=sessions, tmux_installed=tmux_installed)
+    # Get all terminal sessions for the current user
+    sessions = TerminalSession.query.filter_by(user_id=current_user.id).order_by(TerminalSession.last_activity.desc()).all()
+    return render_template('terminal/index.html', title='Terminal Sessions', sessions=sessions)
 
-# app/terminal/routes.py
-# In the new route
 @terminal_bp.route('/new', methods=['GET', 'POST'])
 @login_required
 def new():
-   if request.method == 'POST':
-       try:
-           session_name = request.form.get('session_name', f"Terminal-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}")
-           session_type = request.form.get('session_type', 'terminal')
-           module_name = request.form.get('module_name') if session_type != 'terminal' else None
-           
-           # Create new terminal session
-           session = TerminalSession(
-               name=session_name,
-               user_id=current_user.id,
-               module_name=module_name,
-               session_type=session_type
-           )
-           db.session.add(session)
-           db.session.commit()
-           
-           # Create terminal process
-           success = create_terminal_process(session)
-           if not success:
-               flash('Failed to create terminal process. Please ensure tmux is installed.', 'danger')
-               db.session.delete(session)
-               db.session.commit()
-               return redirect(url_for('terminal.index'))
-           
-           # Log the session creation
-           log = TerminalLog(
-               session_id=session.session_id,
-               event_type='system',
-               command=None,
-               output=f"Session created: {session_name} ({session_type})"
-           )
-           db.session.add(log)
-           db.session.commit()
-           
-           # Update module last_used timestamp if using a module
-           if module_name:
-               from app.modules.models import Module
-               module = Module.query.filter_by(name=module_name).first()
-               if module:
-                   module.last_used = datetime.utcnow()
-                   db.session.commit()
-           
-           flash(f'Terminal session "{session_name}" created successfully.', 'success')
-           return redirect(url_for('terminal.view', session_id=session.session_id))
-           
-       except Exception as e:
-           current_app.logger.error(f"Error creating terminal session: {str(e)}")
-           current_app.logger.error(traceback.format_exc())
-           flash(f'An unexpected error occurred: {str(e)}', 'danger')
-           return redirect(url_for('terminal.index'))
-   
-   # Get module name from query parameter if provided
-   module_name = request.args.get('module', None)
-   mode = request.args.get('mode', 'guided')  # Default to guided mode
-   
-   # Set session type based on mode
-   session_type = mode if module_name else 'terminal'
-   
-   # Get available modules for guided/direct mode
-   from app.modules.models import Module
-   modules = Module.query.filter_by(installed=True).all()
-   
-   # Generate current time string
-   current_time = datetime.utcnow().strftime('%Y%m%d-%H%M%S')
-   
-   # Generate session name
-   if module_name:
-       session_name = f"{module_name}-{mode}-{current_time}"
-   else:
-       session_name = f"Terminal-{current_time}"
-   
-   return render_template(
-       'terminal/new.html', 
-       title='New Terminal', 
-       modules=modules, 
-       current_time=current_time,
-       selected_module=module_name,
-       session_type=session_type,
-       session_name=session_name
-   )
-
+    if request.method == 'POST':
+        try:
+            session_name = request.form.get('session_name', f"Terminal-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}")
+            session_type = request.form.get('session_type', 'terminal')
+            module_name = request.form.get('module_name') if session_type != 'terminal' else None
+            
+            # Create new terminal session
+            session = TerminalSession(
+                name=session_name,
+                user_id=current_user.id,
+                module_name=module_name,
+                session_type=session_type
+            )
+            db.session.add(session)
+            db.session.commit()
+            
+            flash(f'Terminal session "{session_name}" created successfully.', 'success')
+            return redirect(url_for('terminal.view', session_id=session.session_id))
+            
+        except Exception as e:
+            flash(f'An unexpected error occurred: {str(e)}', 'danger')
+            return redirect(url_for('terminal.index'))
+    
+    # Get module name from query parameter if provided
+    module_name = request.args.get('module', None)
+    mode = request.args.get('mode', 'guided')  # Default to guided mode
+    
+    # Set session type based on mode
+    session_type = mode if module_name else 'terminal'
+    
+    # Get available modules for guided/direct mode
+    from app.modules.models import Module
+    modules = Module.query.filter_by(installed=True).all()
+    
+    # Generate current time string
+    current_time = datetime.utcnow().strftime('%Y%m%d-%H%M%S')
+    
+    # Generate session name
+    if module_name:
+        session_name = f"{module_name}-{mode}-{current_time}"
+    else:
+        session_name = f"Terminal-{current_time}"
+    
+    return render_template(
+        'terminal/new.html', 
+        title='New Terminal', 
+        modules=modules, 
+        current_time=current_time,
+        selected_module=module_name,
+        session_type=session_type,
+        session_name=session_name
+    )
 
 @terminal_bp.route('/<session_id>')
 @login_required
 def view(session_id):
-   session = TerminalSession.query.filter_by(session_id=session_id, user_id=current_user.id).first_or_404()
-   
-   # Check if tmux is installed
-   import shutil
-   tmux_installed = shutil.which('tmux') is not None
-   
-   # Check if terminal process is still running
-   if session.active and tmux_installed:
-       proc_info = get_process_details(session)
-       if not proc_info['running']:
-           session.active = False
-           db.session.commit()
-   
-   # Get terminal logs
-   logs = TerminalLog.query.filter_by(session_id=session.session_id).order_by(TerminalLog.timestamp).all()
-   
-   return render_template(
-       'terminal/view.html', 
-       title=f'Terminal: {session.name}',
-       session=session,
-       logs=logs,
-       tmux_installed=tmux_installed
-   )
+    session = TerminalSession.query.filter_by(session_id=session_id, user_id=current_user.id).first_or_404()
+    return render_template(
+        'terminal/view.html', 
+        title=f'Terminal: {session.name}',
+        session=session
+    )
 
 @terminal_bp.route('/<session_id>/close', methods=['POST'])
 @login_required
 def close(session_id):
-    """Close a terminal session"""
     session = TerminalSession.query.filter_by(session_id=session_id, user_id=current_user.id).first_or_404()
     
     # Close the terminal session
     TerminalManager.close_session(session_id)
     
-    # Update session status
+    # Update session status in database
     session.active = False
     session.last_activity = datetime.utcnow()
     db.session.commit()
@@ -159,146 +100,17 @@ def close(session_id):
 @terminal_bp.route('/<session_id>/delete', methods=['POST'])
 @login_required
 def delete(session_id):
-   session = TerminalSession.query.filter_by(session_id=session_id, user_id=current_user.id).first_or_404()
-   
-   # First make sure it's closed
-   try:
-       if session.active:
-           subprocess.run(['tmux', 'kill-session', '-t', session.session_id], check=True)
-   except:
-       pass
-   
-   # Delete logs
-   TerminalLog.query.filter_by(session_id=session.session_id).delete()
-   
-   # Delete session
-   db.session.delete(session)
-   db.session.commit()
-   
-   flash(f'Terminal session "{session.name}" has been deleted', 'success')
-   return redirect(url_for('terminal.index'))
-
-# API endpoint for getting terminal data
-@terminal_bp.route('/<session_id>/data')
-@login_required
-def get_data(session_id):
-   session = TerminalSession.query.filter_by(session_id=session_id, user_id=current_user.id).first_or_404()
-   logs = TerminalLog.query.filter_by(session_id=session.session_id).order_by(TerminalLog.timestamp).all()
-   
-   return jsonify({
-       'session': session.to_dict(),
-       'logs': [{
-           'id': log.id,
-           'timestamp': log.timestamp.isoformat(),
-           'command': log.command,
-           'output': log.output,
-           'event_type': log.event_type
-       } for log in logs]
-   })
-
-# Add to app/terminal/routes.py
-@terminal_bp.route('/<session_id>/resize', methods=['POST'])
-@login_required
-def resize_terminal(session_id):
-    """Resize terminal session"""
     session = TerminalSession.query.filter_by(session_id=session_id, user_id=current_user.id).first_or_404()
     
-    if not session.active:
-        return jsonify({'success': False, 'message': 'Session is not active'})
+    # First make sure it's closed
+    TerminalManager.close_session(session_id)
     
-    # Get terminal dimensions from request
-    cols = request.json.get('cols', 80)
-    rows = request.json.get('rows', 24)
+    # Delete logs
+    TerminalLog.query.filter_by(session_id=session.session_id).delete()
     
-    # Resize tmux window
-    try:
-        subprocess.run([
-            'tmux', 'resize-window', '-t', session.session_id,
-            '-x', str(cols), '-y', str(rows)
-        ], check=True)
-        
-        return jsonify({'success': True})
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)})
-
-@terminal_bp.route('/<session_id>/status')
-@login_required
-def terminal_status(session_id):
-    """Get terminal status for debugging"""
-    session = TerminalSession.query.filter_by(session_id=session_id, user_id=current_user.id).first_or_404()
+    # Delete session
+    db.session.delete(session)
+    db.session.commit()
     
-    # Check tmux session status
-    tmux_status = False
-    try:
-        result = subprocess.run(['tmux', 'has-session', '-t', session_id], 
-                                capture_output=True, text=True, check=False)
-        tmux_status = result.returncode == 0
-    except Exception as e:
-        tmux_status = False
-    
-    # Check if terminal is in active_terminals dict
-    active_status = session_id in active_terminals if 'active_terminals' in globals() else False
-    
-    # Terminal process info if available
-    process_info = {}
-    if active_status:
-        process = active_terminals[session_id]['process']
-        process_info = {
-            'pid': process.pid,
-            'poll': process.poll(),
-            'running': process.poll() is None
-        }
-    
-    return jsonify({
-        'session_id': session_id,
-        'session_active': session.active,
-        'tmux_session_exists': tmux_status,
-        'in_active_terminals': active_status,
-        'process_info': process_info
-    })
-
-# Add to app/terminal/routes.py
-@terminal_bp.route('/<session_id>/test-command')
-@login_required
-def test_command(session_id):
-    """Test sending a command to the terminal"""
-    session = TerminalSession.query.filter_by(session_id=session_id, user_id=current_user.id).first_or_404()
-    
-    if not session.active:
-        return jsonify({'success': False, 'message': 'Session is not active'})
-    
-    try:
-        # Send a test command to tmux
-        result = subprocess.run([
-            'tmux', 'send-keys', '-t', session_id,
-            'echo "This is a test command from the web interface"', 'C-m'
-        ], capture_output=True, text=True, check=True)
-        
-        return jsonify({
-            'success': True,
-            'message': 'Test command sent',
-            'result': {
-                'stdout': result.stdout,
-                'stderr': result.stderr,
-                'returncode': result.returncode
-            }
-        })
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'message': f'Error sending test command: {str(e)}'
-        })
-
-# Add to app/terminal/routes.py
-@terminal_bp.route('/<session_id>/test-status')
-@login_required
-def test_status(session_id):
-    """Test emitting a status message"""
-    session = TerminalSession.query.filter_by(session_id=session_id, user_id=current_user.id).first_or_404()
-    
-    try:
-        from app import socketio
-        socketio.emit('status', {'message': 'Test status message'}, room=session_id)
-        return jsonify({'success': True, 'message': 'Status message sent'})
-    except Exception as e:
-        return jsonify({'success': False, 'message': f'Error sending status message: {str(e)}'})
+    flash(f'Terminal session "{session.name}" has been deleted', 'success')
+    return redirect(url_for('terminal.index'))

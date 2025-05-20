@@ -189,6 +189,36 @@ def register_terminal_handlers(socketio):
         # because they may reconnect later
         print(f"Client disconnected")
 
+    @socketio.on('terminal_get_buffer')
+    def terminal_get_buffer(data):
+        """Get terminal buffer for session restoration"""
+        from flask_login import current_user
+        from flask_socketio import emit
+        from app.terminal.models import TerminalSession
+        from app.terminal.manager import TerminalManager
+        
+        if not current_user.is_authenticated:
+            return
+        
+        session_id = data.get('session_id')
+        session = TerminalSession.query.filter_by(
+            session_id=session_id, 
+            user_id=current_user.id
+        ).first()
+        
+        if not session:
+            return
+        
+        # Get buffer and history from terminal manager
+        buffer = TerminalManager.get_buffer(session_id)
+        history = TerminalManager.get_history(session_id)
+        
+        # Send buffer to client
+        emit('terminal_buffer', {
+            'buffer': buffer if buffer else '\r\n$ ',
+            'history': history
+        })
+
 def register_error_handlers(app):
     @app.errorhandler(404)
     def not_found_error(error):

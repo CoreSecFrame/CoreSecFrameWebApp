@@ -26,28 +26,57 @@
     <div class="col-md-12">
         <div class="card">
             <div class="card-header bg-dark text-white">
-                Terminal Session
+                <h5 class="mb-0">Terminal Session</h5>
             </div>
             <div class="card-body p-0">
                 <div id="terminal"></div>
             </div>
-            <div class="card-footer">
+            <div class="card-footer d-flex justify-content-between">
                 <div class="btn-group">
-                    <button id="btn-clear" class="btn btn-sm btn-secondary">Clear</button>
-                    <button id="btn-focus" class="btn btn-sm btn-secondary">Focus</button>
-                    <button id="btn-test" class="btn btn-sm btn-primary">Test Terminal</button>
-                    <button id="btn-ls" class="btn btn-sm btn-info">Run ls</button>
+                    <button id="btn-clear" class="btn btn-sm btn-secondary">
+                        <i class="bi bi-eraser"></i> Clear
+                    </button>
+                    <button id="btn-focus" class="btn btn-sm btn-secondary">
+                        <i class="bi bi-cursor-text"></i> Focus
+                    </button>
+                </div>
+                <div>
+                    <span class="text-muted">Session ID: {{ session.session_id }}</span>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+{% if session.active %}
+<!-- Close Modal -->
+<div class="modal fade" id="closeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Close Terminal Session</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to close this terminal session?</p>
+                <p class="text-danger">This will terminate all processes running in this session.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('terminal.close', session_id=session.session_id) }}" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger">Close Session</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/xterm@5.1.0/lib/xterm.min.js"></script>
 <script src="{{ url_for('static', filename='js/simple-term.js') }}"></script>
-<!-- Keep the same template, but update the script section -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Create terminal
@@ -65,18 +94,19 @@ document.addEventListener('DOMContentLoaded', function() {
         terminal.focus();
     });
     
-    document.getElementById('btn-test').addEventListener('click', function() {
-        // Test writing directly to the terminal
-        terminal.testWrite('\r\nThis is a test message from the client.\r\n$ ');
-    });
-    
-    document.getElementById('btn-ls').addEventListener('click', function() {
-        // Send ls command using our new method
-        terminal.sendCommand('ls -la');
-    });
-    
     // Focus on load
     terminal.focus();
+    
+    // Set up close button if active
+    {% if session.active %}
+    const closeBtn = document.querySelector('button[data-bs-target="#closeModal"]');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function() {
+            const modal = new bootstrap.Modal(document.getElementById('closeModal'));
+            modal.show();
+        });
+    }
+    {% endif %}
 });
 </script>
 {% endblock %}

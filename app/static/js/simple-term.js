@@ -17,6 +17,7 @@ class SimpleTerm {
         this.currentLine = '';
         this.commandHistory = [];
         this.historyIndex = -1;
+        this.initialized = false;
         
         // Initialize terminal
         this.term.open(element);
@@ -32,14 +33,36 @@ class SimpleTerm {
                 session_id: this.sessionId 
             });
             
-            // Write welcome message
-            this.term.write('\r\nConnecting to terminal...\r\n');
+            // Request buffer to restore session
+            this.socket.emit('terminal_get_buffer', {
+                session_id: this.sessionId
+            });
+            
+            // Write connecting message if not initialized
+            if (!this.initialized) {
+                this.term.write('\r\nConnecting to terminal...\r\n');
+            }
+        });
+        
+        // Handle initial buffer
+        this.socket.on('terminal_buffer', (data) => {
+            if (data.buffer) {
+                // Clear terminal and write buffer
+                this.term.clear();
+                this.term.write(data.buffer);
+                this.initialized = true;
+            }
+            
+            // Store command history
+            if (data.history && Array.isArray(data.history)) {
+                this.commandHistory = data.history;
+                this.historyIndex = this.commandHistory.length;
+            }
         });
         
         // Handle output from server
         this.socket.on('terminal_output', (data) => {
-            console.log('Received terminal output:', data);
-            // Force write to the terminal
+            console.log('Received output:', data.length + ' chars');
             if (typeof data === 'string') {
                 this.term.write(data);
             }
@@ -122,6 +145,7 @@ class SimpleTerm {
             if (this.commandHistory.length > 100) {
                 this.commandHistory.shift(); // Keep history to a reasonable size
             }
+            this.historyIndex = this.commandHistory.length;
         }
     }
     
@@ -134,7 +158,6 @@ class SimpleTerm {
         this.term.write('$ ');
     }
     
-    // Test method to write directly to the terminal
     testWrite(text) {
         this.term.write(text);
     }
