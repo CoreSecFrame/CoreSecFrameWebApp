@@ -227,12 +227,16 @@ def install(id):
     try:
         module = Module.query.get_or_404(id)
         
-        # Get sudo options
-        use_sudo = request.form.get('use_sudo') == 'on'
+        # Always use sudo for module installation - ignore the checkbox
+        use_sudo = True
         sudo_password = request.form.get('sudo_password', '')
         
+        # Validate that sudo password is provided (it's now required)
+        if not sudo_password:
+            flash('Sudo password is required for module installation.', 'danger')
+            return redirect(url_for('modules.view', id=id))
+        
         # Install the module
-        from app.modules.utils import install_module
         success, message = install_module(module, use_sudo, sudo_password)
         
         if success:
@@ -303,13 +307,37 @@ def delete(id):
 @modules_bp.route('/search')
 @login_required
 def search():
+    """Search modules by name, description or category"""
     query = request.args.get('q', '')
     
     if not query:
         return redirect(url_for('modules.index'))
     
     # Search modules
-    modules = Module.query
+    modules = Module.query.filter(
+        db.or_(
+            Module.name.ilike(f'%{query}%'),
+            Module.description.ilike(f'%{query}%'),
+            Module.category.ilike(f'%{query}%')
+        )
+    ).all()
+    
+    # Get categories for sidebar
+    categories = ModuleCategory.query.all()
+    
+    # Get count information
+    total_modules = Module.query.count()
+    installed_modules = Module.query.filter_by(installed=True).count()
+    
+    return render_template(
+        'modules/index.html', 
+        title=f'Search Results: {query}',
+        modules=modules, 
+        categories=categories,
+        installed_modules=installed_modules,
+        total_modules=total_modules,
+        search_query=query
+    )
 
 
 @modules_bp.route('/api/list')
