@@ -7,6 +7,8 @@ from app.terminal.manager import TerminalManager
 from datetime import datetime
 import os
 import shutil
+from app.modules.executor import ModuleExecutor
+
 
 terminal_bp = Blueprint('terminal', __name__, url_prefix='/terminal')
 
@@ -44,19 +46,25 @@ def new():
             db.session.add(session)
             db.session.commit()
             
-            flash(f'Terminal session "{session_name}" created successfully.', 'success')
-            return redirect(url_for('terminal.view', session_id=session.session_id))
+            # If this is a module session, prepare to execute the module
+            if module_name and session_type in ['guided', 'direct']:
+                # First redirect to view the terminal
+                flash(f'Terminal session "{session_name}" created. Launching module {module_name}...', 'success')
+                return redirect(url_for('terminal.view', session_id=session.session_id, 
+                                        execute_module=module_name, mode=session_type))
+            else:
+                # Regular terminal session
+                flash(f'Terminal session "{session_name}" created successfully.', 'success')
+                return redirect(url_for('terminal.view', session_id=session.session_id))
             
         except Exception as e:
             current_app.logger.error(f"Error creating terminal session: {str(e)}")
             flash(f'An unexpected error occurred: {str(e)}', 'danger')
             return redirect(url_for('terminal.index'))
     
-    # Get module name from query parameter if provided
+    # GET request handling - same as before
     module_name = request.args.get('module', None)
     mode = request.args.get('mode', 'guided')  # Default to guided mode
-    
-    # Set session type based on mode
     session_type = mode if module_name else 'terminal'
     
     # Get available modules for guided/direct mode
@@ -91,12 +99,58 @@ def view(session_id):
     session.last_activity = datetime.utcnow()
     db.session.commit()
     
+    # Check if we need to execute a module
+    execute_module = request.args.get('execute_module')
+    mode = request.args.get('mode', 'guided')
+    
+    # We'll pass this to the template to trigger module execution after terminal initialization
+    module_to_execute = None
+    
+    if execute_module and session.active:
+        # Prepare module execution data to be used by JavaScript
+        module_to_execute = {
+            'name': execute_module,
+            'mode': mode,
+            'session_id': session_id
+        }
+    
     return render_template(
         'terminal/view.html', 
         title=f'Terminal: {session.name}',
-        session=session
+        session=session,
+        module_to_execute=module_to_execute
     )
 
+@terminal_bp.route('/<session_id>/execute_module', methods=['POST'])
+@login_required
+def execute_module(session_id):
+    session = TerminalSession.query.filter_by(session_id=session_id, user_id=current_user.id).first_or_404()
+    
+    if not session.active:
+        return jsonify({
+            'success': False,
+            'message': 'Session is not active'
+        }), 400
+    
+    # Get module information from request
+    data = request.json
+    module_name = data.get('module_name')
+    mode = data.get('mode', 'guided')
+    
+    if not module_name:
+        return jsonify({
+            'success': False,
+            'message': 'No module specified'
+        }), 400
+    
+    # Execute the module
+    success, message = ModuleExecutor.execute_module(module_name, mode, session_id)
+    
+    return jsonify({
+        'success': success,
+        'message': message
+    })
+    
 @terminal_bp.route('/<session_id>/close', methods=['POST'])
 @login_required
 def close(session_id):

@@ -311,3 +311,139 @@ def search():
     # Search modules
     modules = Module.query
 
+
+@modules_bp.route('/api/list')
+@login_required
+def api_list():
+    """API endpoint to list available modules"""
+    modules = Module.query.all()
+    
+    # Format modules for API response
+    module_list = []
+    for module in modules:
+        module_list.append({
+            'id': module.id,
+            'name': module.name,
+            'description': module.description,
+            'category': module.category,
+            'installed': module.installed,
+            'command': module.command,
+            'local_path': module.local_path,
+            'remote_url': module.remote_url
+        })
+    
+    return jsonify({
+        'success': True,
+        'count': len(module_list),
+        'modules': module_list
+    })
+
+@modules_bp.route('/api/info/<name>')
+@login_required
+def api_info(name):
+    """API endpoint to get detailed module information"""
+    module = Module.query.filter_by(name=name).first()
+    
+    if not module:
+        return jsonify({
+            'success': False,
+            'message': f'Module "{name}" not found'
+        }), 404
+    
+    # Try to get module help information
+    help_info = {}
+    try:
+        # Import the module
+        module_path = Path(module.local_path)
+        if "modules" in str(module_path):
+            if module_path.parent.name == "modules":
+                import_path = f"modules.{module.name}"
+            else:
+                category = module_path.parent.name
+                import_path = f"modules.{category}.{module.name}"
+        else:
+            import_path = module.name
+        
+        # Add modules directory to Python path
+        modules_dir = current_app.config['MODULES_DIR']
+        project_dir = str(Path(modules_dir).parent)
+        
+        if project_dir not in sys.path:
+            sys.path.insert(0, project_dir)
+        
+        if modules_dir not in sys.path:
+            sys.path.insert(0, modules_dir)
+        
+        # Try to import the module
+        try:
+            imported_module = importlib.import_module(import_path)
+        except ImportError:
+            spec = importlib.util.spec_from_file_location(import_path, str(module_path))
+            if spec:
+                imported_module = importlib.util.module_from_spec(spec)
+                sys.modules[import_path] = imported_module
+                spec.loader.exec_module(imported_module)
+            else:
+                raise ImportError(f"Could not create spec for module: {module_path}")
+        
+        # Find the module class
+        module_class = None
+        for attr_name in dir(imported_module):
+            if attr_name.startswith('__'):
+                continue
+            
+            attr = getattr(imported_module, attr_name)
+            if not isinstance(attr, type):
+                continue
+            
+            try:
+                instance = attr()
+                if hasattr(instance, 'get_help'):
+                    help_info = instance.get_help()
+                    break
+                if hasattr(instance, 'run_guided') and hasattr(instance, 'run_direct'):
+                    module_class = instance
+            except Exception as e:
+                continue
+        
+        # If we found a module class but no help_info, try to get some basic info
+        if module_class and not help_info:
+            help_info = {
+                'title': module.name,
+                'usage': f"Use {module.name} via CoreSecFrame",
+                'desc': module.description,
+                'modes': {
+                    'Guided': 'Interactive guided mode',
+                    'Direct': 'Direct command execution mode'
+                }
+            }
+    except Exception as e:
+        current_app.logger.error(f"Error getting module help info: {e}")
+        current_app.logger.error(traceback.format_exc())
+    
+    # Return module info
+    return jsonify({
+        'success': True,
+        'module': {
+            'id': module.id,
+            'name': module.name,
+            'description': module.description,
+            'category': module.category,
+            'installed': module.installed,
+            'command': module.command,
+            'local_path': module.local_path,
+            'remote_url': module.remote_url,
+            'help': help_info
+        }
+    })
+
+@modules_bp.route('/run/<name>')
+@login_required
+def run(name):
+    """Launch a module in the terminal"""
+    module = Module.query.filter_by(name=name).first_or_404()
+    
+    mode = request.args.get('mode', 'guided')
+    
+    # Redirect to the terminal creation page with module parameters
+    return redirect(url_for('terminal.new', module=name, mode=mode))

@@ -435,4 +435,39 @@ document.addEventListener('DOMContentLoaded', function() {
     {% endif %}
 });
 </script>
+{% if module_to_execute %}
+<script>
+// This code executes a module once the terminal is ready
+document.addEventListener('DOMContentLoaded', function() {
+    // Wait a short time for the terminal to initialize properly
+    setTimeout(function() {
+        console.log('Executing module: {{ module_to_execute.name }} in {{ module_to_execute.mode }} mode');
+        
+        // Send an AJAX request to execute the module
+        fetch('{{ url_for("terminal.execute_module", session_id=session.session_id) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                module_name: '{{ module_to_execute.name }}',
+                mode: '{{ module_to_execute.mode }}'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                console.error('Error executing module:', data.message);
+                terminal.write('\r\n\x1b[31mError executing module: ' + data.message + '\x1b[0m\r\n');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            terminal.write('\r\n\x1b[31mError: ' + error + '\x1b[0m\r\n');
+        });
+    }, 1500); // Delay to ensure terminal is fully initialized
+});
+</script>
+{% endif %}
 {% endblock %}
