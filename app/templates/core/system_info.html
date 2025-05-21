@@ -216,3 +216,117 @@
                                     <td colspan="2">No IPv4 addresses</td>
                                 </tr>
                                 {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Python and OS Information -->
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0">Python Information</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-striped">
+                    <tr>
+                        <th>Version:</th>
+                        <td>{{ python_info.version }}</td>
+                    </tr>
+                    <tr>
+                        <th>Implementation:</th>
+                        <td>{{ python_info.implementation }}</td>
+                    </tr>
+                    <tr>
+                        <th>Compiler:</th>
+                        <td>{{ python_info.compiler }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">Operating System Information</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-striped">
+                    <tr>
+                        <th>System:</th>
+                        <td>{{ os_info.system }}</td>
+                    </tr>
+                    <tr>
+                        <th>Release:</th>
+                        <td>{{ os_info.release }}</td>
+                    </tr>
+                    <tr>
+                        <th>Version:</th>
+                        <td>{{ os_info.version }}</td>
+                    </tr>
+                    <tr>
+                        <th>Architecture:</th>
+                        <td>{{ os_info.architecture }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- App Information -->
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Application Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Framework Details</h6>
+                        <table class="table table-striped">
+                            <tr>
+                                <th>Flask Version:</th>
+                                <td>{{ system_info.flask_version|default('Unknown') }}</td>
+                            </tr>
+                            <tr>
+                                <th>Environment:</th>
+                                <td>{{ system_info.flask_env|default('Unknown') }}</td>
+                            </tr>
+                            <tr>
+                                <th>Debug Mode:</th>
+                                <td>{{ 'Enabled' if system_info.debug else 'Disabled' }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Uptime Information</h6>
+                        <table class="table table-striped">
+                            <tr>
+                                <th>Server Uptime:</th>
+                                <td>{{ system_info.uptime|default('Unknown') }}</td>
+                            </tr>
+                            <tr>
+                                <th>App Start Time:</th>
+                                <td>{{ system_info.start_time|default('Unknown') }}</td>
+                            </tr>
+                            <tr>
+                                <th>Active Sessions:</th>
+                                <td>{{ system_info.active_sessions|default('0') }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

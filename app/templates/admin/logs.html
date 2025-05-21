@@ -1,0 +1,60 @@
+<!-- app/templates/admin/logs.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-12 d-flex justify-content-between align-items-center">
+            <h1>System Logs</h1>
+            <div>
+                <a href="{{ url_for('admin.index') }}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Admin Panel
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Application Logs</h5>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-outline-light" onclick="window.print()">
+                            <i class="bi bi-printer"></i> Print
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>Level</th>
+                                    <th>Message</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in logs %}
+                                <tr>
+                                    <td width="180">{{ log.timestamp }}</td>
+                                    <td width="100">
+                                        <span class="badge bg-{{ log.level_class }}">{{ log.level }}</span>
+                                    </td>
+                                    <td>{{ log.message }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="3" class="text-center">No logs found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
