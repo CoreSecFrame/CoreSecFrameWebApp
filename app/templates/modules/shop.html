@@ -1,4 +1,4 @@
-<!-- app/templates/modules/shop.html -->
+<!-- app/templates/modules/shop.html (with fixed search functionality) -->
 {% extends "base.html" %}
 
 {% block content %}
@@ -48,6 +48,17 @@
                     <div class="input-group">
                         <span class="input-group-text"><i class="bi bi-search"></i></span>
                         <input type="text" id="moduleSearch" class="form-control" placeholder="Search modules...">
+                        <button class="btn btn-outline-secondary" type="button" id="clearSearchBtn">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                    </div>
+                    <div id="searchInfo" class="mt-2 d-none">
+                        <span class="badge bg-info">
+                            <span id="searchResultCount">0</span> results found
+                        </span>
+                        <button class="btn btn-sm btn-outline-secondary" id="resetSearchBtn">
+                            <i class="bi bi-arrow-counterclockwise"></i> Reset
+                        </button>
                     </div>
                 </div>
                 
@@ -100,6 +111,9 @@
                         </tbody>
                     </table>
                 </div>
+                <div id="noResults" class="alert alert-info d-none">
+                    <i class="bi bi-info-circle"></i> No modules found matching your search criteria.
+                </div>
             </div>
         </div>
     </div>
@@ -112,6 +126,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Category filtering
     const categoryLinks = document.querySelectorAll('.list-group-item[data-category]');
     const moduleRows = document.querySelectorAll('#moduleList tr');
+    let currentCategory = 'all';
+    let searchTerm = '';
     
     categoryLinks.forEach(link => {
         link.addEventListener('click', function(e) {
@@ -121,40 +137,98 @@ document.addEventListener('DOMContentLoaded', function() {
             categoryLinks.forEach(item => item.classList.remove('active'));
             this.classList.add('active');
             
-            const selectedCategory = this.getAttribute('data-category');
+            currentCategory = this.getAttribute('data-category');
             
-            // Filter rows
-            moduleRows.forEach(row => {
-                if (selectedCategory === 'all' || row.getAttribute('data-category') === selectedCategory) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            });
+            // Apply both category and search filters
+            applyFilters();
         });
     });
     
     // Search functionality
     const searchInput = document.getElementById('moduleSearch');
+    const clearSearchBtn = document.getElementById('clearSearchBtn');
+    const resetSearchBtn = document.getElementById('resetSearchBtn');
+    const searchInfo = document.getElementById('searchInfo');
+    const searchResultCount = document.getElementById('searchResultCount');
+    const noResults = document.getElementById('noResults');
     
     searchInput.addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase();
+        searchTerm = this.value.toLowerCase();
+        applyFilters();
+        
+        // Show or hide clear button based on search input
+        if (searchTerm) {
+            clearSearchBtn.style.display = '';
+            searchInfo.classList.remove('d-none');
+        } else {
+            clearSearchBtn.style.display = 'none';
+            searchInfo.classList.add('d-none');
+        }
+    });
+    
+    clearSearchBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        searchTerm = '';
+        applyFilters();
+        this.style.display = 'none';
+        searchInfo.classList.add('d-none');
+    });
+    
+    resetSearchBtn.addEventListener('click', function() {
+        // Reset search
+        searchInput.value = '';
+        searchTerm = '';
+        
+        // Reset category to "All"
+        currentCategory = 'all';
+        categoryLinks.forEach(item => item.classList.remove('active'));
+        document.querySelector('.list-group-item[data-category="all"]').classList.add('active');
+        
+        // Apply filters
+        applyFilters();
+        
+        // Hide search info
+        searchInfo.classList.add('d-none');
+        clearSearchBtn.style.display = 'none';
+    });
+    
+    // Initialize clear button visibility
+    clearSearchBtn.style.display = 'none';
+    
+    // Function to apply both category and search filters
+    function applyFilters() {
+        let visibleCount = 0;
         
         moduleRows.forEach(row => {
             const name = row.getAttribute('data-name').toLowerCase();
             const description = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
             const category = row.getAttribute('data-category').toLowerCase();
             
-            // Only filter visible rows (respect category filter)
-            if (row.style.display !== 'none') {
-                if (name.includes(searchTerm) || description.includes(searchTerm) || category.includes(searchTerm)) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
+            // Check if row matches both category and search filters
+            const matchesCategory = currentCategory === 'all' || category === currentCategory.toLowerCase();
+            const matchesSearch = !searchTerm || 
+                                 name.includes(searchTerm) || 
+                                 description.includes(searchTerm) || 
+                                 category.includes(searchTerm);
+            
+            if (matchesCategory && matchesSearch) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
             }
         });
-    });
+        
+        // Update the results count
+        searchResultCount.textContent = visibleCount;
+        
+        // Show "no results" message if needed
+        if (visibleCount === 0) {
+            noResults.classList.remove('d-none');
+        } else {
+            noResults.classList.add('d-none');
+        }
+    }
     
     // Refresh button
     const refreshButton = document.getElementById('refreshButton');
