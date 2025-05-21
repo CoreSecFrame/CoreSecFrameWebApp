@@ -1,19 +1,29 @@
-# app/terminal/routes.py (simplified)
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+# app/terminal/routes.py
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
 from app import db
 from app.terminal.models import TerminalSession, TerminalLog
 from app.terminal.manager import TerminalManager
 from datetime import datetime
+import os
+import shutil
 
 terminal_bp = Blueprint('terminal', __name__, url_prefix='/terminal')
 
 @terminal_bp.route('/')
 @login_required
 def index():
+    # Check if tmux is installed
+    tmux_installed = shutil.which('tmux') is not None
+    
     # Get all terminal sessions for the current user
     sessions = TerminalSession.query.filter_by(user_id=current_user.id).order_by(TerminalSession.last_activity.desc()).all()
-    return render_template('terminal/index.html', title='Terminal Sessions', sessions=sessions)
+    return render_template(
+        'terminal/index.html', 
+        title='Terminal Sessions', 
+        sessions=sessions,
+        tmux_installed=tmux_installed
+    )
 
 @terminal_bp.route('/new', methods=['GET', 'POST'])
 @login_required
@@ -38,6 +48,7 @@ def new():
             return redirect(url_for('terminal.view', session_id=session.session_id))
             
         except Exception as e:
+            current_app.logger.error(f"Error creating terminal session: {str(e)}")
             flash(f'An unexpected error occurred: {str(e)}', 'danger')
             return redirect(url_for('terminal.index'))
     
@@ -75,6 +86,11 @@ def new():
 @login_required
 def view(session_id):
     session = TerminalSession.query.filter_by(session_id=session_id, user_id=current_user.id).first_or_404()
+    
+    # Update session last activity time
+    session.last_activity = datetime.utcnow()
+    db.session.commit()
+    
     return render_template(
         'terminal/view.html', 
         title=f'Terminal: {session.name}',
@@ -103,19 +119,22 @@ def delete(session_id):
     session = TerminalSession.query.filter_by(session_id=session_id, user_id=current_user.id).first_or_404()
     
     # First make sure it's closed
-    TerminalManager.close_session(session_id)
+    if session.active:
+        TerminalManager.close_session(session_id)
     
     # Delete logs
     TerminalLog.query.filter_by(session_id=session.session_id).delete()
+    
+    # Save name for flash message
+    session_name = session.name
     
     # Delete session
     db.session.delete(session)
     db.session.commit()
     
-    flash(f'Terminal session "{session.name}" has been deleted', 'success')
+    flash(f'Terminal session "{session_name}" has been deleted', 'success')
     return redirect(url_for('terminal.index'))
 
-# Add this to app/terminal/routes.py
 @terminal_bp.route('/<session_id>/logs')
 @login_required
 def view_logs(session_id):
@@ -144,4 +163,34 @@ def view_logs(session_id):
         'active': session.active,
         'log_count': len(logs),
         'logs': formatted_logs
+    })
+
+@terminal_bp.route('/<session_id>/execute', methods=['POST'])
+@login_required
+def execute_command(session_id):
+    """API endpoint to execute a command in the terminal"""
+    session = TerminalSession.query.filter_by(session_id=session_id, user_id=current_user.id).first_or_404()
+    
+    if not session.active:
+        return jsonify({
+            'success': False,
+            'message': 'Session is not active'
+        }), 400
+    
+    # Get command from request
+    command = request.json.get('command', '')
+    background = request.json.get('background', False)
+    
+    if not command:
+        return jsonify({
+            'success': False,
+            'message': 'No command provided'
+        }), 400
+    
+    # Execute command
+    success, message = TerminalManager.execute_command(session_id, command, background)
+    
+    return jsonify({
+        'success': success,
+        'message': message
     })

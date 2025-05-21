@@ -113,6 +113,7 @@ def register_terminal_handlers(socketio):
         """Connect to terminal session"""
         from flask_login import current_user
         from flask_socketio import emit, join_room
+        from flask import current_app  # Properly import current_app
         from app.terminal.models import TerminalSession
         from app.terminal.manager import TerminalManager
         
@@ -137,7 +138,7 @@ def register_terminal_handlers(socketio):
             terminal = TerminalManager.create_session(session_id, socketio)
             
             # Send welcome message
-            emit('terminal_output', '\r\nWelcome to CoreSecFrame Terminal\r\n', room=session_id)
+            emit('terminal_output', '\r\nConnected to CoreSecFrame Terminal\r\n', room=session_id)
         else:
             # For inactive sessions, send a read-only message
             emit('terminal_output', '\r\n[This session is inactive and in read-only mode]\r\n', room=session_id)
@@ -154,7 +155,7 @@ def register_terminal_handlers(socketio):
             return
         
         session_id = data.get('session_id')
-        key = data.get('key')
+        input_data = data.get('data')
         
         session = TerminalSession.query.filter_by(
             session_id=session_id, 
@@ -169,14 +170,14 @@ def register_terminal_handlers(socketio):
         db.session.commit()
         
         # Send key to terminal
-        TerminalManager.send_input(session_id, key)
+        TerminalManager.send_input(session_id, input_data)
 
     @socketio.on('terminal_command')
     def terminal_command(data):
         """Handle terminal command"""
         from flask_login import current_user
         from flask_socketio import emit
-        from app.terminal.models import TerminalSession, TerminalLog
+        from app.terminal.models import TerminalSession
         from app.terminal.manager import TerminalManager
         from datetime import datetime
         
@@ -185,8 +186,6 @@ def register_terminal_handlers(socketio):
         
         session_id = data.get('session_id')
         command = data.get('command', '')
-        
-        print(f"Received command: '{command}' for session {session_id}")
         
         session = TerminalSession.query.filter_by(
             session_id=session_id, 
@@ -200,40 +199,8 @@ def register_terminal_handlers(socketio):
         session.last_activity = datetime.utcnow()
         db.session.commit()
         
-        # Log the command
-        log_command = TerminalLog(
-            session_id=session_id,
-            event_type='command',
-            command=command,
-            output=None
-        )
-        db.session.add(log_command)
-        db.session.commit()
-        
-        # Debug log to confirm successful logging
-        print(f"Logged command '{command}' for session {session_id}")
-        
         # Send command to terminal
         TerminalManager.send_command(session_id, command, socketio)
-
-    @socketio.on('terminal_newline')
-    def terminal_newline(data):
-        """Handle empty line submission"""
-        from flask_login import current_user
-        from app.terminal.manager import TerminalManager
-        
-        if not current_user.is_authenticated:
-            return
-        
-        session_id = data.get('session_id')
-        TerminalManager.send_input(session_id, '\n')
-        
-    @socketio.on('disconnect')
-    def on_disconnect():
-        """Handle client disconnect"""
-        # We don't close the terminals when the client disconnects
-        # because they may reconnect later
-        print(f"Client disconnected")
 
     @socketio.on('terminal_get_buffer')
     def terminal_get_buffer(data):
@@ -255,15 +222,11 @@ def register_terminal_handlers(socketio):
         if not session:
             return
         
-        print(f"Getting buffer for session {session_id}, active: {session.active}")
-        
         # Handle differently based on session status
         if session.active:
             # Get buffer and history from terminal manager for active session
             buffer = TerminalManager.get_buffer(session_id)
             history = TerminalManager.get_history(session_id)
-            
-            print(f"Active session buffer length: {len(buffer) if buffer else 0}")
             
             # Send buffer to client
             emit('terminal_buffer', {
@@ -275,14 +238,57 @@ def register_terminal_handlers(socketio):
             # For inactive sessions, get logs from database
             buffer, history = TerminalManager.get_session_logs(session_id)
             
-            print(f"Inactive session buffer length: {len(buffer) if buffer else 0}")
-            
             # Send buffer to client with read-only flag
             emit('terminal_buffer', {
                 'buffer': buffer,
                 'history': history,
                 'read_only': True
             })
+    
+    @socketio.on('terminal_resize')
+    def terminal_resize(data):
+        """Handle terminal resize events"""
+        from flask_login import current_user
+        from app.terminal.models import TerminalSession
+        from app.terminal.manager import TerminalManager
+        
+        if not current_user.is_authenticated:
+            return
+        
+        session_id = data.get('session_id')
+        rows = data.get('rows', 24)
+        cols = data.get('cols', 80)
+        
+        session = TerminalSession.query.filter_by(
+            session_id=session_id, 
+            user_id=current_user.id
+        ).first()
+        
+        if not session or not session.active:
+            return
+        
+        # Resize the terminal
+        TerminalManager.resize_terminal(session_id, rows, cols)
+
+    @socketio.on('terminal_newline')
+    def terminal_newline(data):
+        """Handle empty line submission"""
+        from flask_login import current_user
+        from app.terminal.manager import TerminalManager
+        
+        if not current_user.is_authenticated:
+            return
+        
+        session_id = data.get('session_id')
+        TerminalManager.send_input(session_id, '\n')
+        
+    @socketio.on('disconnect')
+    def on_disconnect():
+        """Handle client disconnect"""
+        # We don't close the terminals when the client disconnects
+        # because they may reconnect later
+        print(f"Client disconnected")
+
 
 def register_error_handlers(app):
     @app.errorhandler(404)
