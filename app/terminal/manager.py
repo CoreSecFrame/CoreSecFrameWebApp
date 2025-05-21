@@ -103,15 +103,15 @@ class TerminalManager:
             
             # Enable better command completion
             welcome_commands = [
-                # Enable tab completion
-                "bind 'set show-all-if-ambiguous on'",
-                "bind 'set completion-ignore-case on'",
-                # Set prompt to show current directory
-                "export PS1='\\[\\033[01;32m\\]\\u@\\h\\[\\033[00m\\]:\\[\\033[01;34m\\]\\w\\[\\033[00m\\]\\$ '",
+                # Enable tab completion (redirect output to /dev/null)
+                "bind 'set show-all-if-ambiguous on' > /dev/null 2>&1",
+                "bind 'set completion-ignore-case on' > /dev/null 2>&1",
+                # Set prompt to show current directory (redirect output to /dev/null)
+                "export PS1='\\[\\033[01;32m\\]\\u@\\h\\[\\033[00m\\]:\\[\\033[01;34m\\]\\w\\[\\033[00m\\]\\$ ' > /dev/null 2>&1",
                 # Welcome message
-                "echo 'Welcome to CoreSecFrame Terminal - Type \"help\" for commands'",
+                "clear && echo 'Welcome to CoreSecFrame Terminal - Type \"help\" for commands'",
                 # Clear the history of these startup commands
-                "history -c"
+                "history -c > /dev/null 2>&1"
             ]
             
             # Execute startup commands

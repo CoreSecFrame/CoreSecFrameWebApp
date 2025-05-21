@@ -19,7 +19,7 @@ class ModuleExecutor:
             module_name: Name of the module
             mode: 'guided' or 'direct'
             session_id: Terminal session ID
-            
+                
         Returns:
             tuple: (success, message)
         """
@@ -30,115 +30,53 @@ class ModuleExecutor:
             
             if not module_record:
                 return False, f"Module '{module_name}' not found in database"
-                
+                    
             if not module_record.installed:
                 return False, f"Module '{module_name}' is not installed"
-                
+                    
             # Get module path
             module_path = Path(module_record.local_path)
             if not module_path.exists():
                 return False, f"Module file not found: {module_path}"
-                
-            # Determine the module import path
-            if "modules" in str(module_path):
-                if module_path.parent.name == "modules":
-                    # Top-level module
-                    import_path = f"modules.{module_name}"
-                else:
-                    # Category module
-                    category = module_path.parent.name
-                    import_path = f"modules.{category}.{module_name}"
-            else:
-                # Fall back to simple import
-                import_path = module_name
             
-            current_app.logger.info(f"Importing module '{import_path}' from {module_path}")
-            
-            # Add modules directory to Python path
-            modules_dir = current_app.config['MODULES_DIR']
-            project_dir = str(Path(modules_dir).parent)
-            
-            if project_dir not in sys.path:
-                sys.path.insert(0, project_dir)
-            
-            if modules_dir not in sys.path:
-                sys.path.insert(0, modules_dir)
-            
-            # Try to import the module
-            try:
-                # Try direct import first
-                module = importlib.import_module(import_path)
-            except ImportError:
-                # If that fails, use spec_from_file_location
-                spec = importlib.util.spec_from_file_location(import_path, str(module_path))
-                if not spec:
-                    return False, f"Could not create spec for module: {module_path}"
-                
-                module = importlib.util.module_from_spec(spec)
-                sys.modules[import_path] = module
-                spec.loader.exec_module(module)
-            
-            # Find the module class
-            module_class = None
+            # Find the module class (choose a name that's likely to work)
             class_name = None
-            
-            # First look for a class with a similar name to the module
-            module_names = [
+            possible_names = [
                 module_name,
                 module_name.capitalize(),
-                module_name.title(),
                 f"{module_name}Module",
                 f"{module_name.capitalize()}Module"
             ]
             
-            for name in module_names:
-                if hasattr(module, name):
-                    attr = getattr(module, name)
-                    if isinstance(attr, type):
-                        try:
-                            instance = attr()
-                            if hasattr(instance, 'run_guided') and hasattr(instance, 'run_direct'):
-                                module_class = instance
-                                class_name = name
-                                break
-                        except Exception as e:
-                            current_app.logger.error(f"Error instantiating class {name}: {e}")
+            # We'll use the first possible name (most probable)
+            # The runner script will try alternatives if needed
+            class_name = possible_names[0]
             
-            # If not found, try all classes in the module
-            if not module_class:
-                for attr_name in dir(module):
-                    if attr_name.startswith('__'):
-                        continue
-                    
-                    attr = getattr(module, attr_name)
-                    if not isinstance(attr, type):
-                        continue
-                    
-                    try:
-                        instance = attr()
-                        if hasattr(instance, 'run_guided') and hasattr(instance, 'run_direct'):
-                            module_class = instance
-                            class_name = attr_name
-                            break
-                    except Exception as e:
-                        current_app.logger.error(f"Error instantiating class {attr_name}: {e}")
+            # Build module info
+            module_info = {
+                'path': str(module_path),
+                'name': module_name,
+                'class': class_name,
+                'mode': mode
+            }
             
-            if not module_class:
-                return False, f"Could not find a suitable class in module {module_name}"
+            # Convert to JSON - make sure to escape properly for shell
+            import json
+            import shlex
+            module_info_json = json.dumps(module_info)
             
-            current_app.logger.info(f"Found module class: {class_name}")
+            # Get runner script path
+            from flask import current_app
+            runner_script = os.path.join(current_app.config['BASE_DIR'], 'app', 'modules', 'runner.py')
             
-            # Create a specialized command for running the module
-            # This command will be sent to the terminal session
-            command = ModuleExecutor._build_module_command(
-                module_path=module_path,
-                import_path=import_path,
-                class_name=class_name,
-                mode=mode
-            )
+            # A simpler approach: write the JSON to a temporary file
+            import tempfile
+            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as temp_file:
+                json.dump(module_info, temp_file)
+                temp_file_path = temp_file.name
             
-            if not command:
-                return False, "Failed to build module execution command"
+            # Build command to run the module using the JSON file
+            command = f"clear && python3 {runner_script} {temp_file_path} && rm {temp_file_path}"
             
             # If we have a session ID, send the command to that terminal
             if session_id:
@@ -147,7 +85,7 @@ class ModuleExecutor:
                 return True, f"Module {module_name} launched in {mode} mode"
             
             return True, command
-            
+                
         except Exception as e:
             current_app.logger.error(f"Error executing module {module_name}: {e}")
             current_app.logger.error(traceback.format_exc())
@@ -185,26 +123,19 @@ import_path = "{import_path}"
 class_name = "{class_name}"
 mode = "{mode}"
 
-# Make sure we have the proper paths in sys.path
+# Quietly add paths to sys.path
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
     
 if modules_dir not in sys.path:
     sys.path.insert(0, modules_dir)
 
-# Add parent directory of module to path
 if module_parent not in sys.path:
     sys.path.insert(0, module_parent)
-
-# Print paths for debugging
-print("Python path includes:")
-for path in sys.path:
-    print(f"  - {{path}}")
 
 try:
     # Try importing the module
     try:
-        print(f"\\nAttempting to import {{import_path}}.{{class_name}}...")
         module_parts = import_path.split('.')
         
         # For handling "modules.Category.Module" style imports
@@ -225,11 +156,8 @@ try:
             instance.run_direct()
             
         print('\\n--- Module execution completed ---')
-    except ImportError as e:
-        print(f"Import Error: {{e}}")
-        print("\\nTrying alternate import method...")
-        
-        # Try direct file path import
+    except ImportError:
+        # Try direct file path import (silently)
         import importlib.util
         spec = importlib.util.spec_from_file_location(import_path, "{module_path}")
         if spec:
@@ -250,13 +178,9 @@ try:
                     
                 print('\\n--- Module execution completed ---')
             else:
-                print(f"Module loaded but class '{{class_name}}' not found")
-                print("Available classes:")
-                for attr in dir(module):
-                    if not attr.startswith('__') and isinstance(getattr(module, attr), type):
-                        print(f"  - {{attr}}")
+                print(f"Error: Could not find class '{{class_name}}' in the module")
         else:
-            print(f"Could not create module spec for {{module_path}}")
+            print(f"Error: Could not load module file")
 except Exception as e:
     print(f"Error executing module: {{e}}")
     import traceback
@@ -280,7 +204,8 @@ except Exception as e:
         import stat
         os.chmod(script_filename, os.stat(script_filename).st_mode | stat.S_IEXEC)
         
-        # Command to run the script and then remove it
-        command = f"python3 {script_filename} && rm {script_filename}"
+        # Command to run the script and silently remove it afterward
+        # The 2>/dev/null suppresses error output from the rm command
+        command = f"clear && python3 {script_filename} && rm {script_filename} 2>/dev/null"
         
         return command
