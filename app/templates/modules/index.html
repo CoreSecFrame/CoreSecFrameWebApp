@@ -24,13 +24,34 @@
                     <div class="col-md-10">
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-search"></i></span>
-                            <input type="text" name="q" class="form-control" placeholder="Search modules by name or description...">
+                            <input type="text" name="q" class="form-control"
+                                placeholder="Search modules by name, description or category..."
+                                value="{{ search_query|default('') }}">
+                            {% if search_query %}
+                            <a href="{{ url_for('modules.index') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle"></i>
+                            </a>
+                            {% endif %}
                         </div>
                     </div>
                     <div class="col-md-2">
                         <button type="submit" class="btn btn-primary w-100">Search</button>
                     </div>
                 </form>
+
+                {% if search_query %}
+                <div class="mt-2">
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle"></i> Showing search results for: <strong>{{ search_query
+                            }}</strong>
+                        <span class="badge bg-primary ms-2">{{ modules|length }} result{% if modules|length != 1 %}s{%
+                            endif %}</span>
+                        <a href="{{ url_for('modules.index') }}" class="btn btn-sm btn-outline-secondary float-end">
+                            <i class="bi bi-arrow-counterclockwise"></i> Clear Search
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -43,12 +64,14 @@
                 Categories
             </div>
             <div class="list-group list-group-flush">
-                <a href="{{ url_for('modules.index') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <a href="{{ url_for('modules.index') }}"
+                    class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                     All
                     <span class="badge bg-primary rounded-pill">{{ total_modules }}</span>
                 </a>
                 {% for category in categories %}
-                <a href="{{ url_for('modules.category', name=category.name) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <a href="{{ url_for('modules.category', name=category.name) }}"
+                    class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                     {{ category.name }}
                     <span class="badge bg-primary rounded-pill">
                         {{ modules|selectattr('category', 'equalto', category.name)|list|length }}
@@ -115,7 +138,8 @@
                             <tr>
                                 <td>{{ module.name }}</td>
                                 <td>
-                                    <a href="{{ url_for('modules.category', name=module.category) }}" class="badge bg-primary text-decoration-none">
+                                    <a href="{{ url_for('modules.category', name=module.category) }}"
+                                        class="badge bg-primary text-decoration-none">
                                         {{ module.category }}
                                     </a>
                                 </td>
@@ -129,15 +153,18 @@
                                 </td>
                                 <td>
                                     <div class="btn-group" role="group">
-                                        <a href="{{ url_for('modules.view', id=module.id) }}" class="btn btn-sm btn-primary">
+                                        <a href="{{ url_for('modules.view', id=module.id) }}"
+                                            class="btn btn-sm btn-primary">
                                             <i class="bi bi-info-circle"></i> Details
                                         </a>
                                         {% if module.installed %}
-                                        <a href="{{ url_for('terminal.new') }}?module={{ module.name }}" class="btn btn-sm btn-success">
+                                        <a href="{{ url_for('terminal.new') }}?module={{ module.name }}"
+                                            class="btn btn-sm btn-success">
                                             <i class="bi bi-terminal"></i> Run
                                         </a>
                                         {% else %}
-                                        <form action="{{ url_for('modules.install', id=module.id) }}" method="post" class="d-inline">
+                                        <form action="{{ url_for('modules.install', id=module.id) }}" method="post"
+                                            class="d-inline">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <button type="submit" class="btn btn-sm btn-warning">
                                                 <i class="bi bi-download"></i> Install
