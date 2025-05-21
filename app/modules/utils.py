@@ -503,6 +503,25 @@ def install_module(module, use_sudo=True, sudo_password=None):
         tuple: (success, message)
     """
     try:
+        # Import required modules
+        import os
+        import sys
+        import importlib
+        import importlib.util
+        import subprocess
+        import shlex
+        import shutil
+        import tempfile
+        from pathlib import Path
+        from datetime import datetime
+        
+        # Check if sudo password is provided
+        if use_sudo and not sudo_password:
+            return False, "Sudo password is required for module installation"
+            
+        # Check if expect is installed (needed for interactive sudo)
+        has_expect = shutil.which('expect') is not None
+            
         # Load module
         file_path = Path(module.local_path)
         module_name = file_path.stem
@@ -694,49 +713,91 @@ def install_module(module, use_sudo=True, sudo_password=None):
         
         current_app.logger.info(f"Installation commands: {commands}")
         
-        # Execute installation commands
-        all_output = []
-        for cmd in commands:
-            # Modify command to use sudo if needed
-            original_cmd = cmd
-            if use_sudo and not cmd.startswith('sudo ') and sudo_password:
-                # Use echo to pipe password to sudo without showing in logs
-                cmd = f"echo {shlex.quote(sudo_password)} | sudo -S {cmd}"
-            elif use_sudo and not cmd.startswith('sudo '):
-                # Add sudo but without password
-                cmd = f"sudo {cmd}"
+        # Create a temporary directory for scripts
+        temp_dir = tempfile.mkdtemp(prefix="module_install_")
+        
+        try:
+            # Create a unified installation script that handles sudo once
+            script_path = os.path.join(temp_dir, "install_script.sh")
             
-            current_app.logger.info(f"Executing command: {original_cmd}")
+            with open(script_path, "w") as f:
+                f.write("#!/bin/bash\n")
+                f.write("set -e\n\n")  # Exit on error
+                
+                if use_sudo:
+                    # Add sudo authentication at the beginning
+                    f.write(f"# Authenticate sudo once up front\n")
+                    escaped_password = sudo_password.replace("'", "'\\''")  # Escape single quotes properly
+                    f.write(f"echo '{escaped_password}' | sudo -S echo \"Starting installation...\"\n")
+                    f.write(f"if [ $? -ne 0 ]; then\n")
+                    f.write(f"    echo \"Sudo authentication failed. Exiting.\"\n")
+                    f.write(f"    exit 1\n")
+                    f.write(f"fi\n\n")
+                
+                # Add all commands
+                f.write("# Installation commands\n")
+                for i, cmd in enumerate(commands):
+                    if use_sudo and not cmd.startswith("sudo "):
+                        cmd = f"sudo {cmd}"
+                    f.write(f"echo \"Running command {i+1}/{len(commands)}: {cmd}\"\n")
+                    f.write(f"{cmd}\n")
+                    f.write(f"if [ $? -ne 0 ]; then\n")
+                    f.write(f"    echo \"Command failed: {cmd}\"\n")
+                    f.write(f"    exit 1\n")
+                    f.write(f"fi\n\n")
+                
+                f.write("echo \"Installation completed successfully\"\n")
+            
+            # Make script executable
+            os.chmod(script_path, 0o755)
+            
+            # Execute the script
+            current_app.logger.info(f"Executing installation script: {script_path}")
+            
             result = subprocess.run(
-                cmd, 
-                shell=True, 
-                check=False,  # Don't raise exception on error
-                stdout=subprocess.PIPE, 
-                stderr=subprocess.PIPE, 
+                script_path,
+                shell=True,
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 text=True
             )
             
-            all_output.append(f"Command: {original_cmd}")
-            all_output.append(f"Exit code: {result.returncode}")
-            all_output.append(f"Output: {result.stdout}")
+            # Process results
+            all_output = []
+            all_output.append(f"Script exit code: {result.returncode}")
+            all_output.append(f"Output:\n{result.stdout}")
             
             if result.returncode != 0:
-                all_output.append(f"Error: {result.stderr}")
-                # Check for sudo password errors
-                if "incorrect password" in result.stderr.lower() or "sorry, try again" in result.stderr.lower():
-                    return False, "Incorrect sudo password. Please try again."
-                current_app.logger.error(f"Command failed: {original_cmd}\n{result.stderr}")
+                all_output.append(f"Error:\n{result.stderr}")
+                
+                # Check for sudo authentication failures
+                if any(phrase in result.stderr.lower() for phrase in [
+                    "incorrect password",
+                    "sorry, try again",
+                    "sudo authentication failed",
+                    "authentication failure"
+                ]):
+                    return False, "Sudo password authentication failed. Please try again with the correct password."
+                
                 return False, "\n".join(all_output)
+            
+            # Update module status
+            module.installed = True
+            module.installed_date = datetime.utcnow()
+            db.session.commit()
+            
+            all_output.append(f"Module {module_name} installed successfully")
+            current_app.logger.info(f"Module {module_name} installed successfully")
+            
+            return True, "\n".join(all_output)
         
-        # Update module status
-        module.installed = True
-        module.installed_date = datetime.utcnow()
-        db.session.commit()
-        
-        all_output.append(f"Module {module_name} installed successfully")
-        current_app.logger.info(f"Module {module_name} installed successfully")
-        
-        return True, "\n".join(all_output)
+        finally:
+            # Clean up temporary directory
+            try:
+                shutil.rmtree(temp_dir)
+            except Exception as e:
+                current_app.logger.warning(f"Failed to clean up temporary directory: {e}")
         
     except Exception as e:
         current_app.logger.error(f"Error installing module: {e}")
