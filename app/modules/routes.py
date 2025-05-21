@@ -12,12 +12,20 @@ modules_bp = Blueprint('modules', __name__, url_prefix='/modules')
 @modules_bp.route('/')
 @login_required
 def index():
-    # Get all modules
-    modules = Module.query.all()
+    # Protected module names and paths that should be filtered out
+    protected_modules = ['base', 'colors']
+    protected_paths = ['core']
+    
+    # Get all modules, filtering out protected ones
+    modules = Module.query.filter(~Module.name.in_(protected_modules)).all()
+    
+    # Further filter out core modules by checking their paths
+    modules = [m for m in modules if not any(p in m.local_path for p in protected_paths)]
+    
     categories = ModuleCategory.query.all()
     
     # Count installed modules
-    installed_modules = Module.query.filter_by(installed=True).count()
+    installed_modules = sum(1 for m in modules if m.installed)
     total_modules = len(modules)
     
     return render_template(
@@ -32,9 +40,22 @@ def index():
 @modules_bp.route('/category/<name>')
 @login_required
 def category(name):
-    # Get modules in category
+    # Protected module names and paths that should be filtered out
+    protected_modules = ['base', 'colors']
+    protected_paths = ['core']
+    
+    # Get category
     category = ModuleCategory.query.filter_by(name=name).first_or_404()
-    modules = Module.query.filter_by(category=name).all()
+    
+    # Get modules in category, filtering out protected ones
+    modules = Module.query.filter(
+        Module.category == name,
+        ~Module.name.in_(protected_modules)
+    ).all()
+    
+    # Further filter out core modules by checking their paths
+    modules = [m for m in modules if not any(p in m.local_path for p in protected_paths)]
+    
     categories = ModuleCategory.query.all()
     
     # Count installed modules
@@ -55,6 +76,12 @@ def category(name):
 @login_required
 def view(id):
     module = Module.query.get_or_404(id)
+    
+    # Check if this is a protected module
+    if module.name in ['base', 'colors'] or 'core' in module.local_path:
+        flash('This system module cannot be modified or viewed directly.', 'danger')
+        return redirect(url_for('modules.index'))
+        
     return render_template('modules/view.html', title=f'Module: {module.name}', module=module)
 
 @modules_bp.route('/shop')
@@ -227,6 +254,11 @@ def install(id):
     try:
         module = Module.query.get_or_404(id)
         
+        # Protect system modules
+        if module.name in ['base', 'colors'] or 'core' in module.local_path:
+            flash('System modules cannot be modified.', 'danger')
+            return redirect(url_for('modules.index'))
+        
         # Always use sudo for module installation - ignore the checkbox
         use_sudo = True
         sudo_password = request.form.get('sudo_password', '')
@@ -313,14 +345,22 @@ def search():
     if not query:
         return redirect(url_for('modules.index'))
     
-    # Search modules
+    # Protected module names and paths that should be filtered out
+    protected_modules = ['base', 'colors']
+    protected_paths = ['core']
+    
+    # Search modules, filtering out protected ones
     modules = Module.query.filter(
         db.or_(
             Module.name.ilike(f'%{query}%'),
             Module.description.ilike(f'%{query}%'),
             Module.category.ilike(f'%{query}%')
-        )
+        ),
+        ~Module.name.in_(protected_modules)
     ).all()
+    
+    # Further filter out core modules by checking their paths
+    modules = [m for m in modules if not any(p in m.local_path for p in protected_paths)]
     
     # Get categories for sidebar
     categories = ModuleCategory.query.all()

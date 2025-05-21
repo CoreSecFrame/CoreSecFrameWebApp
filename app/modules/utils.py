@@ -33,8 +33,21 @@ def scan_local_modules():
     added_count = 0
     updated_count = 0
     
+    # Define protected modules that should not be listed
+    protected_modules = [
+        'base',         # The base module class
+        'colors',       # Core utility for terminal colors
+        '__init__',     # Package initialization files
+        '__pycache__',  # Python cache directories
+    ]
+    
     # Check modules in the base directory
     for file_path in module_path.glob('*.py'):
+        # Skip protected modules
+        if file_path.stem in protected_modules:
+            current_app.logger.info(f"Skipping protected module: {file_path.stem}")
+            continue
+            
         if file_path.name == '__init__.py':
             continue
         
@@ -129,6 +142,11 @@ def scan_local_modules():
         if not dir_path.is_dir() or dir_path.name == '__pycache__':
             continue
             
+        # Skip the core directory entirely - it contains system modules
+        if dir_path.name == 'core':
+            current_app.logger.info(f"Skipping core system modules directory")
+            continue
+            
         # Check if category exists
         category_name = dir_path.name
         category = ModuleCategory.query.filter_by(name=category_name).first()
@@ -149,6 +167,11 @@ def scan_local_modules():
         
         # Check modules in this category
         for file_path in dir_path.glob('*.py'):
+            # Skip protected modules
+            if file_path.stem in protected_modules:
+                current_app.logger.info(f"Skipping protected module: {file_path.stem}")
+                continue
+                
             if file_path.name == '__init__.py':
                 continue
                 
@@ -977,7 +1000,10 @@ def delete_module(module):
         tuple: (success, message)
     """
     try:
-        # First make sure it's uninstalled
+        # Safety check - prevent deletion of system modules
+        if module.name in ['base', 'colors'] or 'core' in str(module.local_path):
+            return False, "Cannot delete system module."
+
         if module.installed:
             success, message = uninstall_module(module)
             if not success:
