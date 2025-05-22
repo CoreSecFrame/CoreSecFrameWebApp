@@ -113,23 +113,36 @@ def shop():
         flash(f'Error fetching remote modules: {str(e)}', 'danger')
         return redirect(url_for('modules.index'))
 
+
 @modules_bp.route('/scan')
 @login_required
 def scan():
     try:
-        # First clean up the database
+        # First run enhanced cleanup to remove duplicates and orphaned entries
         from app.modules.utils import clean_module_database, scan_local_modules
-        removed = clean_module_database()
-        if removed > 0:
-            flash(f'Cleaned up database: {removed} duplicate modules removed', 'info')
         
-        # Then scan for modules
+        current_app.logger.info("Starting module scan with enhanced cleanup...")
+        
+        # Clean up database first
+        removed = clean_module_database()
+        cleanup_message = ""
+        if removed > 0:
+            cleanup_message = f"Database cleanup: {removed} duplicate/orphaned modules removed. "
+            current_app.logger.info(f"Cleanup removed {removed} modules")
+        
+        # Then scan for modules with the new deduplication logic
         added, updated = scan_local_modules()
-        flash(f'Scan completed: {added} modules added, {updated} modules updated', 'success')
+        
+        scan_message = f"Scan completed: {added} modules added, {updated} modules updated"
+        full_message = cleanup_message + scan_message
+        
+        current_app.logger.info(f"Module scan completed: cleanup removed {removed}, added {added}, updated {updated}")
+        flash(full_message, 'success')
+        
     except Exception as e:
-        current_app.logger.error(f"Error scanning modules: {str(e)}")
+        current_app.logger.error(f"Error during module scan: {str(e)}")
         current_app.logger.error(traceback.format_exc())
-        flash(f'Error scanning modules: {str(e)}', 'danger')
+        flash(f'Error during module scan: {str(e)}', 'danger')
     
     return redirect(url_for('modules.index'))
 
@@ -187,6 +200,30 @@ def sync():
         flash(f'Error syncing modules: {str(e)}', 'danger')
     
     return redirect(url_for('modules.shop'))
+
+@modules_bp.route('/cleanup')
+@login_required
+def cleanup():
+    """Manual database cleanup route"""
+    try:
+        from app.modules.utils import clean_module_database
+        
+        current_app.logger.info("Starting manual module database cleanup...")
+        removed = clean_module_database()
+        
+        if removed > 0:
+            flash(f'Database cleanup completed: {removed} duplicate/orphaned modules removed', 'success')
+            current_app.logger.info(f"Manual cleanup removed {removed} modules")
+        else:
+            flash('Database cleanup completed: no duplicates or orphaned entries found', 'info')
+            current_app.logger.info("Manual cleanup found no issues")
+            
+    except Exception as e:
+        current_app.logger.error(f"Error during manual cleanup: {str(e)}")
+        current_app.logger.error(traceback.format_exc())
+        flash(f'Error during database cleanup: {str(e)}', 'danger')
+    
+    return redirect(url_for('modules.index'))
 
 @modules_bp.route('/download', methods=['POST'])
 @login_required

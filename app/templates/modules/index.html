@@ -6,6 +6,9 @@
     <div class="col-md-12 d-flex justify-content-between align-items-center">
         <h1>Modules</h1>
         <div class="btn-group" role="group">
+            <a href="{{ url_for('modules.cleanup') }}" class="btn btn-warning" title="Clean up duplicate and orphaned modules">
+                <i class="bi bi-tools"></i> Cleanup Database
+            </a>
             <a href="{{ url_for('modules.scan') }}" class="btn btn-primary">
                 <i class="bi bi-arrow-repeat"></i> Scan Local Modules
             </a>

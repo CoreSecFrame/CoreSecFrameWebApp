@@ -17,7 +17,7 @@ import shlex
 
 def scan_local_modules():
     """
-    Scan the modules directory for local modules
+    Scan the modules directory for local modules with deduplication
     
     Returns:
         tuple: (added_count, updated_count)
@@ -41,34 +41,56 @@ def scan_local_modules():
         '__pycache__',  # Python cache directories
     ]
     
-    # Check modules in the base directory
-    for file_path in module_path.glob('*.py'):
+    # Track processed files to avoid duplicates
+    processed_files = set()
+    
+    def process_module_file(file_path, category_name=None):
+        """Process a single module file and return module info"""
+        nonlocal added_count, updated_count
+        
+        # Skip if already processed
+        file_key = str(file_path.resolve())
+        if file_key in processed_files:
+            current_app.logger.info(f"Skipping already processed file: {file_path}")
+            return
+        processed_files.add(file_key)
+        
         # Skip protected modules
         if file_path.stem in protected_modules:
             current_app.logger.info(f"Skipping protected module: {file_path.stem}")
-            continue
+            return
             
         if file_path.name == '__init__.py':
-            continue
+            return
         
         try:
             # Import the module to get details
-            module_name = file_path.stem
-            spec = importlib.util.spec_from_file_location(module_name, str(file_path))
+            module_file_name = file_path.stem
+            
+            # Determine import path
+            if category_name:
+                import_path = f"modules.{category_name}.{module_file_name}"
+            else:
+                import_path = f"modules.{module_file_name}"
+            
+            spec = importlib.util.spec_from_file_location(import_path, str(file_path))
             if not spec:
-                continue
+                current_app.logger.warning(f"Could not create spec for {file_path}")
+                return
                 
             module = importlib.util.module_from_spec(spec)
-            sys.modules[module_name] = module  # Add to sys.modules to avoid import errors
+            sys.modules[import_path] = module  # Add to sys.modules to avoid import errors
             
             try:
                 spec.loader.exec_module(module)
             except Exception as e:
                 current_app.logger.error(f"Error executing module {file_path}: {str(e)}")
-                continue
+                return
             
             # Find the class inheriting from ToolModule or with special methods
             module_class = None
+            class_candidates = []
+            
             for attr_name in dir(module):
                 attr = getattr(module, attr_name)
                 if not isinstance(attr, type):
@@ -78,64 +100,109 @@ def scan_local_modules():
                 try:
                     instance = attr()
                     if hasattr(instance, '_get_name') and hasattr(instance, '_get_category'):
-                        module_class = instance
-                        break
+                        class_candidates.append((attr_name, instance))
                 except Exception as e:
-                    current_app.logger.error(f"Error instantiating class {attr_name}: {str(e)}")
+                    current_app.logger.debug(f"Error instantiating class {attr_name}: {str(e)}")
                     continue
             
-            if not module_class:
-                continue
+            if not class_candidates:
+                current_app.logger.warning(f"No valid module class found in {file_path}")
+                return
             
-            # Get module info
-            name = module_class._get_name()
-            category_name = getattr(module_class, '_get_category', lambda: 'Uncategorized')()
+            # Choose the best class candidate
+            # Priority: 1) Class name matches file name, 2) First valid class
+            module_class = None
+            for class_name, instance in class_candidates:
+                if class_name.lower() == module_file_name.lower():
+                    module_class = instance
+                    break
+                elif class_name.lower().replace('module', '') == module_file_name.lower().replace('_module', ''):
+                    module_class = instance
+                    break
+            
+            # If no priority match, use the first candidate
+            if not module_class and class_candidates:
+                module_class = class_candidates[0][1]
+            
+            if not module_class:
+                return
+            
+            # Get module info from the class
+            class_name = module_class._get_name()
+            class_category = getattr(module_class, '_get_category', lambda: 'Uncategorized')()
             description = getattr(module_class, '_get_description', lambda: '')()
             command = getattr(module_class, '_get_command', lambda: '')()
             
-            # Check if category exists
-            category = ModuleCategory.query.filter_by(name=category_name).first()
-            if not category:
-                category = ModuleCategory(name=category_name)
-                db.session.add(category)
-                db.session.commit()
+            # Use category from directory structure if class doesn't specify or specifies 'Uncategorized'
+            if category_name and (class_category == 'Uncategorized' or not class_category):
+                final_category = category_name
+            else:
+                final_category = class_category
             
-            # Check if module exists in database
-            existing_module = Module.query.filter_by(name=name).first()
+            # UNIFIED NAMING STRATEGY: Use file name as the primary identifier
+            # This prevents duplicates from different class names in the same file
+            unified_module_name = module_file_name
+            
+            current_app.logger.info(f"Processing module: file={module_file_name}, class_name={class_name}, unified_name={unified_module_name}")
+            
+            # Check if category exists
+            category = ModuleCategory.query.filter_by(name=final_category).first()
+            if not category:
+                category = ModuleCategory(name=final_category)
+                db.session.add(category)
+                try:
+                    db.session.commit()
+                except Exception as e:
+                    current_app.logger.error(f"Error adding category {final_category}: {str(e)}")
+                    db.session.rollback()
+            
+            # Check if module exists in database BY FILE PATH (most reliable identifier)
+            existing_module = Module.query.filter_by(local_path=str(file_path)).first()
+            
+            # If not found by path, check by unified name (but prefer path-based lookup)
+            if not existing_module:
+                existing_module = Module.query.filter_by(name=unified_module_name).first()
             
             # Update or create module
             if existing_module:
+                # Update existing module
+                existing_module.name = unified_module_name  # Ensure consistent naming
                 existing_module.description = description
-                existing_module.category = category_name
+                existing_module.category = final_category
                 existing_module.command = command
-                existing_module.local_path = str(file_path)
+                existing_module.local_path = str(file_path)  # Ensure path is current
                 existing_module.updated_at = datetime.utcnow()
                 db.session.add(existing_module)
                 updated_count += 1
-                current_app.logger.info(f"Updated module: {name}")
+                current_app.logger.info(f"Updated module: {unified_module_name}")
             else:
+                # Create new module
                 new_module = Module(
-                    name=name,
+                    name=unified_module_name,
                     description=description,
-                    category=category_name,
+                    category=final_category,
                     command=command,
                     local_path=str(file_path),
                     installed=check_module_installed(module_class)
                 )
                 db.session.add(new_module)
                 added_count += 1
-                current_app.logger.info(f"Added module: {name}")
+                current_app.logger.info(f"Added module: {unified_module_name}")
             
             try:
                 db.session.commit()
-            except sqlalchemy.exc.IntegrityError as e:
-                current_app.logger.error(f"Database integrity error for module {name}: {e}")
+            except Exception as e:
+                current_app.logger.error(f"Database error for module {unified_module_name}: {e}")
                 db.session.rollback()
             
         except Exception as e:
             current_app.logger.error(f"Error scanning module {file_path}: {str(e)}")
             current_app.logger.error(traceback.format_exc())
             db.session.rollback()
+    
+    # Check modules in the base directory
+    for file_path in module_path.glob('*.py'):
+        process_module_file(file_path)
     
     # Check modules in subdirectories (categories)
     for dir_path in module_path.glob('*/'):
@@ -146,18 +213,8 @@ def scan_local_modules():
         if dir_path.name == 'core':
             current_app.logger.info(f"Skipping core system modules directory")
             continue
-            
-        # Check if category exists
+        
         category_name = dir_path.name
-        category = ModuleCategory.query.filter_by(name=category_name).first()
-        if not category:
-            category = ModuleCategory(name=category_name)
-            db.session.add(category)
-            try:
-                db.session.commit()
-            except Exception as e:
-                current_app.logger.error(f"Error adding category {category_name}: {str(e)}")
-                db.session.rollback()
         
         # Create __init__.py in category directory if it doesn't exist
         init_file = dir_path / "__init__.py"
@@ -167,130 +224,127 @@ def scan_local_modules():
         
         # Check modules in this category
         for file_path in dir_path.glob('*.py'):
-            # Skip protected modules
-            if file_path.stem in protected_modules:
-                current_app.logger.info(f"Skipping protected module: {file_path.stem}")
-                continue
-                
-            if file_path.name == '__init__.py':
-                continue
-                
-            try:
-                # Import the module to get details
-                module_name = file_path.stem
-                import_path = f"modules.{category_name}.{module_name}"
-                spec = importlib.util.spec_from_file_location(import_path, str(file_path))
-                if not spec:
-                    continue
-                    
-                module = importlib.util.module_from_spec(spec)
-                sys.modules[import_path] = module  # Add to sys.modules to avoid import errors
-                
-                try:
-                    spec.loader.exec_module(module)
-                except Exception as e:
-                    current_app.logger.error(f"Error executing module {file_path}: {str(e)}")
-                    continue
-                
-                # Find the class inheriting from ToolModule or with special methods
-                module_class = None
-                for attr_name in dir(module):
-                    attr = getattr(module, attr_name)
-                    if not isinstance(attr, type):
-                        continue
-                        
-                    # Check if this is a ToolModule class or has the required methods
-                    try:
-                        instance = attr()
-                        if hasattr(instance, '_get_name') and hasattr(instance, '_get_category'):
-                            module_class = instance
-                            break
-                    except Exception as e:
-                        current_app.logger.error(f"Error instantiating class {attr_name}: {str(e)}")
-                        continue
-                
-                if not module_class:
-                    continue
-                
-                # Get module info
-                name = module_class._get_name()
-                description = getattr(module_class, '_get_description', lambda: '')()
-                command = getattr(module_class, '_get_command', lambda: '')()
-                
-                # Check if module exists in database
-                existing_module = Module.query.filter_by(name=name).first()
-                
-                # Update or create module
-                if existing_module:
-                    existing_module.description = description
-                    existing_module.category = category_name
-                    existing_module.command = command
-                    existing_module.local_path = str(file_path)
-                    existing_module.updated_at = datetime.utcnow()
-                    db.session.add(existing_module)
-                    updated_count += 1
-                    current_app.logger.info(f"Updated module: {name}")
-                else:
-                    new_module = Module(
-                        name=name,
-                        description=description,
-                        category=category_name,
-                        command=command,
-                        local_path=str(file_path),
-                        installed=check_module_installed(module_class)
-                    )
-                    db.session.add(new_module)
-                    added_count += 1
-                    current_app.logger.info(f"Added module: {name}")
-                
-                try:
-                    db.session.commit()
-                except sqlalchemy.exc.IntegrityError as e:
-                    current_app.logger.error(f"Database integrity error for module {name}: {e}")
-                    db.session.rollback()
-                
-            except Exception as e:
-                current_app.logger.error(f"Error scanning module {file_path}: {str(e)}")
-                current_app.logger.error(traceback.format_exc())
-                db.session.rollback()
+            process_module_file(file_path, category_name)
     
     return added_count, updated_count
 
 def clean_module_database():
     """
-    Clean up the module database by removing duplicates
+    Clean up the module database by removing duplicates and orphaned entries
     
     Returns:
         int: Number of modules removed
     """
     try:
+        current_app.logger.info("Starting enhanced module database cleanup...")
+        
         # Get all modules
         modules = Module.query.all()
-        
-        # Group by name
-        module_dict = {}
-        for module in modules:
-            if module.name in module_dict:
-                module_dict[module.name].append(module)
-            else:
-                module_dict[module.name] = [module]
-        
-        # Find duplicates
-        duplicates = {name: modules for name, modules in module_dict.items() if len(modules) > 1}
-        
         removed_count = 0
-        for name, module_list in duplicates.items():
-            # Keep the most recently updated one
-            module_list.sort(key=lambda m: m.updated_at if m.updated_at else datetime.min, reverse=True)
-            keep_module = module_list[0]
-            
-            # Remove the rest
-            for module in module_list[1:]:
-                current_app.logger.info(f"Removing duplicate module: {module.name} (id={module.id})")
-                db.session.delete(module)
-                removed_count += 1
         
+        # Step 1: Remove modules with non-existent files (orphaned entries)
+        orphaned_modules = []
+        for module in modules:
+            if module.local_path and not Path(module.local_path).exists():
+                orphaned_modules.append(module)
+        
+        for module in orphaned_modules:
+            current_app.logger.info(f"Removing orphaned module: {module.name} (file not found: {module.local_path})")
+            db.session.delete(module)
+            removed_count += 1
+        
+        # Step 2: Group remaining modules by file path to find duplicates
+        path_groups = {}
+        for module in Module.query.all():  # Re-query after orphan removal
+            if module.local_path:
+                abs_path = str(Path(module.local_path).resolve())
+                if abs_path not in path_groups:
+                    path_groups[abs_path] = []
+                path_groups[abs_path].append(module)
+        
+        # Step 3: Resolve duplicates by file path
+        for file_path, module_list in path_groups.items():
+            if len(module_list) > 1:
+                current_app.logger.info(f"Found {len(module_list)} duplicates for file: {file_path}")
+                
+                # Sort by preference: installed modules first, then by most recent update
+                module_list.sort(key=lambda m: (
+                    m.installed,  # Installed modules first
+                    m.updated_at if m.updated_at else datetime.min,  # Most recent update
+                    m.created_at if m.created_at else datetime.min   # Most recent creation
+                ), reverse=True)
+                
+                # Keep the best module (first in sorted list)
+                keep_module = module_list[0]
+                
+                # Get the file name for consistent naming
+                file_name = Path(file_path).stem
+                
+                # Update the kept module to use file-based naming
+                keep_module.name = file_name
+                db.session.add(keep_module)
+                
+                current_app.logger.info(f"Keeping module: {keep_module.name} (id={keep_module.id}, installed={keep_module.installed})")
+                
+                # Remove the rest
+                for module in module_list[1:]:
+                    current_app.logger.info(f"Removing duplicate module: {module.name} (id={module.id})")
+                    db.session.delete(module)
+                    removed_count += 1
+        
+        # Step 4: Handle name-based duplicates (modules with same name but different paths)
+        name_groups = {}
+        for module in Module.query.all():  # Re-query after path-based cleanup
+            if module.name not in name_groups:
+                name_groups[module.name] = []
+            name_groups[module.name].append(module)
+        
+        for module_name, module_list in name_groups.items():
+            if len(module_list) > 1:
+                current_app.logger.info(f"Found {len(module_list)} modules with same name: {module_name}")
+                
+                # Check if they're actually different files or just naming conflicts
+                unique_paths = set(m.local_path for m in module_list if m.local_path)
+                
+                if len(unique_paths) > 1:
+                    # Different files with same name - rename to avoid conflicts
+                    for i, module in enumerate(module_list):
+                        if i > 0:  # Keep first one as-is, rename others
+                            file_path = Path(module.local_path) if module.local_path else None
+                            if file_path:
+                                category_suffix = f"_{file_path.parent.name}" if file_path.parent.name != 'modules' else ""
+                                new_name = f"{module_name}{category_suffix}_{i}"
+                                current_app.logger.info(f"Renaming module {module.name} to {new_name} to avoid conflict")
+                                module.name = new_name
+                                db.session.add(module)
+                elif len(unique_paths) == 1:
+                    # Same file, different entries - this shouldn't happen after path-based cleanup
+                    # but let's handle it just in case
+                    module_list.sort(key=lambda m: (
+                        m.installed,
+                        m.updated_at if m.updated_at else datetime.min
+                    ), reverse=True)
+                    
+                    keep_module = module_list[0]
+                    current_app.logger.info(f"Keeping name-duplicate module: {keep_module.name} (id={keep_module.id})")
+                    
+                    for module in module_list[1:]:
+                        current_app.logger.info(f"Removing name-duplicate module: {module.name} (id={module.id})")
+                        db.session.delete(module)
+                        removed_count += 1
+        
+        # Step 5: Clean up empty categories
+        all_categories = ModuleCategory.query.all()
+        for category in all_categories:
+            module_count = Module.query.filter_by(category=category.name).count()
+            if module_count == 0:
+                current_app.logger.info(f"Removing empty category: {category.name}")
+                db.session.delete(category)
+        
+        # Commit all changes
         db.session.commit()
+        
+        current_app.logger.info(f"Database cleanup completed. Removed {removed_count} duplicate/orphaned modules.")
         return removed_count
         
     except Exception as e:
