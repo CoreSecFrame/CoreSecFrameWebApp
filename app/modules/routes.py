@@ -286,19 +286,39 @@ def install(id):
 
 @modules_bp.route('/uninstall/<int:id>', methods=['POST'])
 @login_required
-
 def uninstall(id):
     try:
         module = Module.query.get_or_404(id)
         
-        # Uninstall the module
-        from app.modules.utils import uninstall_module
-        success, message = uninstall_module(module)
+        # Protect system modules
+        if module.name in ['base', 'colors'] or 'core' in module.local_path:
+            flash('System modules cannot be modified.', 'danger')
+            return redirect(url_for('modules.view', id=id))
+        
+        # Get sudo password from form
+        sudo_password = request.form.get('sudo_password', '')
+        
+        # Validate that sudo password is provided
+        if not sudo_password:
+            flash('Sudo password is required for module uninstallation.', 'danger')
+            return redirect(url_for('modules.view', id=id))
+        
+        # Uninstall the module with sudo password
+        success, message = uninstall_module(module, sudo_password)
         
         if success:
             flash(f'Module {module.name} uninstalled successfully', 'success')
         else:
-            flash(f'Failed to uninstall module: {message}', 'danger')
+            # Check for sudo authentication failures
+            if any(phrase in message.lower() for phrase in [
+                "incorrect password",
+                "sorry, try again", 
+                "sudo authentication failed",
+                "authentication failure"
+            ]):
+                flash('Sudo password authentication failed. Please try again with the correct password.', 'danger')
+            else:
+                flash(f'Failed to uninstall module: {message}', 'danger')
         
         return redirect(url_for('modules.view', id=id))
         

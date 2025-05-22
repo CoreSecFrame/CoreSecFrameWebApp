@@ -117,12 +117,10 @@
                 <p class="text-muted">Installed on {{ module.installed_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
                 {% endif %}
                 <hr>
-                <form action="{{ url_for('modules.uninstall', id=module.id) }}" method="post">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn btn-danger w-100">
-                        <i class="bi bi-trash"></i> Uninstall Module
-                    </button>
-                </form>
+                <!-- Updated Uninstall Form with Sudo Password -->
+                <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#uninstallModal">
+                    <i class="bi bi-trash"></i> Uninstall Module
+                </button>
                 {% else %}
                 <i class="bi bi-x-circle-fill text-danger" style="font-size: 48px;"></i>
                 <h4 class="mt-2">Not Installed</h4>
@@ -181,6 +179,61 @@
     </div>
 </div>
 
+<!-- Uninstall Modal with Sudo Password -->
+<div class="modal fade" id="uninstallModal" tabindex="-1" aria-labelledby="uninstallModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="uninstallModalLabel">
+                    <i class="bi bi-exclamation-triangle"></i> Uninstall Module
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('modules.uninstall', id=module.id) }}" method="post" id="uninstallModuleForm">
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="alert alert-warning">
+                        <h6><i class="bi bi-exclamation-triangle"></i> Warning</h6>
+                        <p class="mb-2">Are you sure you want to uninstall the module <strong>{{ module.name }}</strong>?</p>
+                        <ul class="mb-0">
+                            <li>This will remove system packages that were installed with this module</li>
+                            <li>Administrator privileges are required for uninstallation</li>
+                            <li>The operation cannot be undone automatically</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="uninstallSudoPassword" class="form-label">
+                            Sudo Password <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
+                            <input type="password" class="form-control" id="uninstallSudoPassword" name="sudo_password" required>
+                        </div>
+                        <small class="form-text text-muted">
+                            Your system password is required to uninstall system packages
+                        </small>
+                    </div>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="confirmUninstall" required>
+                        <label class="form-check-label" for="confirmUninstall">
+                            I understand that this will uninstall system packages
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Uninstall Module
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Installation Error Modal -->
 <div class="modal fade" id="installErrorModal" tabindex="-1" role="dialog" aria-labelledby="installErrorModalLabel"
     aria-hidden="true">
@@ -222,14 +275,36 @@
     document.addEventListener('DOMContentLoaded', function () {
         const installForm = document.getElementById('installModuleForm');
         const passwordInput = document.getElementById('sudoPassword');
+        const uninstallForm = document.getElementById('uninstallModuleForm');
+        const uninstallPasswordInput = document.getElementById('uninstallSudoPassword');
         
-        // Add form submission validation
+        // Add form submission validation for install
         if (installForm && passwordInput) {
             installForm.addEventListener('submit', function (event) {
                 if (!passwordInput.value.trim()) {
                     event.preventDefault();
                     alert('Sudo password is required for module installation.');
                     passwordInput.focus();
+                }
+            });
+        }
+        
+        // Add form submission validation for uninstall
+        if (uninstallForm && uninstallPasswordInput) {
+            uninstallForm.addEventListener('submit', function (event) {
+                if (!uninstallPasswordInput.value.trim()) {
+                    event.preventDefault();
+                    alert('Sudo password is required for module uninstallation.');
+                    uninstallPasswordInput.focus();
+                    return false;
+                }
+                
+                const confirmCheckbox = document.getElementById('confirmUninstall');
+                if (!confirmCheckbox.checked) {
+                    event.preventDefault();
+                    alert('Please confirm that you understand the uninstallation process.');
+                    confirmCheckbox.focus();
+                    return false;
                 }
             });
         }

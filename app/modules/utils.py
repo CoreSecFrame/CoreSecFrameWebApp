@@ -827,20 +827,39 @@ def install_module(module, use_sudo=True, sudo_password=None):
         current_app.logger.error(traceback.format_exc())
         return False, f"Error installing module: {str(e)}"
 
-def uninstall_module(module):
+def uninstall_module(module, sudo_password=None):
     """
     Uninstall a module
     
     Args:
         module: Module object
+        sudo_password: Sudo password for system-level operations
         
     Returns:
         tuple: (success, message)
     """
     try:
+        # Import required modules
+        import os
+        import sys
+        import importlib
+        import importlib.util
+        import subprocess
+        import shlex
+        import shutil
+        import tempfile
+        from pathlib import Path
+        from datetime import datetime
+        
+        # Check if sudo password is provided
+        if not sudo_password:
+            return False, "Sudo password is required for module uninstallation"
+        
         # Load module
         file_path = Path(module.local_path)
         module_name = file_path.stem
+        
+        current_app.logger.info(f"Uninstalling module: {module_name} from {file_path}")
         
         if not file_path.exists():
             # If file doesn't exist, just mark as uninstalled in database
@@ -848,38 +867,64 @@ def uninstall_module(module):
             db.session.commit()
             return True, "Module file not found, marked as uninstalled"
         
-        # Get the proper import path
-        if str(file_path.parent).endswith('modules'):
-            # Module is in the base modules directory
+        # Add modules directory to Python path
+        modules_dir = current_app.config['MODULES_DIR']
+        project_dir = str(Path(modules_dir).parent)
+        
+        # Make sure needed directories are in sys.path
+        if project_dir not in sys.path:
+            sys.path.insert(0, project_dir)
+        
+        if modules_dir not in sys.path:
+            sys.path.insert(0, modules_dir)
+        
+        # Determine the import path
+        if 'modules' in str(file_path.parent.name):
+            # Module is in the modules directory
             import_path = f"modules.{module_name}"
         else:
-            # Module is in a category subdirectory
+            # Module is in a subdirectory
             category = file_path.parent.name
             import_path = f"modules.{category}.{module_name}"
         
-        # Add modules directory to Python path
-        modules_dir = current_app.config['MODULES_DIR']
-        modules_parent = str(Path(modules_dir).parent)
-        if modules_parent not in sys.path:
-            sys.path.insert(0, modules_parent)
+        current_app.logger.info(f"Import path: {import_path}")
         
-        # Import module
-        current_app.logger.info(f"Importing module from {file_path} with path {import_path}")
-        
-        spec = importlib.util.spec_from_file_location(import_path, str(file_path))
-        if not spec:
-            # If we can't import, just mark as uninstalled
-            module.installed = False
-            db.session.commit()
-            return True, "Failed to create module spec, marked as uninstalled"
-            
-        mod = importlib.util.module_from_spec(spec)
-        sys.modules[import_path] = mod  # Add to sys.modules to avoid import errors
-        
+        # Import the module
         try:
-            spec.loader.exec_module(mod)
+            # Try direct import first
+            try:
+                mod = importlib.import_module(import_path)
+                current_app.logger.info(f"Imported module using importlib.import_module")
+            except ImportError:
+                # If that fails, use spec_from_file_location
+                spec = importlib.util.spec_from_file_location(import_path, str(file_path))
+                if not spec:
+                    # If we can't import, just mark as uninstalled
+                    module.installed = False
+                    db.session.commit()
+                    return True, "Failed to create module spec, marked as uninstalled"
+                    
+                mod = importlib.util.module_from_spec(spec)
+                sys.modules[import_path] = mod
+                spec.loader.exec_module(mod)
+                current_app.logger.info(f"Imported module using spec_from_file_location")
+                
+        except ImportError as e:
+            # Check if it's the core module that's missing
+            if "No module named 'core'" in str(e):
+                current_app.logger.error(f"Core module not found during uninstall: {e}")
+                # If we can't import due to missing core, just mark as uninstalled
+                module.installed = False
+                db.session.commit()
+                return True, "Module depends on missing 'core' module, marked as uninstalled"
+            else:
+                current_app.logger.error(f"Import error during uninstall: {e}")
+                # If we can't import, just mark as uninstalled
+                module.installed = False
+                db.session.commit()
+                return True, f"Error importing module: {str(e)}, marked as uninstalled"
         except Exception as e:
-            current_app.logger.error(f"Error executing module: {str(e)}")
+            current_app.logger.error(f"Error executing module during uninstall: {e}")
             # If we can't execute the module, just mark as uninstalled
             module.installed = False
             db.session.commit()
@@ -887,36 +932,89 @@ def uninstall_module(module):
         
         # Find the module class
         module_class = None
-        for attr_name in dir(mod):
-            attr = getattr(mod, attr_name)
-            if not isinstance(attr, type):
-                continue
+        class_name = None
+        
+        # First, try to find a class with the same name as the module
+        capitalized_name = module_name.capitalize()
+        if hasattr(mod, capitalized_name):
+            class_attr = getattr(mod, capitalized_name)
+            if isinstance(class_attr, type):
+                try:
+                    instance = class_attr()
+                    if hasattr(instance, '_get_name') and hasattr(instance, '_get_category'):
+                        module_class = instance
+                        class_name = capitalized_name
+                        current_app.logger.info(f"Found module class with capitalized name: {class_name}")
+                except Exception as e:
+                    current_app.logger.error(f"Error instantiating class {capitalized_name}: {e}")
+        
+        # If not found, try other classes
+        if module_class is None:
+            for attr_name in dir(mod):
+                if attr_name.startswith('__'):
+                    continue
                 
-            # Check if this is a ToolModule class or has the required methods
-            try:
-                instance = attr()
-                if hasattr(instance, '_get_name') and hasattr(instance, '_get_category'):
+                attr = getattr(mod, attr_name)
+                if not isinstance(attr, type):
+                    continue
+                
+                try:
+                    instance = attr()
+                    if hasattr(instance, '_get_name') and hasattr(instance, '_get_category'):
+                        module_class = instance
+                        class_name = attr_name
+                        current_app.logger.info(f"Found module class: {class_name}")
+                        break
+                except Exception as e:
+                    current_app.logger.error(f"Error instantiating class {attr_name}: {e}")
+        
+        # If still no module class found, try to find any class and make it work
+        if module_class is None:
+            for attr_name in dir(mod):
+                if attr_name.startswith('__'):
+                    continue
+                
+                attr = getattr(mod, attr_name)
+                if not isinstance(attr, type):
+                    continue
+                
+                try:
+                    instance = attr()
+                    class_name = attr_name
+                    # Add missing methods if needed
+                    if not hasattr(instance, '_get_name'):
+                        setattr(instance.__class__, '_get_name', lambda self: module_name)
+                    if not hasattr(instance, '_get_category'):
+                        setattr(instance.__class__, '_get_category', lambda self: "Uncategorized")
+                    if not hasattr(instance, '_get_description'):
+                        setattr(instance.__class__, '_get_description', lambda self: "No description provided")
+                    if not hasattr(instance, '_get_command'):
+                        setattr(instance.__class__, '_get_command', lambda self: "")
+                    if not hasattr(instance, '_get_uninstall_command'):
+                        setattr(instance.__class__, '_get_uninstall_command', lambda self, pkg_manager: [])
+                    
                     module_class = instance
+                    current_app.logger.info(f"Using class with added methods: {class_name}")
                     break
-            except Exception as e:
-                current_app.logger.error(f"Error instantiating class {attr_name}: {str(e)}")
-                continue
-       
+                except Exception as e:
+                    current_app.logger.error(f"Error using class {attr_name}: {e}")
+        
         if not module_class:
             # If we can't find the class, just mark as uninstalled
             module.installed = False
             db.session.commit()
             return True, "Module class not found, marked as uninstalled"
         
-        current_app.logger.info(f"Found module class: {module_class.__class__.__name__}")
-       
         # Get package manager
         pkg_manager = None
         if hasattr(module_class, 'get_package_manager'):
-            pkg_managers = module_class.get_package_manager()
-            if pkg_managers and len(pkg_managers) > 0:
-                pkg_manager = pkg_managers[0]
-       
+            try:
+                pkg_managers = module_class.get_package_manager()
+                if pkg_managers and len(pkg_managers) > 0:
+                    pkg_manager = pkg_managers[0]
+            except Exception as e:
+                current_app.logger.error(f"Error getting package manager: {e}")
+        
         if not pkg_manager:
             # Detect the system's package manager
             if shutil.which('apt-get'):
@@ -931,63 +1029,125 @@ def uninstall_module(module):
                 pkg_manager = 'apt'  # Default to apt
         
         current_app.logger.info(f"Using package manager: {pkg_manager}")
-       
+        
         # Get uninstallation command
         if not hasattr(module_class, '_get_uninstall_command'):
             # If the module doesn't have an uninstall command, just mark as uninstalled
             module.installed = False
             db.session.commit()
-            return True, "Module doesn't have uninstallation method, marked as uninstalled"
-           
-        commands = module_class._get_uninstall_command(pkg_manager)
-       
+            return True, f"Module {module_name} uninstalled successfully (no uninstallation needed)"
+        
+        # Get uninstallation commands
+        try:
+            commands = module_class._get_uninstall_command(pkg_manager)
+            
+            # If commands is None, handle it gracefully
+            if commands is None:
+                commands = []
+        except Exception as e:
+            current_app.logger.error(f"Error getting uninstall commands: {e}")
+            return False, f"Error getting uninstallation commands: {str(e)}"
+        
         if not commands:
-            # If there are no commands for this package manager, just mark as uninstalled
+            # If there are no commands, just mark as uninstalled
             module.installed = False
             db.session.commit()
-            return True, f"No uninstallation command for {pkg_manager}, marked as uninstalled"
-       
+            return True, f"Module {module_name} uninstalled successfully (no commands needed)"
+        
         # Convert single command to list
         if isinstance(commands, str):
             commands = [commands]
         
         current_app.logger.info(f"Uninstallation commands: {commands}")
-       
-        # Execute uninstallation commands
-        all_output = []
-        for cmd in commands:
-            current_app.logger.info(f"Executing command: {cmd}")
+        
+        # Create a temporary directory for scripts
+        temp_dir = tempfile.mkdtemp(prefix="module_uninstall_")
+        
+        try:
+            # Create a unified uninstallation script that handles sudo once
+            script_path = os.path.join(temp_dir, "uninstall_script.sh")
+            
+            with open(script_path, "w") as f:
+                f.write("#!/bin/bash\n")
+                f.write("set -e\n\n")  # Exit on error
+                
+                # Add sudo authentication at the beginning
+                f.write(f"# Authenticate sudo once up front\n")
+                escaped_password = sudo_password.replace("'", "'\\''")  # Escape single quotes properly
+                f.write(f"echo '{escaped_password}' | sudo -S echo \"Starting uninstallation...\"\n")
+                f.write(f"if [ $? -ne 0 ]; then\n")
+                f.write(f"    echo \"Sudo authentication failed. Exiting.\"\n")
+                f.write(f"    exit 1\n")
+                f.write(f"fi\n\n")
+                
+                # Add all commands
+                f.write("# Uninstallation commands\n")
+                for i, cmd in enumerate(commands):
+                    if not cmd.startswith("sudo "):
+                        cmd = f"sudo {cmd}"
+                    f.write(f"echo \"Running command {i+1}/{len(commands)}: {cmd}\"\n")
+                    f.write(f"{cmd}\n")
+                    f.write(f"if [ $? -ne 0 ]; then\n")
+                    f.write(f"    echo \"Command failed: {cmd}\"\n")
+                    f.write(f"    exit 1\n")
+                    f.write(f"fi\n\n")
+                
+                f.write("echo \"Uninstallation completed successfully\"\n")
+            
+            # Make script executable
+            os.chmod(script_path, 0o755)
+            
+            # Execute the script
+            current_app.logger.info(f"Executing uninstallation script: {script_path}")
+            
             result = subprocess.run(
-                cmd, 
-                shell=True, 
-                check=False,  # Don't raise exception on error
-                stdout=subprocess.PIPE, 
-                stderr=subprocess.PIPE, 
+                script_path,
+                shell=True,
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 text=True
             )
             
-            all_output.append(f"Command: {cmd}")
-            all_output.append(f"Exit code: {result.returncode}")
-            all_output.append(f"Output: {result.stdout}")
+            # Process results
+            all_output = []
+            all_output.append(f"Script exit code: {result.returncode}")
+            all_output.append(f"Output:\n{result.stdout}")
             
             if result.returncode != 0:
-                all_output.append(f"Error: {result.stderr}")
-                current_app.logger.warning(f"Command failed: {cmd}\n{result.stderr}")
-                # Continue with other commands even if one fails
+                all_output.append(f"Error:\n{result.stderr}")
+                
+                # Check for sudo authentication failures
+                if any(phrase in result.stderr.lower() for phrase in [
+                    "incorrect password",
+                    "sorry, try again",
+                    "sudo authentication failed",
+                    "authentication failure"
+                ]):
+                    return False, "Sudo password authentication failed. Please try again with the correct password."
+                
+                return False, "\n".join(all_output)
+            
+            # Update module status
+            module.installed = False
+            db.session.commit()
+            
+            all_output.append(f"Module {module_name} uninstalled successfully")
+            current_app.logger.info(f"Module {module_name} uninstalled successfully")
+            
+            return True, "\n".join(all_output)
         
-        # Update module status
-        module.installed = False
-        db.session.commit()
+        finally:
+            # Clean up temporary directory
+            try:
+                shutil.rmtree(temp_dir)
+            except Exception as e:
+                current_app.logger.warning(f"Failed to clean up temporary directory: {e}")
         
-        all_output.append("Module uninstalled successfully")
-        current_app.logger.info(f"Module {module_name} uninstalled successfully")
-       
-        return True, "\n".join(all_output)
-       
     except Exception as e:
-        current_app.logger.error(f"Error uninstalling module: {str(e)}")
+        current_app.logger.error(f"Error uninstalling module: {e}")
         current_app.logger.error(traceback.format_exc())
-        return False, str(e)
+        return False, f"Error uninstalling module: {str(e)}"
 
 def delete_module(module):
     """
