@@ -2,7 +2,7 @@
 from app import create_app, db
 from app.auth.models import User
 from app.modules.models import Module, ModuleCategory
-from app.terminal.models import TerminalSession, TerminalLog
+from app.terminal.models import TerminalSession, TerminalLog, TerminalLogSummary
 from datetime import datetime
 
 app = create_app()
@@ -56,3 +56,8 @@ with app.app_context():
     db.session.commit()
     
     print("Database initialization complete!")
+    print("\nEnhanced terminal logging tables created:")
+    print("  ✓ terminal_session (with new fields: total_commands, total_output_size, last_command)")
+    print("  ✓ terminal_log (with new fields: message, extra_data, output_size)")
+    print("  ✓ terminal_log_summary (new table for session statistics)")
+    print("\nDatabase is ready for enhanced terminal logging!")

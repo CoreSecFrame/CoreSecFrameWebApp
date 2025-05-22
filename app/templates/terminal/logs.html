@@ -1,0 +1,339 @@
+<!-- app/templates/terminal/logs.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-md-12 d-flex justify-content-between align-items-center">
+        <h1>Session Logs: {{ session.name }}</h1>
+        <div class="btn-group" role="group">
+            <a href="{{ url_for('terminal.view', session_id=session.session_id) }}" class="btn btn-primary">
+                <i class="bi bi-terminal"></i> Terminal View
+            </a>
+            <a href="{{ url_for('terminal.export_session', session_id=session.session_id) }}" class="btn btn-success">
+                <i class="bi bi-download"></i> Export Session
+            </a>
+            <a href="{{ url_for('terminal.index') }}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Sessions
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Session Statistics -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Session Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h4>{{ summary.total_commands if summary else 0 }}</h4>
+                            <small class="text-muted">Total Commands</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h4>{{ logs_pagination.total }}</h4>
+                            <small class="text-muted">Log Entries</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h4>{{ (summary.total_output_size / 1024)|round(1) if summary else 0 }} KB</h4>
+                            <small class="text-muted">Output Size</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h4>{{ session.get_duration() }}</h4>
+                            <small class="text-muted">Duration</small>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if summary and summary.last_command %}
+                <hr>
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>First Command:</strong> 
+                        <code>{{ summary.first_command or 'N/A' }}</code>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Last Command:</strong> 
+                        <code>{{ summary.last_command or 'N/A' }}</code>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Event Type Filter -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <h6 class="mb-0">Filter by Event Type</h6>
+            </div>
+            <div class="card-body">
+                <div class="btn-group flex-wrap" role="group">
+                    <a href="{{ url_for('terminal.view_logs', session_id=session.session_id) }}" 
+                       class="btn btn-sm {% if not current_event_type %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                        All Events ({{ logs_pagination.total }})
+                    </a>
+                    {% for event_type, count in event_counts %}
+                    <a href="{{ url_for('terminal.view_logs', session_id=session.session_id, event_type=event_type.event_type) }}" 
+                       class="btn btn-sm {% if current_event_type == event_type.event_type %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                        {{ event_type.event_type.replace('_', ' ').title() }} ({{ count.count }})
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Log Entries -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    Log Entries
+                    {% if current_event_type %}
+                    <span class="badge bg-info">{{ current_event_type.replace('_', ' ').title() }}</span>
+                    {% endif %}
+                </h5>
+                <div>
+                    <small>Page {{ logs_pagination.page }} of {{ logs_pagination.pages }}</small>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="150">Timestamp</th>
+                                <th width="120">Event Type</th>
+                                <th width="200">Command</th>
+                                <th>Output/Message</th>
+                                <th width="80">Size</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in logs_pagination.items %}
+                            <tr class="log-entry" data-event-type="{{ log.event_type }}">
+                                <td>
+                                    <small class="text-muted">{{ log.get_formatted_timestamp() }}</small>
+                                </td>
+                                <td>
+                                    {% if log.event_type == 'command_input' %}
+                                    <span class="badge bg-primary">Command</span>
+                                    {% elif log.event_type == 'terminal_output' %}
+                                    <span class="badge bg-success">Output</span>
+                                    {% elif log.event_type == 'session_start' %}
+                                    <span class="badge bg-info">Start</span>
+                                    {% elif log.event_type == 'session_end' %}
+                                    <span class="badge bg-warning">End</span>
+                                    {% elif log.event_type == 'session_buffer' %}
+                                    <span class="badge bg-secondary">Buffer</span>
+                                    {% elif log.event_type == 'process_exit' %}
+                                    <span class="badge bg-danger">Exit</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ log.event_type.replace('_', ' ').title() }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if log.command %}
+                                    <code class="text-break">{{ log.command[:50] }}{% if log.command|length > 50 %}...{% endif %}</code>
+                                    {% else %}
+                                    <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if log.output %}
+                                    <div class="output-content">
+                                        {% if log.event_type == 'session_buffer' %}
+                                        <div class="text-muted">
+                                            <i class="bi bi-file-text"></i> Complete session buffer
+                                            <button class="btn btn-sm btn-outline-secondary ms-2" 
+                                                    onclick="toggleOutput({{ log.id }})">
+                                                <i class="bi bi-eye"></i> View
+                                            </button>
+                                        </div>
+                                        <div id="output-{{ log.id }}" class="collapse">
+                                            <pre class="mt-2 p-2 bg-dark text-light small" style="max-height: 400px; overflow-y: auto;">{{ log.output }}</pre>
+                                        </div>
+                                        {% else %}
+                                        <pre class="mb-0 small text-break" style="max-height: 150px; overflow-y: auto; white-space: pre-wrap;">{{ log.get_display_output(200) }}</pre>
+                                        {% if log.output|length > 200 %}
+                                        <button class="btn btn-sm btn-outline-secondary mt-1" 
+                                                onclick="toggleOutput({{ log.id }})">
+                                            <i class="bi bi-eye"></i> Show Full
+                                        </button>
+                                        <div id="output-{{ log.id }}" class="collapse">
+                                            <pre class="mt-2 p-2 bg-light small" style="max-height: 400px; overflow-y: auto;">{{ log.output }}</pre>
+                                        </div>
+                                        {% endif %}
+                                        {% endif %}
+                                    </div>
+                                    {% elif log.message %}
+                                    <div class="text-muted">
+                                        <i class="bi bi-info-circle"></i> {{ log.message }}
+                                    </div>
+                                    {% else %}
+                                    <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if log.output_size > 0 %}
+                                    <small class="text-muted">{{ (log.output_size / 1024)|round(1) }} KB</small>
+                                    {% else %}
+                                    <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4">
+                                    <div class="text-muted">
+                                        <i class="bi bi-inbox"></i>
+                                        <p class="mb-0">No log entries found</p>
+                                        {% if current_event_type %}
+                                        <p><a href="{{ url_for('terminal.view_logs', session_id=session.session_id) }}">View all events</a></p>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Pagination -->
+            {% if logs_pagination.pages > 1 %}
+            <div class="card-footer">
+                <nav aria-label="Log pagination">
+                    <ul class="pagination justify-content-center mb-0">
+                        {% if logs_pagination.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('terminal.view_logs', session_id=session.session_id, page=logs_pagination.prev_num, event_type=current_event_type) }}">
+                                <i class="bi bi-chevron-left"></i> Previous
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for page_num in logs_pagination.iter_pages() %}
+                        {% if page_num %}
+                        {% if page_num != logs_pagination.page %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('terminal.view_logs', session_id=session.session_id, page=page_num, event_type=current_event_type) }}">{{ page_num }}</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                        {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">…</span>
+                        </li>
+                        {% endif %}
+                        {% endfor %}
+                        
+                        {% if logs_pagination.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('terminal.view_logs', session_id=session.session_id, page=logs_pagination.next_num, event_type=current_event_type) }}">
+                                Next <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h6 class="mb-0">Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('terminal.session_stats', session_id=session.session_id) }}" 
+                       class="btn btn-outline-info" target="_blank">
+                        <i class="bi bi-graph-up"></i> View Statistics (JSON)
+                    </a>
+                    <a href="{{ url_for('terminal.logs_api', session_id=session.session_id) }}" 
+                       class="btn btn-outline-secondary" target="_blank">
+                        <i class="bi bi-code"></i> API View
+                    </a>
+                    <button class="btn btn-outline-warning" onclick="refreshLogs()">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleOutput(logId) {
+    const outputElement = document.getElementById(`output-${logId}`);
+    if (outputElement) {
+        const collapse = new bootstrap.Collapse(outputElement);
+        collapse.toggle();
+    }
+}
+
+function refreshLogs() {
+    window.location.reload();
+}
+
+// Auto-refresh for active sessions
+{% if session.active %}
+setInterval(function() {
+    // Only refresh if we're on the first page and no filter is applied
+    const urlParams = new URLSearchParams(window.location.search);
+    const page = urlParams.get('page') || '1';
+    const eventType = urlParams.get('event_type');
+    
+    if (page === '1' && !eventType) {
+        window.location.reload();
+    }
+}, 30000); // Refresh every 30 seconds for active sessions
+{% endif %}
+
+// Highlight recent entries
+document.addEventListener('DOMContentLoaded', function() {
+    const logEntries = document.querySelectorAll('.log-entry');
+    const now = new Date();
+    
+    logEntries.forEach(function(entry) {
+        const timestampCell = entry.querySelector('td:first-child small');
+        if (timestampCell) {
+            const timestampText = timestampCell.textContent;
+            const logTime = new Date(timestampText);
+            const diffMinutes = (now - logTime) / (1000 * 60);
+            
+            // Highlight entries from the last 5 minutes
+            if (diffMinutes < 5) {
+                entry.classList.add('table-warning');
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
