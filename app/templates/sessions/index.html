@@ -94,10 +94,12 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <small class="text-muted">{{ session.start_time.strftime('%Y-%m-%d %H:%M') }}</small>
+                                    <small class="text-muted">{{ session.start_time.strftime('%Y-%m-%d %H:%M')
+                                        }}</small>
                                 </td>
                                 <td>
-                                    <small class="text-muted">{{ session.last_activity.strftime('%Y-%m-%d %H:%M') }}</small>
+                                    <small class="text-muted">{{ session.last_activity.strftime('%Y-%m-%d %H:%M')
+                                        }}</small>
                                 </td>
                                 <td>
                                     <span class="badge bg-light text-dark">{{ session.get_duration() }}</span>
@@ -112,34 +114,40 @@
                                             class="btn btn-outline-info">
                                             <i class="bi bi-info-circle"></i> Details
                                         </a>
-                                        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
-                                            data-bs-target="#closeModal{{ session.id }}">
+                                        <button type="button" class="btn btn-sm btn-danger"
+                                            onclick="openCustomModal('customCloseModal{{ session.id }}')">
                                             <i class="bi bi-x-circle"></i> Close
                                         </button>
                                     </div>
 
                                     <!-- Close Modal -->
-                                    <div class="modal fade" id="closeModal{{ session.id }}" tabindex="-1">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title">Close Session</h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    <p>Are you sure you want to close the session "{{ session.name }}"?</p>
-                                                    <p class="text-danger">
-                                                        <i class="bi bi-exclamation-triangle me-1"></i>
-                                                        This will terminate all processes running in this session.
-                                                    </p>
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                    <form action="{{ url_for('sessions.close', session_id=session.session_id) }}" method="post">
-                                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                        <button type="submit" class="btn btn-danger">Close Session</button>
-                                                    </form>
-                                                </div>
+                                    <div id="customCloseModal{{ session.id }}" class="custom-modal"
+                                        style="display: none;">
+                                        <div class="custom-modal-backdrop"></div>
+                                        <div class="custom-modal-content">
+                                            <div class="custom-modal-header">
+                                                <h5>Close Session</h5>
+                                                <button type="button" class="btn-close"
+                                                    onclick="closeCustomModal('customCloseModal{{ session.id }}')"></button>
+                                            </div>
+                                            <div class="custom-modal-body">
+                                                <p>Are you sure you want to close the session "{{ session.name }}"?</p>
+                                                <p class="text-danger">
+                                                    <i class="bi bi-exclamation-triangle me-1"></i>
+                                                    This will terminate all processes running in this session.
+                                                </p>
+                                            </div>
+                                            <div class="custom-modal-footer">
+                                                <button type="button" class="btn btn-secondary"
+                                                    onclick="closeCustomModal('customCloseModal{{ session.id }}')">Cancel</button>
+                                                <form
+                                                    action="{{ url_for('sessions.close', session_id=session.session_id) }}"
+                                                    method="post" style="display: inline;">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <button type="submit" class="btn btn-danger">
+                                                        <i class="bi bi-x-circle me-1"></i>Close Session
+                                                    </button>
+                                                </form>
                                             </div>
                                         </div>
                                     </div>
@@ -205,10 +213,12 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <small class="text-muted">{{ session.start_time.strftime('%Y-%m-%d %H:%M') }}</small>
+                                    <small class="text-muted">{{ session.start_time.strftime('%Y-%m-%d %H:%M')
+                                        }}</small>
                                 </td>
                                 <td>
-                                    <small class="text-muted">{{ session.last_activity.strftime('%Y-%m-%d %H:%M') }}</small>
+                                    <small class="text-muted">{{ session.last_activity.strftime('%Y-%m-%d %H:%M')
+                                        }}</small>
                                 </td>
                                 <td>
                                     <span class="badge bg-light text-dark">{{ session.get_duration() }}</span>
@@ -219,34 +229,35 @@
                                             class="btn btn-outline-info">
                                             <i class="bi bi-info-circle"></i> Details
                                         </a>
-                                        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
-                                            data-bs-target="#deleteModal{{ session.id }}">
+                                        <button type="button" class="btn btn-sm btn-danger"
+                                            onclick="openCustomModal('customModal{{ session.id }}')">
                                             <i class="bi bi-trash"></i> Delete
                                         </button>
                                     </div>
 
                                     <!-- Delete Modal -->
-                                    <div class="modal fade" id="deleteModal{{ session.id }}" tabindex="-1">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title">Delete Session</h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    <p>Are you sure you want to delete the session "{{ session.name }}"?</p>
-                                                    <p class="text-danger">
-                                                        <i class="bi bi-exclamation-triangle me-1"></i>
-                                                        This will permanently delete all logs and history for this session.
-                                                    </p>
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                    <form action="{{ url_for('sessions.delete', session_id=session.session_id) }}" method="post">
-                                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                        <button type="submit" class="btn btn-danger">Delete Session</button>
-                                                    </form>
-                                                </div>
+                                    <div id="customModal{{ session.id }}" class="custom-modal" style="display: none;">
+                                        <div class="custom-modal-backdrop"></div>
+                                        <div class="custom-modal-content">
+                                            <div class="custom-modal-header">
+                                                <h5>Delete Terminal Session</h5>
+                                                <button type="button" class="btn-close"
+                                                    onclick="closeCustomModal('customModal{{ session.id }}')"></button>
+                                            </div>
+                                            <div class="custom-modal-body">
+                                                <p>Are you sure you want to delete the session "{{ session.name }}"?</p>
+                                                <p class="text-danger">This will permanently delete all logs and history
+                                                    for this session.</p>
+                                            </div>
+                                            <div class="custom-modal-footer">
+                                                <button type="button" class="btn btn-secondary"
+                                                    onclick="closeCustomModal('customModal{{ session.id }}')">Cancel</button>
+                                                <form
+                                                    action="{{ url_for('sessions.delete', session_id=session.session_id) }}"
+                                                    method="post" style="display: inline;">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <button type="submit" class="btn btn-danger">Delete Session</button>
+                                                </form>
                                             </div>
                                         </div>
                                     </div>
@@ -267,4 +278,35 @@
         </div>
     </div>
 </div>
+{% endblock %}
+{% block scripts %}
+{{ super() }}
+<script>
+    function openCustomModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function closeCustomModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+    }
+
+    // Close modal when clicking backdrop
+    document.addEventListener('click', function (e) {
+        if (e.target.classList.contains('custom-modal-backdrop')) {
+            const modal = e.target.closest('.custom-modal');
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+            }
+        }
+    });
+</script>
 {% endblock %}
