@@ -1,203 +1,238 @@
-<!-- app/templates/terminal/view.html -->
+<!-- app/templates/terminal/view.html - Professional Enhancement -->
 {% extends "base.html" %}
 
 {% block head %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.1.0/css/xterm.min.css" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.7.0/lib/xterm-addon-fit.css" />
 <style>
-.terminal-container {
-    height: 70vh;
-    min-height: 400px;
-    background-color: #000;
-    padding: 0;
-    border-radius: 5px;
-    overflow: hidden;
-}
+    .terminal-wrapper {
+        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+        border-radius: 0.75rem;
+        padding: 0;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
 
-#terminal {
-    width: 100%;
-    height: 100%;
-}
+    .terminal-header {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
 
-.terminal-toolbar {
-    background-color: #333;
-    color: #fff;
-    padding: 5px 10px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #555;
-}
+    .terminal-header h5 {
+        margin: 0;
+        color: #fff;
+        font-weight: 600;
+    }
 
-.terminal-toolbar .btn-group .btn {
-    padding: 2px 8px;
-    font-size: 0.8rem;
-}
+    .terminal-container {
+        height: 70vh;
+        min-height: 500px;
+        background-color: #0a0a0a;
+        padding: 0;
+    }
 
-.terminal-controls {
-    display: flex;
-    align-items: center;
-}
+    #terminal {
+        width: 100%;
+        height: 100%;
+    }
 
-.terminal-title {
-    font-weight: bold;
-    padding-right: 15px;
-}
+    .terminal-status {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
 
-.session-inactive {
-    color: #dc3545;
-    font-weight: bold;
-}
+    .status-indicator {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+    }
 
-.shortcuts-panel {
-    background-color: #f8f9fa;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    padding: 10px;
-    margin-top: 10px;
-}
+    .status-indicator.active {
+        background-color: #00ff00;
+        box-shadow: 0 0 10px #00ff00;
+    }
 
-.shortcuts-panel table {
-    margin-bottom: 0;
-}
+    .status-indicator.inactive {
+        background-color: #ff0000;
+    }
 
-/* Custom scrollbar for terminal */
-.xterm .xterm-viewport::-webkit-scrollbar {
-    width: 8px;
-}
+    .terminal-footer {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 0.75rem 1.5rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.875rem;
+    }
 
-.xterm .xterm-viewport::-webkit-scrollbar-track {
-    background: #333;
-}
+    .shortcuts-card {
+        background: #f8f9fa;
+        border: none;
+        border-radius: 0.5rem;
+    }
 
-.xterm .xterm-viewport::-webkit-scrollbar-thumb {
-    background: #666;
-    border-radius: 4px;
-}
+    .btn-terminal {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #fff;
+        transition: all 0.3s ease;
+    }
 
-.xterm .xterm-viewport::-webkit-scrollbar-thumb:hover {
-    background: #888;
-}
+    .btn-terminal:hover {
+        background: rgba(255, 255, 255, 0.2);
+        border-color: rgba(255, 255, 255, 0.3);
+        color: #fff;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="row mb-3">
-    <div class="col-md-12 d-flex justify-content-between align-items-center">
-        <h1>
-            {{ session.name }}
-            {% if not session.active %}
-            <span class="badge bg-danger">Inactive</span>
-            {% endif %}
-        </h1>
-        <div class="btn-group">
-            <a href="{{ url_for('terminal.index') }}" class="btn btn-secondary">
-                <i class="bi bi-arrow-left"></i> Back to Sessions
-            </a>
-            {% if session.active %}
-            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#closeModal">
-                <i class="bi bi-x-circle"></i> Close Terminal
-            </button>
-            {% endif %}
+<!-- Page Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h2 fw-bold mb-1">
+                    {{ session.name }}
+                    {% if not session.active %}
+                    <span class="badge bg-danger ms-2">Inactive</span>
+                    {% endif %}
+                </h1>
+                <p class="text-muted mb-0">
+                    Terminal Session ID: <code>{{ session.session_id }}</code>
+                </p>
+            </div>
+            <div class="btn-group" role="group">
+                <a href="{{ url_for('terminal.index') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back
+                </a>
+                {% if session.active %}
+                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#closeModal">
+                    <i class="bi bi-x-circle"></i> Close Terminal
+                </button>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>
 
+<!-- Terminal -->
 <div class="row">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-header bg-dark text-white">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">
-                        <i class="bi bi-terminal"></i> Terminal Session
-                        {% if not session.active %}
-                        <span class="badge bg-danger">Read-Only Mode</span>
-                        {% endif %}
-                    </h5>
-                    <div class="terminal-controls">
-                        <span class="terminal-title text-light">{{ session.session_id }}</span>
-                        <div class="btn-group">
-                            <button id="btn-clear" class="btn btn-sm btn-outline-light" title="Clear Terminal">
-                                <i class="bi bi-eraser"></i>
-                            </button>
-                            <button id="btn-fullscreen" class="btn btn-sm btn-outline-light" title="Fullscreen">
-                                <i class="bi bi-arrows-fullscreen"></i>
-                            </button>
-                            <button id="btn-copy" class="btn btn-sm btn-outline-light" title="Copy to Clipboard">
-                                <i class="bi bi-clipboard"></i>
-                            </button>
-                            <button id="btn-paste" class="btn btn-sm btn-outline-light" title="Paste from Clipboard">
-                                <i class="bi bi-clipboard-plus"></i>
-                            </button>
-                        </div>
+    <div class="col-12">
+        <div class="terminal-wrapper">
+            <div class="terminal-header">
+                <h5>
+                    <i class="bi bi-terminal me-2"></i>Terminal
+                    {% if not session.active %}
+                    <span class="badge bg-danger ms-2">Read-Only</span>
+                    {% endif %}
+                </h5>
+                <div class="terminal-status">
+                    <div class="d-flex align-items-center">
+                        <span class="status-indicator {{ 'active' if session.active else 'inactive' }} me-2"></span>
+                        <span class="text-white">{{ 'Active' if session.active else 'Inactive' }}</span>
+                    </div>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button id="btn-clear" class="btn btn-terminal" title="Clear Terminal">
+                            <i class="bi bi-eraser"></i>
+                        </button>
+                        <button id="btn-fullscreen" class="btn btn-terminal" title="Fullscreen">
+                            <i class="bi bi-arrows-fullscreen"></i>
+                        </button>
+                        <button id="btn-copy" class="btn btn-terminal" title="Copy">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                        <button id="btn-paste" class="btn btn-terminal" title="Paste" {% if not session.active
+                            %}disabled{% endif %}>
+                            <i class="bi bi-clipboard-plus"></i>
+                        </button>
                     </div>
                 </div>
             </div>
-            <div class="terminal-container p-0">
+
+            <div class="terminal-container">
                 <div id="terminal"></div>
             </div>
-            <div class="card-footer d-flex justify-content-between align-items-center">
+
+            <div class="terminal-footer d-flex justify-content-between">
                 <div>
-                    {% if session.active %}
-                    <span class="text-success"><i class="bi bi-circle-fill"></i> Active</span>
-                    {% else %}
-                    <span class="text-danger"><i class="bi bi-circle-fill"></i> Inactive - Read Only</span>
+                    Session Type: <strong>{{ session.session_type|title }}</strong>
+                    {% if session.module_name %}
+                    | Module: <strong>{{ session.module_name }}</strong>
                     {% endif %}
                 </div>
                 <div>
-                    <button id="btn-shortcuts" class="btn btn-sm btn-outline-secondary">
-                        <i class="bi bi-keyboard"></i> Show Shortcuts
+                    <button id="btn-shortcuts" class="btn btn-sm btn-outline-light">
+                        <i class="bi bi-keyboard"></i> Shortcuts
                     </button>
                 </div>
             </div>
         </div>
-        
-        <div class="shortcuts-panel mt-3 d-none" id="shortcuts-panel">
-            <h5><i class="bi bi-keyboard"></i> Keyboard Shortcuts</h5>
-            <div class="row">
-                <div class="col-md-6">
-                    <table class="table table-sm">
-                        <tbody>
-                            <tr>
-                                <td width="150"><kbd>Tab</kbd></td>
-                                <td>Command completion</td>
-                            </tr>
-                            <tr>
-                                <td><kbd>Ctrl</kbd> + <kbd>C</kbd></td>
-                                <td>Interrupt current process</td>
-                            </tr>
-                            <tr>
-                                <td><kbd>Ctrl</kbd> + <kbd>D</kbd></td>
-                                <td>End of file/Exit</td>
-                            </tr>
-                            <tr>
-                                <td><kbd>Ctrl</kbd> + <kbd>L</kbd></td>
-                                <td>Clear screen</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="col-md-6">
-                    <table class="table table-sm">
-                        <tbody>
-                            <tr>
-                                <td width="150"><kbd>↑</kbd> / <kbd>↓</kbd></td>
-                                <td>Navigate command history</td>
-                            </tr>
-                            <tr>
-                                <td><kbd>Ctrl</kbd> + <kbd>A</kbd></td>
-                                <td>Move cursor to beginning of line</td>
-                            </tr>
-                            <tr>
-                                <td><kbd>Ctrl</kbd> + <kbd>E</kbd></td>
-                                <td>Move cursor to end of line</td>
-                            </tr>
-                            <tr>
-                                <td><kbd>Ctrl</kbd> + <kbd>U</kbd></td>
-                                <td>Clear line before cursor</td>
-                            </tr>
-                        </tbody>
-                    </table>
+    </div>
+</div>
+
+<!-- Keyboard Shortcuts -->
+<div class="row mt-4 d-none" id="shortcuts-panel">
+    <div class="col-12">
+        <div class="card shortcuts-card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0 fw-semibold">
+                    <i class="bi bi-keyboard me-2"></i>Keyboard Shortcuts
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-3">Navigation</h6>
+                        <table class="table table-sm">
+                            <tbody>
+                                <tr>
+                                    <td><kbd>Tab</kbd></td>
+                                    <td>Command completion</td>
+                                </tr>
+                                <tr>
+                                    <td><kbd>↑</kbd> / <kbd>↓</kbd></td>
+                                    <td>Navigate command history</td>
+                                </tr>
+                                <tr>
+                                    <td><kbd>Ctrl</kbd> + <kbd>A</kbd></td>
+                                    <td>Move to beginning of line</td>
+                                </tr>
+                                <tr>
+                                    <td><kbd>Ctrl</kbd> + <kbd>E</kbd></td>
+                                    <td>Move to end of line</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-3">Control</h6>
+                        <table class="table table-sm">
+                            <tbody>
+                                <tr>
+                                    <td><kbd>Ctrl</kbd> + <kbd>C</kbd></td>
+                                    <td>Interrupt current process</td>
+                                </tr>
+                                <tr>
+                                    <td><kbd>Ctrl</kbd> + <kbd>D</kbd></td>
+                                    <td>End of file/Exit</td>
+                                </tr>
+                                <tr>
+                                    <td><kbd>Ctrl</kbd> + <kbd>L</kbd></td>
+                                    <td>Clear screen</td>
+                                </tr>
+                                <tr>
+                                    <td><kbd>Ctrl</kbd> + <kbd>U</kbd></td>
+                                    <td>Clear line before cursor</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -211,17 +246,22 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Close Terminal Session</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <p>Are you sure you want to close this terminal session?</p>
-                <p class="text-danger">This will terminate all processes running in this session.</p>
+                <p class="text-danger">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    This will terminate all processes running in this session.
+                </p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <form action="{{ url_for('terminal.close', session_id=session.session_id) }}" method="post">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn btn-danger">Close Session</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-x-circle me-1"></i>Close Session
+                    </button>
                 </form>
             </div>
         </div>
@@ -236,238 +276,214 @@
 <script src="https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.8.0/lib/xterm-addon-web-links.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xterm-addon-search@0.11.0/lib/xterm-addon-search.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Terminal configuration
-    const terminal = new Terminal({
-        cursorBlink: true,
-        fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-        fontSize: 14,
-        lineHeight: 1.2,
-        theme: {
-            background: '#1e1e1e',
-            foreground: '#f0f0f0',
-            cursor: '#ffffff',
-            selectionBackground: '#4d4d4d',
-            selectionForeground: '#ffffff'
-        },
-        allowTransparency: true,
-        scrollback: 5000,
-        convertEol: true
-    });
-    
-    // Load addons
-    const fitAddon = new FitAddon.FitAddon();
-    const webLinksAddon = new WebLinksAddon.WebLinksAddon();
-    const searchAddon = new SearchAddon.SearchAddon();
-    
-    terminal.loadAddon(fitAddon);
-    terminal.loadAddon(webLinksAddon);
-    terminal.loadAddon(searchAddon);
-    
-    // Open terminal
-    terminal.open(document.getElementById('terminal'));
-    fitAddon.fit();
-    
-    // Handle terminal resize
-    window.addEventListener('resize', () => {
+    document.addEventListener('DOMContentLoaded', function () {
+        // Terminal configuration with professional theme
+        const terminal = new Terminal({
+            cursorBlink: true,
+            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+            fontSize: 14,
+            lineHeight: 1.2,
+            theme: {
+                background: '#0a0a0a',
+                foreground: '#00ff00',
+                cursor: '#00ff00',
+                cursorAccent: '#0a0a0a',
+                selectionBackground: '#00ff00',
+                selectionForeground: '#0a0a0a'
+            },
+            allowTransparency: true,
+            scrollback: 5000,
+            convertEol: true
+        });
+
+        // Load addons
+        const fitAddon = new FitAddon.FitAddon();
+        const webLinksAddon = new WebLinksAddon.WebLinksAddon();
+        const searchAddon = new SearchAddon.SearchAddon();
+
+        terminal.loadAddon(fitAddon);
+        terminal.loadAddon(webLinksAddon);
+        terminal.loadAddon(searchAddon);
+
+        // Open terminal
+        terminal.open(document.getElementById('terminal'));
         fitAddon.fit();
-        
-        // Notify server about terminal size changes
-        const dimensions = fitAddon.proposeDimensions();
-        if (dimensions) {
-            socket.emit('terminal_resize', {
+
+        // Handle terminal resize
+        window.addEventListener('resize', () => {
+            fitAddon.fit();
+
+            const dimensions = fitAddon.proposeDimensions();
+            if (dimensions) {
+                socket.emit('terminal_resize', {
+                    session_id: '{{ session.session_id }}',
+                    rows: dimensions.rows,
+                    cols: dimensions.cols
+                });
+            }
+        });
+
+        // Socket connection
+        const socket = io();
+
+        socket.on('connect', () => {
+            console.log('Socket connected');
+
+            socket.emit('terminal_connect', {
+                session_id: '{{ session.session_id }}'
+            });
+
+            socket.emit('terminal_get_buffer', {
+                session_id: '{{ session.session_id }}'
+            });
+
+            const dimensions = fitAddon.proposeDimensions();
+            if (dimensions) {
+                socket.emit('terminal_resize', {
+                    session_id: '{{ session.session_id }}',
+                    rows: dimensions.rows,
+                    cols: dimensions.cols
+                });
+            }
+        });
+
+        socket.on('terminal_buffer', (data) => {
+            terminal.clear();
+            if (data.buffer) {
+                terminal.write(data.buffer);
+            }
+            if (data.read_only) {
+                terminal.options.disableStdin = true;
+                document.getElementById('btn-paste').disabled = true;
+            } else {
+                terminal.focus();
+            }
+        });
+
+        socket.on('terminal_output', (data) => {
+            terminal.write(data);
+        });
+
+        socket.on('terminal_error', (data) => {
+            console.error('Terminal error:', data.error);
+            terminal.write('\r\n\x1b[31mError: ' + data.error + '\x1b[0m\r\n');
+        });
+
+        {% if session.active %}
+        terminal.onData((data) => {
+            socket.emit('terminal_input', {
                 session_id: '{{ session.session_id }}',
-                rows: dimensions.rows,
-                cols: dimensions.cols
+                data: data
             });
-        }
-    });
-    
-    // Terminal text selection
-    let currentSelection = '';
-    terminal.onSelectionChange(() => {
-        currentSelection = terminal.getSelection();
-    });
-    
-    // Socket connection
-    const socket = io();
-    
-    // Connect to terminal session
-    socket.on('connect', () => {
-        console.log('Socket connected');
-        
-        // Join terminal session
-        socket.emit('terminal_connect', {
-            session_id: '{{ session.session_id }}'
         });
-        
-        // Get terminal buffer
-        socket.emit('terminal_get_buffer', {
-            session_id: '{{ session.session_id }}'
+        {% else %}
+        terminal.options.disableStdin = true;
+        {% endif %}
+
+        // Button handlers
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            terminal.clear();
         });
-        
-        // Emitting dimensions
-        const dimensions = fitAddon.proposeDimensions();
-        if (dimensions) {
-            socket.emit('terminal_resize', {
-                session_id: '{{ session.session_id }}',
-                rows: dimensions.rows,
-                cols: dimensions.cols
-            });
-        }
-    });
-    
-    // Handle buffer response
-    socket.on('terminal_buffer', (data) => {
-        // Clear terminal
-        terminal.clear();
-        
-        // Write buffer to terminal
-        if (data.buffer) {
-            terminal.write(data.buffer);
-        }
-        
-        // Set read-only mode if needed
-        if (data.read_only) {
-            terminal.options.disableStdin = true;
-            document.getElementById('btn-paste').disabled = true;
-        } else {
-            terminal.focus();
-        }
-    });
-    
-    // Handle terminal output
-    socket.on('terminal_output', (data) => {
-        terminal.write(data);
-    });
-    
-    // Handle terminal errors
-    socket.on('terminal_error', (data) => {
-        console.error('Terminal error:', data.error);
-        terminal.write('\r\n\x1b[31mError: ' + data.error + '\x1b[0m\r\n');
-    });
-    
-    // Handle user input when terminal is active
-    {% if session.active %}
-    terminal.onData((data) => {
-        socket.emit('terminal_input', {
-            session_id: '{{ session.session_id }}',
-            data: data
+
+        document.getElementById('btn-fullscreen').addEventListener('click', () => {
+            const terminalWrapper = document.querySelector('.terminal-wrapper');
+
+            if (!document.fullscreenElement) {
+                terminalWrapper.requestFullscreen().catch(err => {
+                    console.error('Error attempting to enable fullscreen:', err);
+                });
+            } else {
+                document.exitFullscreen();
+            }
         });
-        
-        // Handle tab completion
-        if (data === '\t') {
-            // Tab was pressed - server will handle completion
-        }
+
+        document.getElementById('btn-copy').addEventListener('click', () => {
+            const selection = terminal.getSelection();
+            if (selection) {
+                navigator.clipboard.writeText(selection).then(() => {
+                    showNotification('Copied to clipboard', 'success');
+                }).catch(err => {
+                    console.error('Failed to copy text: ', err);
+                });
+            }
+        });
+
+        document.getElementById('btn-paste').addEventListener('click', () => {
+            if ('{{ session.active }}' === 'True') {
+                navigator.clipboard.readText().then(text => {
+                    for (let i = 0; i < text.length; i++) {
+                        socket.emit('terminal_input', {
+                            session_id: '{{ session.session_id }}',
+                            data: text[i]
+                        });
+                    }
+                }).catch(err => {
+                    console.error('Failed to read clipboard: ', err);
+                });
+            }
+        });
+
+        // Toggle shortcuts panel
+        document.getElementById('btn-shortcuts').addEventListener('click', () => {
+            const shortcutsPanel = document.getElementById('shortcuts-panel');
+            shortcutsPanel.classList.toggle('d-none');
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Socket disconnected');
+            terminal.write('\r\n\x1b[31mDisconnected from server. Trying to reconnect...\x1b[0m\r\n');
+        });
+
+        {% if session.active %}
+        terminal.focus();
+        {% endif %}
     });
-    {% else %}
-    terminal.options.disableStdin = true;
-    {% endif %}
-    
-    // Button handlers
-    document.getElementById('btn-clear').addEventListener('click', () => {
-        terminal.clear();
-    });
-    
-    document.getElementById('btn-fullscreen').addEventListener('click', () => {
-        const terminalContainer = document.querySelector('.terminal-container');
-        
-        if (!document.fullscreenElement) {
-            terminalContainer.requestFullscreen().catch(err => {
-                console.error('Error attempting to enable fullscreen:', err);
-            });
-        } else {
-            document.exitFullscreen();
-        }
-    });
-    
-    document.getElementById('btn-copy').addEventListener('click', () => {
-        const selection = terminal.getSelection();
-        if (selection) {
-            navigator.clipboard.writeText(selection).then(() => {
-                console.log('Text copied to clipboard');
-            }).catch(err => {
-                console.error('Failed to copy text: ', err);
-            });
-        } else {
-            // Get all terminal content if no selection
-            const terminalLines = terminal.buffer.active.getLines();
-            const textToCopy = terminalLines.map(line => line.translateToString()).join('\n');
-            navigator.clipboard.writeText(textToCopy).then(() => {
-                console.log('All terminal content copied to clipboard');
-            }).catch(err => {
-                console.error('Failed to copy text: ', err);
-            });
-        }
-    });
-    
-    document.getElementById('btn-paste').addEventListener('click', () => {
-        if ('{{ session.active }}' === 'True') {
-            navigator.clipboard.readText().then(text => {
-                // Send each character to the terminal
-                for (let i = 0; i < text.length; i++) {
-                    socket.emit('terminal_input', {
-                        session_id: '{{ session.session_id }}',
-                        data: text[i]
-                    });
-                }
-            }).catch(err => {
-                console.error('Failed to read clipboard: ', err);
-            });
-        }
-    });
-    
-    // Toggle shortcuts panel
-    document.getElementById('btn-shortcuts').addEventListener('click', () => {
-        const shortcutsPanel = document.getElementById('shortcuts-panel');
-        shortcutsPanel.classList.toggle('d-none');
-    });
-    
-    // Handle disconnect
-    socket.on('disconnect', () => {
-        console.log('Socket disconnected');
-        terminal.write('\r\n\x1b[31mDisconnected from server. Trying to reconnect...\x1b[0m\r\n');
-    });
-    
-    // Focus terminal on load
-    {% if session.active %}
-    terminal.focus();
-    {% endif %}
-});
+
+    // Notification helper
+    function showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type} position-fixed top-0 start-50 translate-middle-x mt-3`;
+        notification.style.zIndex = '9999';
+        notification.innerHTML = `
+        <i class="bi bi-check-circle me-2"></i>${message}
+    `;
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
+    }
 </script>
 {% if module_to_execute %}
 <script>
-// This code executes a module once the terminal is ready
-document.addEventListener('DOMContentLoaded', function() {
-    // Wait a short time for the terminal to initialize properly
-    setTimeout(function() {
-        console.log('Executing module: {{ module_to_execute.name }} in {{ module_to_execute.mode }} mode');
-        
-        // Send an AJAX request to execute the module
-        fetch('{{ url_for("terminal.execute_module", session_id=session.session_id) }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token() }}'
-            },
-            body: JSON.stringify({
-                module_name: '{{ module_to_execute.name }}',
-                mode: '{{ module_to_execute.mode }}'
+    document.addEventListener('DOMContentLoaded', function () {
+        setTimeout(function () {
+            console.log('Executing module: {{ module_to_execute.name }} in {{ module_to_execute.mode }} mode');
+
+            fetch('{{ url_for("terminal.execute_module", session_id=session.session_id) }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    module_name: '{{ module_to_execute.name }}',
+                    mode: '{{ module_to_execute.mode }}'
+                })
             })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (!data.success) {
-                console.error('Error executing module:', data.message);
-                terminal.write('\r\n\x1b[31mError executing module: ' + data.message + '\x1b[0m\r\n');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            terminal.write('\r\n\x1b[31mError: ' + error + '\x1b[0m\r\n');
-        });
-    }, 1500); // Delay to ensure terminal is fully initialized
-});
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        console.error('Error executing module:', data.message);
+                        terminal.write('\r\n\x1b[31mError executing module: ' + data.message + '\x1b[0m\r\n');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    terminal.write('\r\n\x1b[31mError: ' + error + '\x1b[0m\r\n');
+                });
+        }, 1500);
+    });
 </script>
 {% endif %}
 {% endblock %}
