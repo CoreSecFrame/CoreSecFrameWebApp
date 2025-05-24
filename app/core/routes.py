@@ -1,9 +1,10 @@
-# app/core/routes.py
+# app/core/routes.py - Updated with GUI support
 from flask import Blueprint, render_template, redirect, url_for, current_app
 from flask_login import login_required, current_user
 import platform
 import psutil
-from app.modules.models import Module, ModuleCategory 
+from app.modules.models import Module, ModuleCategory
+from app import db
 
 core_bp = Blueprint('core', __name__)
 
@@ -19,12 +20,15 @@ def dashboard():
     system_info = get_system_info()
     modules_info = get_modules_info()
     sessions_info = get_sessions_info()
+    gui_info = get_gui_info()  # New GUI information
+    
     return render_template(
         'core/dashboard.html', 
         title='Dashboard',
         system_info=system_info,
         modules_info=modules_info,
-        sessions_info=sessions_info
+        sessions_info=sessions_info,
+        gui_info=gui_info
     )
 
 # Utility functions for the dashboard
@@ -88,6 +92,100 @@ def get_sessions_info():
         'inactive': inactive_sessions,
         'recent': recent_sessions
     }
+
+def get_gui_info():
+    """Get GUI sessions information with proper error handling"""
+    try:
+        # Try to import GUI models - they might not exist
+        from app.gui.models import GUISession, GUIApplication
+        
+        # Check if tables exist by trying a simple query
+        try:
+            # Test if GUI tables exist
+            db.session.execute(db.text("SELECT 1 FROM gui_session LIMIT 1")).fetchone()
+            db.session.execute(db.text("SELECT 1 FROM gui_application LIMIT 1")).fetchone()
+        except Exception:
+            # Tables don't exist, return default values
+            current_app.logger.info("GUI tables do not exist yet")
+            return {
+                'total': 0,
+                'active': 0,
+                'inactive': 0,
+                'available_apps': 0,
+                'webrtc_sessions': 0,
+                'recent': []
+            }
+        
+        # Get GUI session statistics
+        total_gui_sessions = GUISession.query.filter_by(user_id=current_user.id).count()
+        active_gui_sessions = GUISession.query.filter_by(user_id=current_user.id, active=True).count()
+        
+        # Get available applications
+        available_apps = GUIApplication.query.filter_by(enabled=True, installed=True).count()
+        
+        # Get recent GUI sessions
+        recent_gui_sessions = GUISession.query.filter_by(user_id=current_user.id).order_by(
+            GUISession.last_activity.desc()
+        ).limit(5).all()
+        
+        # Count WebRTC sessions (active GUI sessions with WebRTC enabled)
+        webrtc_sessions = GUISession.query.filter_by(
+            user_id=current_user.id, 
+            active=True
+        ).count()  # Assuming all active GUI sessions use WebRTC
+        
+        return {
+            'total': total_gui_sessions,
+            'active': active_gui_sessions,
+            'inactive': total_gui_sessions - active_gui_sessions,
+            'available_apps': available_apps,
+            'webrtc_sessions': webrtc_sessions,
+            'recent': recent_gui_sessions
+        }
+        
+    except ImportError:
+        # GUI module not installed/available
+        current_app.logger.info("GUI module not available")
+        return {
+            'total': 0,
+            'active': 0,
+            'inactive': 0,
+            'available_apps': 0,
+            'webrtc_sessions': 0,
+            'recent': []
+        }
+    except Exception as e:
+        current_app.logger.error(f"Error getting GUI info: {str(e)}")
+        return {
+            'total': 0,
+            'active': 0,
+            'inactive': 0,
+            'available_apps': 0,
+            'webrtc_sessions': 0,
+            'recent': []
+        }
+        
+    except ImportError:
+        # GUI module not installed/available
+        current_app.logger.info("GUI module not available")
+        return {
+            'total': 0,
+            'active': 0,
+            'inactive': 0,
+            'available_apps': 0,
+            'webrtc_sessions': 0,
+            'recent': []
+        }
+    except Exception as e:
+        current_app.logger.error(f"Error getting GUI info: {str(e)}")
+        return {
+            'total': 0,
+            'active': 0,
+            'inactive': 0,
+            'available_apps': 0,
+            'webrtc_sessions': 0,
+            'recent': []
+        }
 
 @core_bp.route('/system-info')
 @login_required

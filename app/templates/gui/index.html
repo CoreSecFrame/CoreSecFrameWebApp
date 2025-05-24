@@ -1,0 +1,303 @@
+<!-- app/templates/gui/index.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h2 fw-bold mb-1">GUI Sessions</h1>
+                <p class="text-muted mb-0">Manage your remote GUI applications</p>
+            </div>
+            <div class="btn-group" role="group">
+                <a href="{{ url_for('gui.applications') }}" class="btn btn-outline-info">
+                    <i class="bi bi-grid-3x3-gap"></i> Applications
+                </a>
+                <a href="{{ url_for('gui.scan_applications') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-repeat"></i> Scan Apps
+                </a>
+                <a href="{{ url_for('gui.new_session') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> New GUI Session
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Session Statistics -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <i class="bi bi-layers text-primary mb-2" style="font-size: 2rem;"></i>
+                <h3 class="mb-1">{{ active_sessions|length + inactive_sessions|length }}</h3>
+                <p class="text-muted mb-0">Total Sessions</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <i class="bi bi-play-circle-fill text-success mb-2" style="font-size: 2rem;"></i>
+                <h3 class="mb-1">{{ active_sessions|length }}</h3>
+                <p class="text-muted mb-0">Active Sessions</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <i class="bi bi-grid-3x3-gap text-info mb-2" style="font-size: 2rem;"></i>
+                <h3 class="mb-1">{{ available_apps|length }}</h3>
+                <p class="text-muted mb-0">Available Apps</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Active GUI Sessions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0 fw-semibold">
+                    <i class="bi bi-play-circle-fill me-2"></i>Active GUI Sessions
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Session Name</th>
+                                <th>Application</th>
+                                <th>Resolution</th>
+                                <th>Started</th>
+                                <th>Last Activity</th>
+                                <th class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for session in active_sessions %}
+                            <tr class="align-middle">
+                                <td>
+                                    <strong>{{ session.name }}</strong>
+                                    <div class="small text-muted">{{ session.session_id[:8] }}...</div>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-window me-2 text-primary"></i>
+                                        <div>
+                                            <div>{{ session.application_name }}</div>
+                                            <small class="text-muted">{{ session.application_command[:30] }}{% if session.application_command|length > 30 %}...{% endif %}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">{{ session.screen_width }}x{{ session.screen_height }}</span>
+                                </td>
+                                <td>
+                                    <small class="text-muted">{{ session.start_time.strftime('%Y-%m-%d %H:%M') }}</small>
+                                </td>
+                                <td>
+                                    <small class="text-muted">{{ session.last_activity.strftime('%Y-%m-%d %H:%M') }}</small>
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a href="{{ url_for('gui.view_session', session_id=session.session_id) }}"
+                                            class="btn btn-primary">
+                                            <i class="bi bi-display"></i> Open
+                                        </a>
+                                        <button type="button" class="btn btn-danger"
+                                            onclick="openCustomModal('closeModal{{ session.id }}')">
+                                            <i class="bi bi-x-circle"></i> Close
+                                        </button>
+                                    </div>
+
+                                    <!-- Close Modal -->
+                                    <div id="closeModal{{ session.id }}" class="custom-modal" style="display: none;">
+                                        <div class="custom-modal-backdrop"></div>
+                                        <div class="custom-modal-content">
+                                            <div class="custom-modal-header">
+                                                <h5>Close GUI Session</h5>
+                                                <button type="button" class="btn-close"
+                                                    onclick="closeCustomModal('closeModal{{ session.id }}')"></button>
+                                            </div>
+                                            <div class="custom-modal-body">
+                                                <p>Are you sure you want to close the GUI session "{{ session.name }}"?</p>
+                                                <p class="text-danger">
+                                                    <i class="bi bi-exclamation-triangle me-1"></i>
+                                                    This will terminate the application and end the remote session.
+                                                </p>
+                                            </div>
+                                            <div class="custom-modal-footer">
+                                                <button type="button" class="btn btn-secondary"
+                                                    onclick="closeCustomModal('closeModal{{ session.id }}')">Cancel</button>
+                                                <form action="{{ url_for('gui.close_session', session_id=session.session_id) }}"
+                                                    method="post" style="display: inline;">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <button type="submit" class="btn btn-danger">
+                                                        <i class="bi bi-x-circle me-1"></i>Close Session
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    <i class="bi bi-inbox mb-2 d-block" style="font-size: 2rem;"></i>
+                                    No active GUI sessions found
+                                    <div class="mt-2">
+                                        <a href="{{ url_for('gui.new_session') }}" class="btn btn-primary btn-sm">
+                                            <i class="bi bi-plus-circle me-1"></i>Create New Session
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Inactive GUI Sessions -->
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0 fw-semibold">
+                    <i class="bi bi-pause-circle me-2"></i>Recent Sessions
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Session Name</th>
+                                <th>Application</th>
+                                <th>Resolution</th>
+                                <th>Duration</th>
+                                <th>Ended</th>
+                                <th class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for session in inactive_sessions %}
+                            <tr class="align-middle">
+                                <td>
+                                    <strong>{{ session.name }}</strong>
+                                    <div class="small text-muted">{{ session.session_id[:8] }}...</div>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-window me-2 text-muted"></i>
+                                        <div>
+                                            <div>{{ session.application_name }}</div>
+                                            <small class="text-muted">{{ session.application_command[:30] }}{% if session.application_command|length > 30 %}...{% endif %}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark">{{ session.screen_width }}x{{ session.screen_height }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ session.get_duration() }}</span>
+                                </td>
+                                <td>
+                                    <small class="text-muted">{{ session.last_activity.strftime('%Y-%m-%d %H:%M') }}</small>
+                                </td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-danger btn-sm"
+                                        onclick="openCustomModal('deleteModal{{ session.id }}')">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+
+                                    <!-- Delete Modal -->
+                                    <div id="deleteModal{{ session.id }}" class="custom-modal" style="display: none;">
+                                        <div class="custom-modal-backdrop"></div>
+                                        <div class="custom-modal-content">
+                                            <div class="custom-modal-header">
+                                                <h5>Delete GUI Session</h5>
+                                                <button type="button" class="btn-close"
+                                                    onclick="closeCustomModal('deleteModal{{ session.id }}')"></button>
+                                            </div>
+                                            <div class="custom-modal-body">
+                                                <p>Are you sure you want to delete the GUI session "{{ session.name }}"?</p>
+                                                <p class="text-danger">This will permanently delete all session logs and history.</p>
+                                            </div>
+                                            <div class="custom-modal-footer">
+                                                <button type="button" class="btn btn-secondary"
+                                                    onclick="closeCustomModal('deleteModal{{ session.id }}')">Cancel</button>
+                                                <form action="{{ url_for('gui.delete_session', session_id=session.session_id) }}"
+                                                    method="post" style="display: inline;">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <button type="submit" class="btn btn-danger">Delete Session</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    <i class="bi bi-inbox mb-2 d-block" style="font-size: 2rem;"></i>
+                                    No recent sessions found
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    function openCustomModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function closeCustomModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+    }
+
+    // Close modal when clicking backdrop
+    document.addEventListener('click', function (e) {
+        if (e.target.classList.contains('custom-modal-backdrop')) {
+            const modal = e.target.closest('.custom-modal');
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+            }
+        }
+    });
+
+    // Auto-refresh page every 30 seconds for active sessions
+    setInterval(function() {
+        if ({{ active_sessions|length }} > 0) {
+            location.reload();
+        }
+    }, 30000);
+</script>
+{% endblock %}

@@ -109,6 +109,15 @@ def create_app(config_class=Config):
         # Register request logging
         register_request_logging(app)
         
+        try:
+            from app.gui.routes import gui_bp
+            app.register_blueprint(gui_bp)
+            app.logger.info("GUI blueprint registered successfully")
+        except ImportError as e:
+            app.logger.warning(f"GUI blueprint not available: {e}")
+        except Exception as e:
+            app.logger.error(f"Error registering GUI blueprint: {e}")
+        
         # Register security event handlers (with error handling)
         try:
             register_security_handlers(app)

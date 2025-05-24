@@ -1,0 +1,317 @@
+<!-- app/templates/gui/new.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h2 fw-bold mb-1">New GUI Session</h1>
+                <p class="text-muted mb-0">Launch a GUI application in a remote session</p>
+            </div>
+            <div>
+                <a href="{{ url_for('gui.index') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0 fw-semibold">
+                    <i class="bi bi-window me-2"></i>Session Configuration
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="mb-4">
+                        <label for="session_name" class="form-label">Session Name</label>
+                        <input type="text" class="form-control" id="session_name" name="session_name" 
+                               value="GUI-{{ current_time }}" required>
+                        <div class="form-text">Choose a descriptive name for your GUI session</div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="application_id" class="form-label">Application</label>
+                        <select class="form-select" id="application_id" name="application_id" required>
+                            <option value="" disabled selected>-- Select an application --</option>
+                            {% for category, apps in apps_by_category.items() %}
+                            <optgroup label="{{ category }}">
+                                {% for app in apps %}
+                                <option value="{{ app.id }}" data-icon="{{ app.icon }}" 
+                                        data-description="{{ app.description }}"
+                                        data-command="{{ app.command }}">
+                                    {{ app.display_name }}
+                                </option>
+                                {% endfor %}
+                            </optgroup>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Select the GUI application you want to run</div>
+                    </div>
+                    
+                    <!-- Application Preview -->
+                    <div id="appPreview" class="mb-4" style="display: none;">
+                        <div class="card bg-light border-0">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <i id="appIcon" class="bi bi-app me-3 text-primary" style="font-size: 2.5rem;"></i>
+                                    <div class="flex-grow-1">
+                                        <h6 id="appName" class="mb-1 fw-semibold"></h6>
+                                        <p id="appDescription" class="text-muted mb-1"></p>
+                                        <small class="text-muted">Command: <code id="appCommand"></code></small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label for="screen_width" class="form-label">Screen Width</label>
+                            <select class="form-select" id="screen_width" name="screen_width">
+                                <option value="800">800px (Small)</option>
+                                <option value="1024" selected>1024px (Medium)</option>
+                                <option value="1280">1280px (Large)</option>
+                                <option value="1440">1440px (XL)</option>
+                                <option value="1920">1920px (Full HD)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="screen_height" class="form-label">Screen Height</label>
+                            <select class="form-select" id="screen_height" name="screen_height">
+                                <option value="600">600px</option>
+                                <option value="768" selected>768px</option>
+                                <option value="720">720px (HD)</option>
+                                <option value="900">900px</option>
+                                <option value="1080">1080px (Full HD)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6 class="text-muted mb-3">Advanced Options</h6>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="enable_webrtc" name="enable_webrtc" checked>
+                                    <label class="form-check-label" for="enable_webrtc">
+                                        Enable WebRTC
+                                        <small class="text-muted d-block">Better performance and lower latency</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="enable_audio" name="enable_audio">
+                                    <label class="form-check-label" for="enable_audio">
+                                        Enable Audio
+                                        <small class="text-muted d-block">Transmit application audio</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="enable_clipboard" name="enable_clipboard" checked>
+                                    <label class="form-check-label" for="enable_clipboard">
+                                        Enable Clipboard Sharing
+                                        <small class="text-muted d-block">Share clipboard between local and remote</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="enable_file_transfer" name="enable_file_transfer">
+                                    <label class="form-check-label" for="enable_file_transfer">
+                                        Enable File Transfer
+                                        <small class="text-muted d-block">Allow file uploads/downloads</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="quality" class="form-label">Image Quality</label>
+                        <select class="form-select" id="quality" name="quality">
+                            <option value="low">Low (faster, lower quality)</option>
+                            <option value="medium" selected>Medium (balanced)</option>
+                            <option value="high">High (slower, better quality)</option>
+                            <option value="lossless">Lossless (best quality, slowest)</option>
+                        </select>
+                        <div class="form-text">Higher quality requires more bandwidth</div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('gui.index') }}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle me-2"></i>Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-play-circle me-2"></i>Create GUI Session
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Information Card -->
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-header bg-info text-white">
+                <h6 class="mb-0 fw-semibold">
+                    <i class="bi bi-info-circle me-2"></i>Important Information
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-2">System Requirements</h6>
+                        <ul class="list-unstyled small">
+                            <li><i class="bi bi-check-circle text-success me-2"></i>Modern web browser with WebRTC support</li>
+                            <li><i class="bi bi-check-circle text-success me-2"></i>Stable internet connection</li>
+                            <li><i class="bi bi-check-circle text-success me-2"></i>JavaScript enabled</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-2">Performance Tips</h6>
+                        <ul class="list-unstyled small">
+                            <li><i class="bi bi-lightbulb text-warning me-2"></i>Use lower resolution for better performance</li>
+                            <li><i class="bi bi-lightbulb text-warning me-2"></i>Disable audio if not needed</li>
+                            <li><i class="bi bi-lightbulb text-warning me-2"></i>Close unused applications on remote system</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const appSelect = document.getElementById('application_id');
+    const appPreview = document.getElementById('appPreview');
+    const appIcon = document.getElementById('appIcon');
+    const appName = document.getElementById('appName');
+    const appDescription = document.getElementById('appDescription');
+    const appCommand = document.getElementById('appCommand');
+    
+    // Show application preview when selection changes
+    appSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        
+        if (selectedOption.value) {
+            const icon = selectedOption.getAttribute('data-icon') || 'bi-app';
+            const description = selectedOption.getAttribute('data-description') || '';
+            const command = selectedOption.getAttribute('data-command') || '';
+            
+            appIcon.className = `bi ${icon} me-3 text-primary`;
+            appName.textContent = selectedOption.textContent;
+            appDescription.textContent = description;
+            appCommand.textContent = command;
+            
+            appPreview.style.display = 'block';
+            appPreview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+            appPreview.style.display = 'none';
+        }
+    });
+    
+    // Update screen height based on width selection
+    const widthSelect = document.getElementById('screen_width');
+    const heightSelect = document.getElementById('screen_height');
+    
+    widthSelect.addEventListener('change', function() {
+        const width = parseInt(this.value);
+        let recommendedHeight;
+        
+        // Calculate 16:9 aspect ratio recommendations
+        switch(width) {
+            case 800:
+                recommendedHeight = 600;
+                break;
+            case 1024:
+                recommendedHeight = 768;
+                break;
+            case 1280:
+                recommendedHeight = 720;
+                break;
+            case 1440:
+                recommendedHeight = 900;
+                break;
+            case 1920:
+                recommendedHeight = 1080;
+                break;
+            default:
+                recommendedHeight = Math.round(width * 0.75);
+        }
+        
+        // Update height selection if available
+        for (let option of heightSelect.options) {
+            if (parseInt(option.value) === recommendedHeight) {
+                heightSelect.value = option.value;
+                break;
+            }
+        }
+    });
+    
+    // Form validation
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const sessionName = document.getElementById('session_name').value.trim();
+        const appId = document.getElementById('application_id').value;
+        
+        if (!sessionName) {
+            e.preventDefault();
+            alert('Please enter a session name.');
+            document.getElementById('session_name').focus();
+            return;
+        }
+        
+        if (!appId) {
+            e.preventDefault();
+            alert('Please select an application.');
+            document.getElementById('application_id').focus();
+            return;
+        }
+        
+        // Show loading state
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Creating Session...';
+    });
+    
+    // Quality setting information
+    const qualitySelect = document.getElementById('quality');
+    const qualityInfo = {
+        'low': 'Optimized for slow connections (30% quality)',
+        'medium': 'Balanced quality and performance (60% quality)',
+        'high': 'High quality images (85% quality)',
+        'lossless': 'Perfect quality, requires fast connection (100%)'
+    };
+    
+    function updateQualityInfo() {
+        const quality = qualitySelect.value;
+        const formText = qualitySelect.parentNode.querySelector('.form-text');
+        formText.textContent = qualityInfo[quality] || 'Higher quality requires more bandwidth';
+    }
+    
+    qualitySelect.addEventListener('change', updateQualityInfo);
+    updateQualityInfo(); // Initialize
+    
+    // Auto-focus on session name
+    document.getElementById('session_name').focus();
+    document.getElementById('session_name').select();
+});
+</script>
+{% endblock %}
