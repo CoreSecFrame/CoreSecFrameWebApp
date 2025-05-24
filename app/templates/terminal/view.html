@@ -88,6 +88,40 @@
         border-color: rgba(255, 255, 255, 0.3);
         color: #fff;
     }
+
+    /* Notification animations */
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    @keyframes slideOutRight {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+
+    /* Fullscreen terminal improvements */
+    .terminal-wrapper:fullscreen {
+        background: #0a0a0a !important;
+    }
+
+    .terminal-wrapper:fullscreen .terminal-container {
+        height: calc(100vh - 120px) !important;
+    }
 </style>
 {% endblock %}
 
@@ -387,9 +421,39 @@
 
         document.getElementById('btn-fullscreen').addEventListener('click', () => {
             const terminalWrapper = document.querySelector('.terminal-wrapper');
+            const fullscreenBtn = document.getElementById('btn-fullscreen');
 
             if (!document.fullscreenElement) {
-                terminalWrapper.requestFullscreen().catch(err => {
+                terminalWrapper.requestFullscreen().then(() => {
+                    // Update button icon for exit fullscreen
+                    fullscreenBtn.innerHTML = '<i class="bi bi-fullscreen-exit"></i>';
+
+                    // Make terminal wrapper take full screen
+                    terminalWrapper.style.position = 'fixed';
+                    terminalWrapper.style.top = '0';
+                    terminalWrapper.style.left = '0';
+                    terminalWrapper.style.width = '100vw';
+                    terminalWrapper.style.height = '100vh';
+                    terminalWrapper.style.zIndex = '9999';
+                    terminalWrapper.style.margin = '0';
+
+                    // Update terminal container height
+                    const terminalContainer = document.querySelector('.terminal-container');
+                    terminalContainer.style.height = 'calc(100vh - 120px)'; // Account for header/footer
+
+                    // Resize terminal to fit new dimensions
+                    setTimeout(() => {
+                        fitAddon.fit();
+                        const dimensions = fitAddon.proposeDimensions();
+                        if (dimensions) {
+                            socket.emit('terminal_resize', {
+                                session_id: '{{ session.session_id }}',
+                                rows: dimensions.rows,
+                                cols: dimensions.cols
+                            });
+                        }
+                    }, 100);
+                }).catch(err => {
                     console.error('Error attempting to enable fullscreen:', err);
                 });
             } else {
@@ -397,29 +461,104 @@
             }
         });
 
+        // Handle fullscreen change events
+        document.addEventListener('fullscreenchange', () => {
+            const terminalWrapper = document.querySelector('.terminal-wrapper');
+            const fullscreenBtn = document.getElementById('btn-fullscreen');
+            const terminalContainer = document.querySelector('.terminal-container');
+
+            if (!document.fullscreenElement) {
+                // Exiting fullscreen - reset styles
+                fullscreenBtn.innerHTML = '<i class="bi bi-arrows-fullscreen"></i>';
+                terminalWrapper.style.position = '';
+                terminalWrapper.style.top = '';
+                terminalWrapper.style.left = '';
+                terminalWrapper.style.width = '';
+                terminalWrapper.style.height = '';
+                terminalWrapper.style.zIndex = '';
+                terminalWrapper.style.margin = '';
+
+                // Reset terminal container height
+                terminalContainer.style.height = '70vh';
+
+                // Resize terminal back to normal
+                setTimeout(() => {
+                    fitAddon.fit();
+                    const dimensions = fitAddon.proposeDimensions();
+                    if (dimensions) {
+                        socket.emit('terminal_resize', {
+                            session_id: '{{ session.session_id }}',
+                            rows: dimensions.rows,
+                            cols: dimensions.cols
+                        });
+                    }
+                }, 100);
+            }
+        });
+
         document.getElementById('btn-copy').addEventListener('click', () => {
             const selection = terminal.getSelection();
-            if (selection) {
+            if (selection && selection.trim()) {
                 navigator.clipboard.writeText(selection).then(() => {
-                    showNotification('Copied to clipboard', 'success');
+                    showNotification('Text copied to clipboard', 'success');
+
+                    // Visual feedback on button
+                    const copyBtn = document.getElementById('btn-copy');
+                    const originalHtml = copyBtn.innerHTML;
+                    copyBtn.innerHTML = '<i class="bi bi-check"></i>';
+                    copyBtn.classList.add('btn-success');
+                    copyBtn.classList.remove('btn-terminal');
+
+                    setTimeout(() => {
+                        copyBtn.innerHTML = originalHtml;
+                        copyBtn.classList.remove('btn-success');
+                        copyBtn.classList.add('btn-terminal');
+                    }, 2000);
                 }).catch(err => {
                     console.error('Failed to copy text: ', err);
+                    showNotification('Failed to copy text. Please select text first.', 'danger');
                 });
+            } else {
+                showNotification('No text selected. Please select text to copy.', 'warning');
             }
         });
 
         document.getElementById('btn-paste').addEventListener('click', () => {
             if ('{{ session.active }}' === 'True') {
                 navigator.clipboard.readText().then(text => {
-                    for (let i = 0; i < text.length; i++) {
+                    if (text && text.trim()) {
+                        // Send text directly to maintain proper terminal handling
                         socket.emit('terminal_input', {
                             session_id: '{{ session.session_id }}',
-                            data: text[i]
+                            data: text
                         });
+
+                        showNotification('Text pasted successfully', 'success');
+
+                        // Visual feedback on button
+                        const pasteBtn = document.getElementById('btn-paste');
+                        const originalHtml = pasteBtn.innerHTML;
+                        pasteBtn.innerHTML = '<i class="bi bi-check"></i>';
+                        pasteBtn.classList.add('btn-success');
+                        pasteBtn.classList.remove('btn-terminal');
+
+                        setTimeout(() => {
+                            pasteBtn.innerHTML = originalHtml;
+                            pasteBtn.classList.remove('btn-success');
+                            pasteBtn.classList.add('btn-terminal');
+                        }, 2000);
+
+                        // Focus back to terminal
+                        terminal.focus();
+                    } else {
+                        showNotification('Clipboard is empty', 'warning');
                     }
                 }).catch(err => {
                     console.error('Failed to read clipboard: ', err);
+                    showNotification('Failed to access clipboard. Please check browser permissions.', 'danger');
                 });
+            } else {
+                showNotification('Cannot paste in inactive session', 'warning');
             }
         });
 
@@ -439,50 +578,71 @@
         {% endif %}
     });
 
-    // Notification helper
+    // Enhanced notification helper with better styling
     function showNotification(message, type = 'info') {
+        // Remove any existing notifications
+        const existingNotifications = document.querySelectorAll('.custom-notification');
+        existingNotifications.forEach(notification => notification.remove());
+
         const notification = document.createElement('div');
-        notification.className = `alert alert-${type} position-fixed top-0 start-50 translate-middle-x mt-3`;
-        notification.style.zIndex = '9999';
-        notification.innerHTML = `
-        <i class="bi bi-check-circle me-2"></i>${message}
+        notification.className = `alert alert-${type} position-fixed custom-notification shadow-lg`;
+        notification.style.cssText = `
+        top: 20px;
+        right: 20px;
+        z-index: 99999;
+        min-width: 300px;
+        border: none;
+        border-radius: 8px;
+        animation: slideInRight 0.3s ease;
     `;
+
+        const iconMap = {
+            'success': 'check-circle',
+            'danger': 'exclamation-circle',
+            'warning': 'exclamation-triangle',
+            'info': 'info-circle'
+        };
+
+        notification.innerHTML = `
+        <div class="d-flex align-items-center">
+            <i class="bi bi-${iconMap[type] || 'info-circle'} me-2"></i>
+            <span>${message}</span>
+            <button type="button" class="btn-close ms-auto" onclick="this.parentElement.parentElement.remove()"></button>
+        </div>
+    `;
+
         document.body.appendChild(notification);
 
+        // Auto-remove after 4 seconds
         setTimeout(() => {
-            notification.remove();
-        }, 3000);
+            if (notification.parentNode) {
+                notification.style.animation = 'slideOutRight 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }
+        }, 4000);
     }
 </script>
 {% if module_to_execute %}
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        setTimeout(function () {
-            console.log('Executing module: {{ module_to_execute.name }} in {{ module_to_execute.mode }} mode');
+    // Add keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        // Ctrl+C for copy (when text is selected)
+        if (e.ctrlKey && e.key === 'c' && terminal.hasSelection()) {
+            e.preventDefault();
+            document.getElementById('btn-copy').click();
+        }
 
-            fetch('{{ url_for("terminal.execute_module", session_id=session.session_id) }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token() }}'
-                },
-                body: JSON.stringify({
-                    module_name: '{{ module_to_execute.name }}',
-                    mode: '{{ module_to_execute.mode }}'
-                })
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.success) {
-                        console.error('Error executing module:', data.message);
-                        terminal.write('\r\n\x1b[31mError executing module: ' + data.message + '\x1b[0m\r\n');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    terminal.write('\r\n\x1b[31mError: ' + error + '\x1b[0m\r\n');
-                });
-        }, 1500);
+        // Ctrl+V for paste (only in active sessions)
+        if (e.ctrlKey && e.key === 'v' && '{{ session.active }}' === 'True') {
+            e.preventDefault();
+            document.getElementById('btn-paste').click();
+        }
+
+        // F11 for fullscreen toggle
+        if (e.key === 'F11') {
+            e.preventDefault();
+            document.getElementById('btn-fullscreen').click();
+        }
     });
 </script>
 {% endif %}
