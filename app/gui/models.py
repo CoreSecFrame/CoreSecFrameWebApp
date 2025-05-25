@@ -39,7 +39,7 @@ class GUIApplication(db.Model):
                               cascade='all, delete-orphan')
     
     def __repr__(self):
-        return f'<GUIApplication {self.name}>'
+        return f'<GUISession {self.name} ({self.session_id})>'
     
     def to_dict(self):
         return {

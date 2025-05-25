@@ -1,4 +1,4 @@
-<!-- app/templates/core/dashboard.html - Updated with GUI Routes -->
+<!-- app/templates/core/dashboard.html - Professional Enhancement -->
 {% extends "base.html" %}
 
 {% block content %}
@@ -193,42 +193,18 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <!-- Terminal Actions -->
-                    <div class="btn-group" role="group">
-                        <a href="{{ url_for('terminal.new') }}" class="btn btn-primary">
-                            <i class="bi bi-terminal me-2"></i> New Terminal
-                        </a>
-                        <a href="{{ url_for('gui.new_session') }}" class="btn btn-success">
-                            <i class="bi bi-window me-2"></i> New GUI Session
-                        </a>
-                    </div>
-                    
-                    <!-- Module Actions -->
-                    <a href="{{ url_for('modules.shop') }}" class="btn btn-info">
+                    <a href="{{ url_for('terminal.new') }}" class="btn btn-primary">
+                        <i class="bi bi-terminal me-2"></i> New Terminal Session
+                    </a>
+                    <a href="{{ url_for('modules.shop') }}" class="btn btn-success">
                         <i class="bi bi-cloud-download me-2"></i> Browse Module Shop
                     </a>
-                    
-                    <!-- Session Management -->
-                    <div class="btn-group" role="group">
-                        <a href="{{ url_for('sessions.index') }}" class="btn btn-outline-primary">
-                            <i class="bi bi-layers me-2"></i> Terminal Sessions
-                        </a>
-                        <a href="{{ url_for('gui.index') }}" class="btn btn-outline-success">
-                            <i class="bi bi-display me-2"></i> GUI Sessions
-                        </a>
-                    </div>
-                    
-                    <!-- Applications -->
-                    <a href="{{ url_for('gui.applications') }}" class="btn btn-outline-info">
-                        <i class="bi bi-grid-3x3-gap me-2"></i> GUI Applications
+                    <a href="{{ url_for('sessions.index') }}" class="btn btn-info">
+                        <i class="bi bi-layers me-2"></i> Manage Sessions
                     </a>
-                    
-                    <!-- System Information -->
                     <a href="{{ url_for('core.system_info') }}" class="btn btn-warning">
                         <i class="bi bi-info-circle me-2"></i> System Information
                     </a>
-                    
-                    <!-- Admin Panel -->
                     {% if current_user.is_admin() %}
                     <a href="{{ url_for('admin.index') }}" class="btn btn-danger">
                         <i class="bi bi-gear me-2"></i> Admin Panel
@@ -239,69 +215,6 @@
         </div>
     </div>
 </div>
-
-<!-- GUI Statistics Row (if GUI info is available) -->
-{% if gui_info is defined %}
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-transparent border-0">
-                <h5 class="mb-0 fw-semibold">
-                    <i class="bi bi-window me-2"></i>GUI Sessions Overview
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row text-center">
-                    <div class="col-md-3">
-                        <div class="d-flex align-items-center justify-content-center">
-                            <div class="rounded-circle bg-success bg-opacity-10 p-2 me-2">
-                                <i class="bi bi-play-circle text-success"></i>
-                            </div>
-                            <div>
-                                <h4 class="mb-0 fw-bold">{{ gui_info.active or 0 }}</h4>
-                                <small class="text-muted">Active GUI Sessions</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="d-flex align-items-center justify-content-center">
-                            <div class="rounded-circle bg-info bg-opacity-10 p-2 me-2">
-                                <i class="bi bi-layers text-info"></i>
-                            </div>
-                            <div>
-                                <h4 class="mb-0 fw-bold">{{ gui_info.total or 0 }}</h4>
-                                <small class="text-muted">Total Sessions</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="d-flex align-items-center justify-content-center">
-                            <div class="rounded-circle bg-primary bg-opacity-10 p-2 me-2">
-                                <i class="bi bi-grid-3x3-gap text-primary"></i>
-                            </div>
-                            <div>
-                                <h4 class="mb-0 fw-bold">{{ gui_info.available_apps or 0 }}</h4>
-                                <small class="text-muted">Available Apps</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="d-flex align-items-center justify-content-center">
-                            <div class="rounded-circle bg-warning bg-opacity-10 p-2 me-2">
-                                <i class="bi bi-broadcast text-warning"></i>
-                            </div>
-                            <div>
-                                <h4 class="mb-0 fw-bold">{{ gui_info.webrtc_sessions or 0 }}</h4>
-                                <small class="text-muted">WebRTC Sessions</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
 
 <!-- System Information -->
 <div class="row mt-4">

@@ -57,7 +57,7 @@
         <div class="card gui-stats-card h-100">
             <div class="card-body text-center">
                 <i class="bi bi-display text-warning mb-2" style="font-size: 2rem;"></i>
-                <h3 class="mb-1">{{ active_sessions|length }}</h3>
+                <h3 class="mb-1">{{ current_user.gui_sessions.filter_by(active=True).count() }}</h3>
                 <p class="text-muted mb-0 small">My Active</p>
             </div>
         </div>
@@ -82,8 +82,7 @@
                             <div class="d-flex align-items-start justify-content-between mb-3">
                                 <div class="d-flex align-items-center">
                                     {% if session.application.icon_path %}
-                                    <img src="{{ session.application.icon_path }}" alt="{{ session.application.name }}"
-                                        class="app-icon me-3">
+                                    <img src="{{ session.application.icon_path }}" alt="{{ session.application.name }}" class="app-icon me-3">
                                     {% else %}
                                     <div class="app-icon-placeholder me-3">
                                         <i class="bi bi-app"></i>
@@ -95,36 +94,30 @@
                                     </div>
                                 </div>
                                 <div class="dropdown">
-                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
-                                        data-bs-toggle="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
                                         <i class="bi bi-three-dots"></i>
                                     </button>
                                     <ul class="dropdown-menu">
                                         <li>
-                                            <a class="dropdown-item"
-                                                href="{{ url_for('gui.connect_session', session_id=session.session_id) }}">
+                                            <a class="dropdown-item" href="{{ url_for('gui.connect_session', session_id=session.session_id) }}">
                                                 <i class="bi bi-display me-2"></i>Connect
                                             </a>
                                         </li>
                                         <li>
-                                            <a class="dropdown-item"
-                                                href="{{ url_for('gui.session_detail', session_id=session.session_id) }}">
+                                            <a class="dropdown-item" href="{{ url_for('gui.session_detail', session_id=session.session_id) }}">
                                                 <i class="bi bi-info-circle me-2"></i>Details
                                             </a>
                                         </li>
+                                        <li><hr class="dropdown-divider"></li>
                                         <li>
-                                            <hr class="dropdown-divider">
-                                        </li>
-                                        <li>
-                                            <button class="dropdown-item text-danger"
-                                                onclick="closeSessionConfirm('{{ session.session_id }}', '{{ session.name }}')">
+                                            <button class="dropdown-item text-danger" onclick="closeSessionConfirm('{{ session.session_id }}', '{{ session.name }}')">
                                                 <i class="bi bi-x-circle me-2"></i>Close Session
                                             </button>
                                         </li>
                                     </ul>
                                 </div>
                             </div>
-
+                            
                             <div class="row text-center mb-3">
                                 <div class="col-4">
                                     <small class="text-muted d-block">Display</small>
@@ -139,14 +132,14 @@
                                     <strong>{{ session.screen_resolution }}</strong>
                                 </div>
                             </div>
-
+                            
                             <div class="d-flex align-items-center justify-content-between">
                                 <div class="d-flex align-items-center">
                                     <span class="session-status-indicator session-status-active"></span>
                                     <small class="text-success">Active {{ session.get_duration() }}</small>
                                 </div>
-                                <a href="{{ url_for('gui.connect_session', session_id=session.session_id) }}"
-                                    class="btn btn-sm btn-success">
+                                <a href="{{ url_for('gui.connect_session', session_id=session.session_id) }}" 
+                                   class="btn btn-sm btn-success">
                                     <i class="bi bi-display me-1"></i>Connect
                                 </a>
                             </div>
@@ -174,15 +167,13 @@
                 <!-- Category Tabs -->
                 <ul class="nav nav-pills mb-4" id="categoryTabs" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="all-tab" data-bs-toggle="pill" data-bs-target="#all-apps"
-                            type="button" role="tab">
+                        <button class="nav-link active" id="all-tab" data-bs-toggle="pill" data-bs-target="#all-apps" type="button" role="tab">
                             <i class="bi bi-grid-3x3-gap me-1"></i>All Applications
                         </button>
                     </li>
                     {% for category in categories %}
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="{{ category.name }}-tab" data-bs-toggle="pill"
-                            data-bs-target="#{{ category.name }}-apps" type="button" role="tab">
+                        <button class="nav-link" id="{{ category.name }}-tab" data-bs-toggle="pill" data-bs-target="#{{ category.name }}-apps" type="button" role="tab">
                             <i class="{{ category.icon_class or 'bi-folder' }} me-1"></i>{{ category.display_name }}
                         </button>
                     </li>
@@ -209,17 +200,16 @@
                                             <div class="flex-grow-1">
                                                 <h6 class="mb-1">{{ app.display_name }}</h6>
                                                 <p class="text-muted small mb-2">{{ app.description|truncate(60) }}</p>
-                                                <span class="badge bg-light text-dark">{{ app.category or
-                                                    'Uncategorized' }}</span>
+                                                <span class="badge bg-light text-dark">{{ app.category or 'Uncategorized' }}</span>
                                             </div>
                                         </div>
                                         <div class="d-grid gap-2">
-                                            <a href="{{ url_for('gui.launch_application', app_id=app.id) }}"
-                                                class="btn btn-primary btn-sm">
+                                            <a href="{{ url_for('gui.launch_application', app_id=app.id) }}" 
+                                               class="btn btn-primary btn-sm">
                                                 <i class="bi bi-play-fill me-1"></i>Launch
                                             </a>
-                                            <a href="{{ url_for('gui.application_detail', app_id=app.id) }}"
-                                                class="btn btn-outline-secondary btn-sm">
+                                            <a href="{{ url_for('gui.application_detail', app_id=app.id) }}" 
+                                               class="btn btn-outline-secondary btn-sm">
                                                 <i class="bi bi-info-circle me-1"></i>Details
                                             </a>
                                         </div>
@@ -252,12 +242,12 @@
                                             </div>
                                         </div>
                                         <div class="d-grid gap-2">
-                                            <a href="{{ url_for('gui.launch_application', app_id=app.id) }}"
-                                                class="btn btn-primary btn-sm">
+                                            <a href="{{ url_for('gui.launch_application', app_id=app.id) }}" 
+                                               class="btn btn-primary btn-sm">
                                                 <i class="bi bi-play-fill me-1"></i>Launch
                                             </a>
-                                            <a href="{{ url_for('gui.application_detail', app_id=app.id) }}"
-                                                class="btn btn-outline-secondary btn-sm">
+                                            <a href="{{ url_for('gui.application_detail', app_id=app.id) }}" 
+                                               class="btn btn-outline-secondary btn-sm">
                                                 <i class="bi bi-info-circle me-1"></i>Details
                                             </a>
                                         </div>
@@ -288,10 +278,6 @@
                         <h6><i class="bi bi-info-circle me-1"></i>Administrator Note</h6>
                         <p class="mb-2">You can initialize default applications using the CLI command:</p>
                         <code>flask gui-init</code>
-                        <p class="mt-3 mb-2">Or add applications through the web interface:</p>
-                        <a href="{{ url_for('gui.add_application') }}" class="btn btn-sm btn-primary">
-                            <i class="bi bi-plus-circle me-1"></i>Add Applications
-                        </a>
                     </div>
                     {% endif %}
                 </div>
@@ -330,63 +316,63 @@
 {% block scripts %}
 {{ super() }}
 <script>
-    let sessionToClose = null;
+let sessionToClose = null;
 
-    function closeSessionConfirm(sessionId, sessionName) {
-        sessionToClose = sessionId;
-        document.getElementById('sessionNameToClose').textContent = sessionName;
-        new bootstrap.Modal(document.getElementById('closeSessionModal')).show();
-    }
+function closeSessionConfirm(sessionId, sessionName) {
+    sessionToClose = sessionId;
+    document.getElementById('sessionNameToClose').textContent = sessionName;
+    new bootstrap.Modal(document.getElementById('closeSessionModal')).show();
+}
 
-    document.getElementById('confirmCloseSession').addEventListener('click', function () {
-        if (sessionToClose) {
-            const button = this;
-            const originalText = button.innerHTML;
-
-            // Show loading state
-            button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Closing...';
-            button.disabled = true;
-
-            GUI.closeSession(sessionToClose, function (data) {
-                if (data.success) {
-                    // Hide modal
-                    bootstrap.Modal.getInstance(document.getElementById('closeSessionModal')).hide();
-
-                    // Show success message
-                    const alert = document.createElement('div');
-                    alert.className = 'alert alert-success alert-dismissible fade show';
-                    alert.innerHTML = `
+document.getElementById('confirmCloseSession').addEventListener('click', function() {
+    if (sessionToClose) {
+        const button = this;
+        const originalText = button.innerHTML;
+        
+        // Show loading state
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Closing...';
+        button.disabled = true;
+        
+        GUI.closeSession(sessionToClose, function(data) {
+            if (data.success) {
+                // Hide modal
+                bootstrap.Modal.getInstance(document.getElementById('closeSessionModal')).hide();
+                
+                // Show success message
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-success alert-dismissible fade show';
+                alert.innerHTML = `
                     <i class="bi bi-check-circle me-2"></i>Session closed successfully
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 `;
-                    document.querySelector('.container-fluid').insertBefore(alert, document.querySelector('.row'));
-
-                    // Remove session card from DOM
-                    const sessionCard = document.querySelector(`[data-session-id="${sessionToClose}"]`);
-                    if (sessionCard) {
-                        sessionCard.closest('.col-md-6, .col-lg-4, .card').remove();
-                    }
-
-                    // Update stats
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 2000);
-
-                } else {
-                    alert('Error closing session: ' + (data.message || 'Unknown error'));
+                document.querySelector('.container-fluid').insertBefore(alert, document.querySelector('.row'));
+                
+                // Remove session card from DOM
+                const sessionCard = document.querySelector(`[data-session-id="${sessionToClose}"]`);
+                if (sessionCard) {
+                    sessionCard.closest('.col-md-6, .col-lg-4, .card').remove();
                 }
+                
+                // Update stats
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+                
+            } else {
+                alert('Error closing session: ' + (data.message || 'Unknown error'));
+            }
+            
+            // Reset button
+            button.innerHTML = originalText;
+            button.disabled = false;
+            sessionToClose = null;
+        });
+    }
+});
 
-                // Reset button
-                button.innerHTML = originalText;
-                button.disabled = false;
-                sessionToClose = null;
-            });
-        }
-    });
-
-    // Auto-refresh active sessions every 30 seconds
-    setInterval(function () {
-        GUI.updateSessionIndicators();
-    }, 30000);
+// Auto-refresh active sessions every 30 seconds
+setInterval(function() {
+    GUI.updateSessionIndicators();
+}, 30000);
 </script>
 {% endblock %}

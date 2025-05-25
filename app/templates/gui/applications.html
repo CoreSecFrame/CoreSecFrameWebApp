@@ -19,7 +19,7 @@
                 <a href="{{ url_for('gui.sessions') }}" class="btn btn-primary">
                     <i class="bi bi-layers me-1"></i>My Sessions
                 </a>
-                <a href="{{ url_for('gui.add_application') }}" class="btn btn-success">
+                                <a href="{{ url_for('gui.add_application') }}" class="btn btn-success">
                     <i class="bi bi-plus-circle me-1"></i>Add Application
                 </a>
             </div>
@@ -39,8 +39,9 @@
                             <span class="input-group-text">
                                 <i class="bi bi-search"></i>
                             </span>
-                            <input type="text" class="form-control" id="q" name="q"
-                                placeholder="Search by name, description..." value="{{ search_query }}">
+                            <input type="text" class="form-control" id="q" name="q" 
+                                   placeholder="Search by name, description..."
+                                   value="{{ search_query }}">
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -48,8 +49,7 @@
                         <select class="form-select" id="category" name="category">
                             <option value="">All Categories</option>
                             {% for category in categories %}
-                            <option value="{{ category.name }}" {% if current_category==category.name %}selected{% endif
-                                %}>
+                            <option value="{{ category.name }}" {% if current_category == category.name %}selected{% endif %}>
                                 {{ category.display_name }}
                             </option>
                             {% endfor %}
@@ -104,14 +104,13 @@
                                     <h6 class="mb-1">{{ app.display_name }}</h6>
                                     <p class="text-muted small mb-2">{{ app.description|truncate(80) }}</p>
                                     <div class="d-flex justify-content-center gap-1">
-                                        <span class="badge bg-light text-dark">{{ app.category or 'Uncategorized'
-                                            }}</span>
+                                        <span class="badge bg-light text-dark">{{ app.category or 'Uncategorized' }}</span>
                                         {% if app.version %}
                                         <span class="badge bg-secondary">v{{ app.version }}</span>
                                         {% endif %}
                                     </div>
                                 </div>
-
+                                
                                 <!-- App Details -->
                                 <div class="flex-grow-1 mb-3">
                                     <div class="small text-muted">
@@ -128,49 +127,43 @@
                                         <div class="d-flex justify-content-between mt-1">
                                             <span>Sessions:</span>
                                             <span>
-                                                <span class="badge bg-success badge-sm">{{
-                                                    app.sessions.filter_by(active=True).count() }}</span>
+                                                <span class="badge bg-success badge-sm">{{ app.sessions.filter_by(active=True).count() }}</span>
                                                 active
                                             </span>
                                         </div>
                                     </div>
                                 </div>
-
+                                
                                 <!-- Action Buttons -->
                                 <div class="d-grid gap-2">
-                                    <a href="{{ url_for('gui.launch_application', app_id=app.id) }}"
-                                        class="btn btn-success">
+                                    <a href="{{ url_for('gui.launch_application', app_id=app.id) }}" 
+                                       class="btn btn-success">
                                         <i class="bi bi-play-fill me-1"></i>Launch
                                     </a>
                                     <div class="btn-group" role="group">
-                                        <a href="{{ url_for('gui.application_detail', app_id=app.id) }}"
-                                            class="btn btn-outline-info btn-sm">
+                                        <a href="{{ url_for('gui.application_detail', app_id=app.id) }}" 
+                                           class="btn btn-outline-info btn-sm">
                                             <i class="bi bi-info-circle me-1"></i>Details
                                         </a>
                                         {% if app.sessions.filter_by(active=True).count() > 0 %}
                                         <div class="btn-group" role="group">
-                                            <button type="button" class="btn btn-outline-primary btn-sm dropdown-toggle"
-                                                data-bs-toggle="dropdown">
+                                            <button type="button" class="btn btn-outline-primary btn-sm dropdown-toggle" 
+                                                    data-bs-toggle="dropdown">
                                                 <i class="bi bi-display me-1"></i>Sessions
                                             </button>
                                             <ul class="dropdown-menu">
                                                 {% for session in app.sessions.filter_by(active=True).limit(3) %}
                                                 <li>
-                                                    <a class="dropdown-item"
-                                                        href="{{ url_for('gui.session_detail', session_id=session.session_id) }}">
-                                                        <i class="bi bi-circle-fill text-success me-2"
-                                                            style="font-size: 0.5rem;"></i>
+                                                    <a class="dropdown-item" href="{{ url_for('gui.session_detail', session_id=session.session_id) }}">
+                                                        <i class="bi bi-circle-fill text-success me-2" style="font-size: 0.5rem;"></i>
                                                         {{ session.name|truncate(25) }}
                                                     </a>
                                                 </li>
                                                 {% endfor %}
                                                 {% if app.sessions.filter_by(active=True).count() > 3 %}
+                                                <li><hr class="dropdown-divider"></li>
                                                 <li>
-                                                    <hr class="dropdown-divider">
-                                                </li>
-                                                <li>
-                                                    <a class="dropdown-item"
-                                                        href="{{ url_for('gui.sessions') }}?app={{ app.name }}">
+                                                    <a class="dropdown-item" href="{{ url_for('gui.sessions') }}?app={{ app.name }}">
                                                         <i class="bi bi-three-dots me-2"></i>
                                                         View all ({{ app.sessions.filter_by(active=True).count() }})
                                                     </a>
@@ -186,7 +179,7 @@
                     </div>
                     {% endfor %}
                 </div>
-
+                
                 <!-- Quick Launch Section -->
                 {% if not search_query and not current_category %}
                 <hr class="my-4">
@@ -195,11 +188,11 @@
                         <h6 class="text-muted mb-3">Quick Launch</h6>
                         <div class="d-flex flex-wrap gap-2">
                             {% for app in applications[:6] %}
-                            <a href="{{ url_for('gui.launch_application', app_id=app.id) }}"
-                                class="btn btn-outline-primary btn-sm">
+                            <a href="{{ url_for('gui.launch_application', app_id=app.id) }}" 
+                               class="btn btn-outline-primary btn-sm">
                                 {% if app.icon_path %}
-                                <img src="{{ app.icon_path }}" alt="{{ app.name }}" class="me-1"
-                                    style="width: 16px; height: 16px;">
+                                <img src="{{ app.icon_path }}" alt="{{ app.name }}" 
+                                     class="me-1" style="width: 16px; height: 16px;">
                                 {% else %}
                                 <i class="bi bi-app me-1"></i>
                                 {% endif %}
@@ -210,7 +203,7 @@
                     </div>
                 </div>
                 {% endif %}
-
+                
                 {% else %}
                 <!-- No Applications State -->
                 <div class="text-center py-5">
@@ -254,31 +247,31 @@
 {% block scripts %}
 {{ super() }}
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // Auto-focus search input
-        const searchInput = document.getElementById('q');
-        if (searchInput && !searchInput.value) {
-            searchInput.focus();
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-focus search input
+    const searchInput = document.getElementById('q');
+    if (searchInput && !searchInput.value) {
+        searchInput.focus();
+    }
+    
+    // Handle Enter key in search
+    searchInput?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            this.form.submit();
         }
-
-        // Handle Enter key in search
-        searchInput?.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                this.form.submit();
-            }
-        });
-
-        // Quick launch keyboard shortcuts
-        document.addEventListener('keydown', function (e) {
-            if (e.ctrlKey && e.key >= '1' && e.key <= '6') {
-                e.preventDefault();
-                const index = parseInt(e.key) - 1;
-                const quickLaunchButtons = document.querySelectorAll('.btn-outline-primary[href*="launch"]');
-                if (quickLaunchButtons[index]) {
-                    quickLaunchButtons[index].click();
-                }
-            }
-        });
     });
+    
+    // Quick launch keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key >= '1' && e.key <= '6') {
+            e.preventDefault();
+            const index = parseInt(e.key) - 1;
+            const quickLaunchButtons = document.querySelectorAll('.btn-outline-primary[href*="launch"]');
+            if (quickLaunchButtons[index]) {
+                quickLaunchButtons[index].click();
+            }
+        }
+    });
+});
 </script>
 {% endblock %}
