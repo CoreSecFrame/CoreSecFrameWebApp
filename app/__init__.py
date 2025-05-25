@@ -97,6 +97,22 @@ def create_app(config_class=Config):
         app.register_blueprint(terminal_bp)
         app.register_blueprint(admin_bp)
         
+        try:
+            from app.gui import init_gui_module, register_gui_commands, gui_context_processor
+            
+            # Initialize GUI module (this will register the blueprint)
+            init_gui_module(app)
+            register_gui_commands(app)
+            
+            # Add GUI context processor
+            app.context_processor(gui_context_processor)
+            
+            log_system_event('gui_module_loaded', 'GUI module initialized successfully')
+            
+        except Exception as e:
+            app.logger.warning(f"GUI module initialization failed: {e}")
+            log_system_event('gui_module_error', f'GUI module failed to load: {e}')
+                 
         # Initialize socketio with app
         socketio.init_app(app, cors_allowed_origins="*")
         
