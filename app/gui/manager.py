@@ -377,28 +377,23 @@ class GUISessionManager:
     
     @classmethod
     def _start_x11vnc(cls, display_number, vnc_port):
-        """Start x11vnc server with better compatibility"""
+        """Start x11vnc server with proper input handling"""
         try:
             # Wait more time for Xvfb to be fully ready
             time.sleep(5)
-            
+                        
             cmd = [
                 'x11vnc',
                 '-display', f':{display_number}',
                 '-rfbport', str(vnc_port),
-                '-forever',      # Keep running after client disconnects
-                '-shared',       # Allow multiple clients
-                '-nopw',         # No password required
-                '-quiet',        # Reduce output
-                '-noxdamage',    # Disable X damage extension
-                '-noxfixes',     # Disable X fixes extension
-                '-noxinerama',   # Disable Xinerama
-                '-nobell',       # Disable bell
-                '-nosel',        # Disable selection/clipboard
-                '-nocursor',     # Don't show cursor changes
-                '-nowf',         # Don't wait for window manager
-                '-o', '/dev/null'  # Redirect output to null
+                '-forever',
+                '-shared',
+                '-nopw',
+                '-noxdamage',
+                '-quiet',
+                '-o', '/dev/null'
             ]
+
             
             current_app.logger.info(f"Starting x11vnc: {' '.join(cmd)}")
             
@@ -431,10 +426,10 @@ class GUISessionManager:
         except Exception as e:
             current_app.logger.error(f"Error starting x11vnc: {e}")
             return None
-    
+            
     @classmethod
     def _start_xvfb(cls, display_number, resolution, color_depth):
-        """Start Xvfb server with better extension support"""
+        """Start Xvfb server with input device support"""
         try:
             cmd = [
                 'Xvfb',
@@ -443,12 +438,18 @@ class GUISessionManager:
                 '-ac',  # Disable access control
                 '-nolisten', 'tcp',  # Don't listen on TCP
                 '-dpi', '96',  # Set DPI
-                '+extension', 'GLX',  # Enable GLX extension
-                '+extension', 'RANDR',  # Enable RANDR extension
-                '+extension', 'RENDER',  # Enable RENDER extension
-                '-extension', 'XTEST',  # Disable XTEST to avoid issues
-                '-extension', 'DPMS',   # Disable DPMS to avoid the error we saw
-                '-extension', 'SCREENSAVER'  # Disable screensaver extension
+                # EXTENSIONES PARA INPUT
+                '+extension', 'GLX',
+                '+extension', 'RANDR',
+                '+extension', 'RENDER',
+                '+extension', 'XFIXES',  # Habilitar XFIXES para cursor
+                '+extension', 'DAMAGE',  # Habilitar DAMAGE para actualizaciones
+                '+extension', 'COMPOSITE', # Habilitar compositing
+                # CONFIGURACIÓN DE INPUT
+                '-retro',  # Enable old-style cursor
+                # DESHABILITAR PROBLEMÁTICAS
+                '-extension', 'DPMS',
+                '-extension', 'SCREENSAVER'
             ]
             
             current_app.logger.info(f"Starting Xvfb: {' '.join(cmd)}")
@@ -457,7 +458,7 @@ class GUISessionManager:
                                     stderr=subprocess.DEVNULL)
             
             # Wait for Xvfb to start
-            time.sleep(3)
+            time.sleep(4)
             
             # Check if process is still running
             if process.poll() is None:
@@ -465,6 +466,10 @@ class GUISessionManager:
                 time.sleep(2)
                 if cls._is_display_in_use(display_number):
                     current_app.logger.info(f"Xvfb started successfully on :{display_number} (PID: {process.pid})")
+                    
+                    # Test input capabilities
+                    cls._test_display_input(display_number)
+                    
                     return process.pid
                 else:
                     current_app.logger.error(f"Xvfb process started but display :{display_number} not accessible")
@@ -477,14 +482,39 @@ class GUISessionManager:
         except Exception as e:
             current_app.logger.error(f"Error starting Xvfb: {e}")
             return None
+
+    @classmethod
+    def _test_display_input(cls, display_number):
+        """Test if display supports input events"""
+        try:
+            env = os.environ.copy()
+            env['DISPLAY'] = f':{display_number}'
+            
+            # Test if we can send a simple input event
+            result = subprocess.run(['xset', '-display', f':{display_number}', 'q'], 
+                                capture_output=True, timeout=5, env=env)
+            
+            if result.returncode == 0:
+                current_app.logger.info(f"Display :{display_number} input test passed")
+            else:
+                current_app.logger.warning(f"Display :{display_number} input test failed")
+                
+        except Exception as e:
+            current_app.logger.warning(f"Could not test display input: {e}")
     
     @classmethod
     def _start_application(cls, application, display_number):
-        """Start the GUI application"""
+        """Start the GUI application with optimized settings"""
         try:
             # Prepare environment
             env = os.environ.copy()
             env['DISPLAY'] = f':{display_number}'
+            
+            # CONFIGURACIÓN PARA MEJOR INTERACCIÓN
+            env['XLIB_SKIP_ARGB_VISUALS'] = '1'  # Evitar problemas visuales
+            env['QT_X11_NO_MITSHM'] = '1'       # Fix para Qt apps
+            env['GTK_THEME'] = 'Default'         # Tema GTK básico
+            env['GDK_SYNCHRONIZE'] = '1'         # Sincronización X11
             
             # Add application-specific environment variables
             app_env = application.get_environment_dict()
@@ -499,11 +529,11 @@ class GUISessionManager:
             current_app.logger.info(f"Starting application: {' '.join(cmd)} on display :{display_number}")
             
             process = subprocess.Popen(cmd, env=env, cwd=cwd,
-                                     stdout=subprocess.DEVNULL, 
-                                     stderr=subprocess.DEVNULL)
+                                    stdout=subprocess.DEVNULL, 
+                                    stderr=subprocess.DEVNULL)
             
             # Wait a moment and check if process is still running
-            time.sleep(1)
+            time.sleep(2)
             
             if process.poll() is None:
                 current_app.logger.info(f"Application started successfully (PID: {process.pid})")
@@ -583,7 +613,7 @@ class GUISessionManager:
 
     @classmethod
     def _start_novnc_proxy(cls, vnc_port, novnc_port):
-        """Start noVNC proxy for web access"""
+        """Start noVNC proxy with optimized settings"""
         try:
             novnc_path = cls._detect_novnc_path()
             if not novnc_path:
@@ -598,14 +628,17 @@ class GUISessionManager:
             cmd = [
                 proxy_script,
                 '--vnc', f'localhost:{vnc_port}',
-                '--listen', str(novnc_port)
+                '--listen', str(novnc_port),
+                '--web', novnc_path,  # Serve noVNC files
+                # '--cert', 'cert.pem',  # Uncomment for HTTPS
+                # '--key', 'key.pem'     # Uncomment for HTTPS
             ]
             
             current_app.logger.info(f"Starting noVNC proxy: {' '.join(cmd)}")
             
             process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, 
-                                     stderr=subprocess.DEVNULL,
-                                     cwd=novnc_path)
+                                    stderr=subprocess.DEVNULL,
+                                    cwd=novnc_path)
             
             # Wait for noVNC to start
             time.sleep(3)
