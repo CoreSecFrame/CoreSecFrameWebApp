@@ -228,6 +228,85 @@ def close_session(session_id):
     
     return redirect(url_for('gui.sessions'))
 
+@gui_bp.route('/<session_id>/delete', methods=['POST'])
+@login_required
+def delete_session(session_id):
+    """Delete a GUI session and all its data"""
+    try:
+        session = GUISession.query.filter_by(session_id=session_id, user_id=current_user.id).first_or_404()
+        
+        # First make sure it's closed
+        if session.active:
+            GUISessionManager.close_session(session_id, current_user.id)
+        
+        # Save name for flash message
+        session_name = session.name
+        
+        # Delete all related data
+        try:
+            # Delete session logs
+            deleted_logs = GUISessionLog.query.filter_by(session_id=session.session_id).delete()
+            
+            # Delete session
+            db.session.delete(session)
+            db.session.commit()
+            
+            current_app.logger.info(f"User {current_user.username} deleted GUI session {session_name} with {deleted_logs} log entries")
+            flash(f'GUI session "{session_name}" and all its data have been deleted', 'success')
+            
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Error deleting GUI session: {e}")
+            flash(f'Error deleting session: {str(e)}', 'danger')
+        
+        return redirect(url_for('gui.sessions'))
+        
+    except Exception as e:
+        current_app.logger.error(f"Error deleting GUI session {session_id}: {e}")
+        flash(f'An unexpected error occurred: {str(e)}', 'danger')
+        return redirect(url_for('gui.sessions'))
+
+@gui_bp.route('/api/session/<session_id>/delete', methods=['POST'])
+@login_required
+def api_delete_session(session_id):
+    """API endpoint to delete a session"""
+    try:
+        session = GUISession.query.filter_by(session_id=session_id, user_id=current_user.id).first()
+        
+        if not session:
+            return jsonify({'success': False, 'error': 'Session not found'}), 404
+        
+        # First close if active
+        if session.active:
+            success, message = GUISessionManager.close_session(session_id, current_user.id)
+            if not success:
+                return jsonify({'success': False, 'error': f'Failed to close session: {message}'}), 500
+        
+        session_name = session.name
+        
+        # Delete related data
+        deleted_logs = GUISessionLog.query.filter_by(session_id=session.session_id).delete()
+        
+        # Delete session
+        db.session.delete(session)
+        db.session.commit()
+        
+        current_app.logger.info(f"User {current_user.username} deleted GUI session {session_name} via API")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Session "{session_name}" deleted successfully',
+            'deleted_logs': deleted_logs
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"API error deleting GUI session {session_id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @gui_bp.route('/session/<session_id>/connect')
 @login_required
 def connect_session(session_id):

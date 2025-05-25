@@ -574,15 +574,36 @@ document.getElementById('addSelectedApps').addEventListener('click', function() 
 });
 
 // Helper function for notifications
+// Reemplazar la función showNotification en add_application.html con la misma de arriba
 function showNotification(message, type = 'info') {
     // Remove existing notifications
-    const existingNotifications = document.querySelectorAll('.notification-toast');
+    const existingNotifications = document.querySelectorAll('.gui-notification');
     existingNotifications.forEach(notification => notification.remove());
+    
+    // Create notification container if it doesn't exist
+    let notificationContainer = document.getElementById('notification-container');
+    if (!notificationContainer) {
+        notificationContainer = document.createElement('div');
+        notificationContainer.id = 'notification-container';
+        notificationContainer.style.cssText = `
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 400px;
+            pointer-events: none;
+        `;
+        document.body.appendChild(notificationContainer);
+    }
     
     // Create notification
     const notification = document.createElement('div');
-    notification.className = `alert alert-${type} notification-toast position-fixed shadow-lg alert-dismissible fade show`;
-    notification.style.cssText = 'top: 20px; right: 20px; z-index: 99999; min-width: 350px; max-width: 500px;';
+    notification.className = `alert alert-${type} gui-notification shadow-lg fade show`;
+    notification.style.cssText = `
+        margin-bottom: 10px;
+        pointer-events: auto;
+        animation: slideInRight 0.3s ease-out;
+    `;
     
     const iconMap = {
         'success': 'check-circle',
@@ -597,18 +618,18 @@ function showNotification(message, type = 'info') {
             <div class="flex-grow-1">
                 <div style="white-space: pre-line;">${message}</div>
             </div>
-            <button type="button" class="btn-close ms-2" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close ms-2" onclick="this.closest('.gui-notification').remove()"></button>
         </div>
     `;
     
-    document.body.appendChild(notification);
+    notificationContainer.appendChild(notification);
     
     // Auto-remove after 8 seconds
     setTimeout(() => {
         if (notification.parentNode) {
-            notification.remove();
+            notification.style.animation = 'slideOutRight 0.3s ease-in';
+            setTimeout(() => notification.remove(), 300);
         }
     }, 8000);
 }
-</script>
 {% endblock %}

@@ -360,27 +360,11 @@ function launchApplication() {
     
     // Launch via API
     GUI.launchApplication({{ application.id }}, config, function(data) {
+        // En la función launchApplication, cambiar esta parte:
         if (data.success) {
-            // Show success message
-            const alert = document.createElement('div');
-            alert.className = 'alert alert-success alert-dismissible fade show';
-            alert.innerHTML = `
-                <h6><i class="bi bi-check-circle me-2"></i>Application Launched Successfully!</h6>
-                <p class="mb-2">{{ application.display_name }} is starting up...</p>
-                <div class="d-flex gap-2">
-                    <a href="/gui/session/${data.session.session_id}" class="btn btn-sm btn-success">
-                        <i class="bi bi-display me-1"></i>View Session Details
-                    </a>
-                    <button type="button" class="btn btn-sm btn-outline-success" onclick="copyVNCInfo('${data.session.vnc_port}')">
-                        <i class="bi bi-clipboard me-1"></i>Copy VNC Connection
-                    </button>
-                </div>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            `;
-            
-            // Insert alert at top of page
-            const container = document.querySelector('.container-fluid');
-            container.insertBefore(alert, container.firstChild);
+            // Show success message (CAMBIAR ESTA SECCIÓN)
+            const message = `Application Launched Successfully!\n${data.session.application_name} is starting up...`;
+            showNotification(message, 'success');
             
             // Auto-redirect if requested
             if (document.getElementById('auto_connect').checked) {
@@ -388,19 +372,9 @@ function launchApplication() {
                     window.location.href = `/gui/session/${data.session.session_id}`;
                 }, 3000);
             }
-            
         } else {
-            // Show error message
-            const alert = document.createElement('div');
-            alert.className = 'alert alert-danger alert-dismissible fade show';
-            alert.innerHTML = `
-                <h6><i class="bi bi-exclamation-triangle me-2"></i>Launch Failed</h6>
-                <p class="mb-0">${data.error || 'Unknown error occurred'}</p>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            `;
-            
-            const container = document.querySelector('.container-fluid');
-            container.insertBefore(alert, container.firstChild);
+            // Show error message (CAMBIAR ESTA SECCIÓN)
+            showNotification(`Launch Failed: ${data.error || 'Unknown error occurred'}`, 'danger');
         }
         
         // Reset button

@@ -148,6 +148,58 @@
             height: 40px;
         }
     }
+
+        /* Notification animations */
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    @keyframes slideOutRight {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+
+    /* Notification container styles */
+    #notification-container {
+        position: fixed !important;
+        top: 80px !important;
+        right: 20px !important;
+        z-index: 9999 !important;
+        max-width: 400px !important;
+        pointer-events: none !important;
+    }
+
+    .gui-notification {
+        pointer-events: auto !important;
+        margin-bottom: 10px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important; /* Más sombra */
+        border: none !important;
+        border-radius: 8px !important;
+        opacity: 1 !important; /* Opacidad máxima */
+        background-color: white !important; /* Fondo completamente opaco */
+    }
+
+    /* Ensure notifications don't interfere with navbar */
+    .navbar {
+        z-index: 1030 !important;
+    }
+
+    #notification-container {
+        z-index: 1040 !important;
+    }
 </style>
 {% endblock %}
 
@@ -231,5 +283,64 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 30000);
     }
 });
+
+// Reemplazar la función showNotification existente por esta:
+function showNotification(message, type = 'info') {
+    // Remove existing notifications
+    const existingNotifications = document.querySelectorAll('.gui-notification');
+    existingNotifications.forEach(notification => notification.remove());
+    
+    // Create notification container if it doesn't exist
+    let notificationContainer = document.getElementById('notification-container');
+    if (!notificationContainer) {
+        notificationContainer = document.createElement('div');
+        notificationContainer.id = 'notification-container';
+        notificationContainer.style.cssText = `
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 400px;
+            pointer-events: none;
+        `;
+        document.body.appendChild(notificationContainer);
+    }
+    
+    // Create notification
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} gui-notification shadow-lg fade show`;
+    notification.style.cssText = `
+        margin-bottom: 10px;
+        pointer-events: auto;
+        animation: slideInRight 0.3s ease-out;
+    `;
+    
+    const iconMap = {
+        'success': 'check-circle',
+        'danger': 'exclamation-circle', 
+        'warning': 'exclamation-triangle',
+        'info': 'info-circle'
+    };
+    
+    notification.innerHTML = `
+        <div class="d-flex align-items-start">
+            <i class="bi bi-${iconMap[type] || 'info-circle'} me-2 mt-1"></i>
+            <div class="flex-grow-1">
+                <div style="white-space: pre-line;">${message}</div>
+            </div>
+            <button type="button" class="btn-close ms-2" onclick="this.closest('.gui-notification').remove()"></button>
+        </div>
+    `;
+    
+    notificationContainer.appendChild(notification);
+    
+    // Auto-remove after 8 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.style.animation = 'slideOutRight 0.3s ease-in';
+            setTimeout(() => notification.remove(), 300);
+        }
+    }, 8000);
+}
 </script>
 {% endblock %}
