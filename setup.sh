@@ -696,57 +696,47 @@ install_docker() {
     # Create Dockerfile
     print_status "Creating Dockerfile..."
     cat > "$DOCKER_DIR/Dockerfile" << 'EOF'
+# Dockerfile
 FROM python:3.11-slim
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV FLASK_APP=run.py
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Install system dependencies
+# Instalación de dependencias del sistema
 RUN apt-get update && apt-get install -y \
-    tmux \
+    sudo \
     git \
     curl \
-    sudo \
+    tmux \
+    xvfb \
+    x11vnc \
+    fluxbox \
+    python3-websockify \
+    novnc \
+    net-tools \
+    x11-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# Create app user
-RUN useradd -m -s /bin/bash coresecframe && \
-    echo 'coresecframe ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+# Crear usuario no root
+RUN useradd -ms /bin/bash coresecframe && echo "coresecframe ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
-# Set work directory
+USER coresecframe
+WORKDIR /home/coresecframe
+
+# Copiar el código de la aplicación
+COPY . /app
 WORKDIR /app
 
-# Copy requirements first for better caching
-COPY requirements.txt .
+# Crear y activar entorno virtual
+RUN python3 -m venv venv && \
+    . venv/bin/activate && \
+    pip install --upgrade pip && \
+    pip install -r requirements.txt
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Exponer puertos
+EXPOSE 5000 5900 6080
 
-# Copy application code
-COPY . .
-
-# Create required directories
-RUN mkdir -p logs modules instance && \
-    chown -R coresecframe:coresecframe /app && \
-    chmod -R 755 /app && \
-    chmod -R 777 logs modules instance
-
-# Switch to app user
-USER coresecframe
-
-# Copy and make entrypoint executable
-COPY docker/entrypoint.sh /entrypoint.sh
-USER root
-RUN chmod +x /entrypoint.sh
-USER coresecframe
-
-# Expose port
-EXPOSE 5000
-
-# Set entrypoint
-ENTRYPOINT ["/entrypoint.sh"]
+# Entrypoint de la aplicación
+ENTRYPOINT [ "bash", "entrypoint.sh" ]
 EOF
 
     # Create entrypoint script
