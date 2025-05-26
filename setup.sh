@@ -723,8 +723,8 @@ USER coresecframe
 WORKDIR /home/coresecframe
 
 # Copiar el código de la aplicación
-COPY . /app
-RUN chown -R coresecframe:coresecframe /app
+COPY --chown=coresecframe:coresecframe . /app
+
 
 USER coresecframe
 WORKDIR /app
