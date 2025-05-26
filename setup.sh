@@ -696,10 +696,12 @@ install_docker() {
     # Create Dockerfile
     print_status "Creating Dockerfile..."
     cat > "$DOCKER_DIR/Dockerfile" << 'EOF'
-# Dockerfile
 FROM python:3.11-slim
 
-ENV DEBIAN_FRONTEND=noninteractive
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV FLASK_APP=run.py
 
 # Instalación de dependencias del sistema
 RUN apt-get update && apt-get install -y \
@@ -719,27 +721,28 @@ RUN apt-get update && apt-get install -y \
 # Crear usuario no root
 RUN useradd -ms /bin/bash coresecframe && echo "coresecframe ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
-USER coresecframe
-WORKDIR /home/coresecframe
-
-# Copiar el código de la aplicación
-COPY --chown=coresecframe:coresecframe . /app
-
-
-USER coresecframe
+# Set working dir
 WORKDIR /app
 
-# Crear y activar entorno virtual
-RUN python3 -m venv venv && \
-    . venv/bin/activate && \
-    pip install --upgrade pip && \
-    pip install -r requirements.txt
+# Copy dependencies and install
+COPY requirements.txt .
 
-# Exponer puertos
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the full app, set ownership, and set permissions
+COPY --chown=coresecframe:coresecframe . /app
+
+# Ensure entrypoint is executable
+RUN chmod +x /app/docker/entrypoint.sh
+
+# Cambiar a usuario no root
+USER coresecframe
+
+# Exponer puertos necesarios
 EXPOSE 5000 5900 6080
 
-# Entrypoint de la aplicación
-ENTRYPOINT [ "bash", "entrypoint.sh" ]
+# Entry point
+ENTRYPOINT [ "bash", "/app/docker/entrypoint.sh" ]
 EOF
 
     # Create entrypoint script
