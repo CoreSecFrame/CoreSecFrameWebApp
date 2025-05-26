@@ -1,0 +1,346 @@
+<!-- app/templates/gui/base_gui.html -->
+{% extends "base.html" %}
+
+{% block head %}
+{{ super() }}
+<style>
+    .gui-card {
+        transition: all 0.3s ease;
+        border: none;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .gui-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    }
+    
+    .app-icon {
+        width: 48px;
+        height: 48px;
+        object-fit: contain;
+        border-radius: 8px;
+    }
+    
+    .app-icon-placeholder {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+    }
+    
+    .session-status-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 8px;
+    }
+    
+    .session-status-active {
+        background-color: #28a745;
+        box-shadow: 0 0 5px rgba(40, 167, 69, 0.5);
+    }
+    
+    .session-status-inactive {
+        background-color: #6c757d;
+    }
+    
+    .vnc-container {
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #000;
+        position: relative;
+    }
+    
+    .vnc-toolbar {
+        background: #343a40;
+        padding: 8px 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: white;
+        font-size: 0.875rem;
+    }
+    
+    .resolution-badge {
+        background: rgba(255,255,255,0.1);
+        color: white;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+    }
+    
+    .gui-stats-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border: none;
+        border-radius: 12px;
+    }
+    
+    .category-icon {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+        color: #6c757d;
+    }
+    
+    .launch-form {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .process-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.875rem;
+    }
+    
+    .process-running {
+        color: #28a745;
+    }
+    
+    .process-stopped {
+        color: #dc3545;
+    }
+    
+    .connect-button {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        border: none;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+    }
+    
+    .connect-button:hover {
+        background: linear-gradient(135deg, #1e7e34 0%, #1c7430 100%);
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+    }
+    
+    .session-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    @media (max-width: 768px) {
+        .session-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .app-icon, .app-icon-placeholder {
+            width: 40px;
+            height: 40px;
+        }
+    }
+
+        /* Notification animations */
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    @keyframes slideOutRight {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+
+    /* Notification container styles */
+    #notification-container {
+        position: fixed !important;
+        top: 80px !important;
+        right: 20px !important;
+        z-index: 9999 !important;
+        max-width: 400px !important;
+        pointer-events: none !important;
+    }
+
+    .gui-notification {
+        pointer-events: auto !important;
+        margin-bottom: 10px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important; /* Más sombra */
+        border: none !important;
+        border-radius: 8px !important;
+        opacity: 1 !important; /* Opacidad máxima */
+        background-color: white !important; /* Fondo completamente opaco */
+    }
+
+    /* Ensure notifications don't interfere with navbar */
+    .navbar {
+        z-index: 1030 !important;
+    }
+
+    #notification-container {
+        z-index: 1040 !important;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+// GUI module utilities
+window.GUI = {
+    // Refresh session status
+    refreshSessionStatus: function(sessionId, callback) {
+        fetch(`/gui/api/session/${sessionId}/status`)
+            .then(response => response.json())
+            .then(data => {
+                if (callback) callback(data);
+            })
+            .catch(error => {
+                console.error('Error refreshing session status:', error);
+            });
+    },
+    
+    // Close session via API
+    closeSession: function(sessionId, callback) {
+        fetch(`/gui/api/session/${sessionId}/close`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (callback) callback(data);
+        })
+        .catch(error => {
+            console.error('Error closing session:', error);
+        });
+    },
+    
+    // Launch application via API
+    launchApplication: function(appId, config, callback) {
+        fetch(`/gui/api/application/${appId}/launch`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify(config)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (callback) callback(data);
+        })
+        .catch(error => {
+            console.error('Error launching application:', error);
+        });
+    },
+    
+    // Update session indicators
+    updateSessionIndicators: function() {
+        document.querySelectorAll('[data-session-id]').forEach(element => {
+            const sessionId = element.getAttribute('data-session-id');
+            this.refreshSessionStatus(sessionId, (data) => {
+                if (data.success && data.status.exists) {
+                    const indicator = element.querySelector('.session-status-indicator');
+                    if (indicator) {
+                        indicator.className = data.status.active ? 
+                            'session-status-indicator session-status-active' :
+                            'session-status-indicator session-status-inactive';
+                    }
+                }
+            });
+        });
+    }
+};
+
+// Auto-refresh session status every 30 seconds
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.querySelector('[data-session-id]')) {
+        setInterval(() => {
+            GUI.updateSessionIndicators();
+        }, 30000);
+    }
+});
+
+// Reemplazar la función showNotification existente por esta:
+function showNotification(message, type = 'info') {
+    // Remove existing notifications
+    const existingNotifications = document.querySelectorAll('.gui-notification');
+    existingNotifications.forEach(notification => notification.remove());
+    
+    // Create notification container if it doesn't exist
+    let notificationContainer = document.getElementById('notification-container');
+    if (!notificationContainer) {
+        notificationContainer = document.createElement('div');
+        notificationContainer.id = 'notification-container';
+        notificationContainer.style.cssText = `
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 400px;
+            pointer-events: none;
+        `;
+        document.body.appendChild(notificationContainer);
+    }
+    
+    // Create notification
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} gui-notification shadow-lg fade show`;
+    notification.style.cssText = `
+        margin-bottom: 10px;
+        pointer-events: auto;
+        animation: slideInRight 0.3s ease-out;
+    `;
+    
+    const iconMap = {
+        'success': 'check-circle',
+        'danger': 'exclamation-circle', 
+        'warning': 'exclamation-triangle',
+        'info': 'info-circle'
+    };
+    
+    notification.innerHTML = `
+        <div class="d-flex align-items-start">
+            <i class="bi bi-${iconMap[type] || 'info-circle'} me-2 mt-1"></i>
+            <div class="flex-grow-1">
+                <div style="white-space: pre-line;">${message}</div>
+            </div>
+            <button type="button" class="btn-close ms-2" onclick="this.closest('.gui-notification').remove()"></button>
+        </div>
+    `;
+    
+    notificationContainer.appendChild(notification);
+    
+    // Auto-remove after 8 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.style.animation = 'slideOutRight 0.3s ease-in';
+            setTimeout(() => notification.remove(), 300);
+        }
+    }, 8000);
+}
+</script>
+{% endblock %}

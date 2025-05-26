@@ -1,0 +1,386 @@
+<!-- app/templates/gui/viewer.html -->
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+.gui-viewer-container {
+    background: #1a1a1a;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    position: relative;
+}
+
+.gui-viewer-header {
+    background: rgba(0, 0, 0, 0.8);
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.gui-viewer-content {
+    position: relative;
+    background: #000;
+    min-height: 600px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gui-display {
+    max-width: 100%;
+    max-height: 80vh;
+    border: none;
+    display: block;
+}
+
+.gui-controls {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 1000;
+}
+
+.gui-status {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-indicator.connected {
+    background-color: #00ff00;
+    box-shadow: 0 0 10px #00ff00;
+}
+
+.status-indicator.connecting {
+    background-color: #ffaa00;
+    animation: pulse 1s infinite;
+}
+
+.status-indicator.disconnected {
+    background-color: #ff0000;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.connection-info {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    z-index: 1000;
+}
+
+.gui-toolbar {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.75rem 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    z-index: 2000;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h2 fw-bold mb-1">{{ gui_session.name }}</h1>
+                <p class="text-muted mb-0">
+                    {{ gui_session.application_name }} • {{ gui_session.screen_width }}×{{ gui_session.screen_height }}
+                </p>
+            </div>
+            <div class="btn-group" role="group">
+                <a href="{{ url_for('gui.index') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back
+                </a>
+                {% if gui_session.active %}
+                <button type="button" class="btn btn-danger" onclick="closeGUISession()">
+                    <i class="bi bi-x-circle"></i> Close Session
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GUI Viewer -->
+<div class="row">
+    <div class="col-12">
+        <div class="gui-viewer-container">
+            <div class="gui-viewer-header">
+                <div class="gui-status">
+                    <div class="status-indicator disconnected" id="statusIndicator"></div>
+                    <span class="text-white fw-semibold" id="statusText">Connecting...</span>
+                </div>
+                
+                <div class="gui-controls">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button class="btn btn-dark" onclick="toggleFullscreen()" title="Fullscreen">
+                            <i class="bi bi-arrows-fullscreen"></i>
+                        </button>
+                        <button class="btn btn-dark" onclick="fitToScreen()" title="Fit to Screen">
+                            <i class="bi bi-aspect-ratio"></i>
+                        </button>
+                        <button class="btn btn-dark" onclick="showSettings()" title="Settings">
+                            <i class="bi bi-gear"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="gui-viewer-content" id="guiViewerContent">
+                <div class="loading-overlay" id="loadingOverlay">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <h5>Initializing GUI Session</h5>
+                    <p class="text-muted">Connecting to {{ gui_session.application_name }}...</p>
+                </div>
+                
+                <div class="connection-info" id="connectionInfo" style="display: none;">
+                    <div>Resolution: <span id="displayResolution">{{ gui_session.screen_width }}×{{ gui_session.screen_height }}</span></div>
+                    <div>FPS: <span id="displayFPS">0</span></div>
+                    <div>Latency: <span id="displayLatency">0ms</span></div>
+                </div>
+            </div>
+            
+            <div class="gui-toolbar">
+                <div class="text-white small">
+                    Session: {{ gui_session.session_id[:8] }}... • 
+                    Started: {{ gui_session.start_time.strftime('%H:%M') }}
+                </div>
+                
+                <div class="btn-group btn-group-sm" role="group">
+                    <button class="btn btn-outline-light btn-sm" onclick="sendCtrlAltDel()" title="Ctrl+Alt+Del">
+                        <i class="bi bi-keyboard"></i> Ctrl+Alt+Del
+                    </button>
+                    <button class="btn btn-outline-light btn-sm" onclick="sendAltTab()" title="Alt+Tab">
+                        <i class="bi bi-window"></i> Alt+Tab
+                    </button>
+                    <button class="btn btn-outline-light btn-sm" onclick="showOnScreenKeyboard()" title="Virtual Keyboard">
+                        <i class="bi bi-keyboard-fill"></i> Keyboard
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal fade" id="settingsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Display Settings</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Video Quality</label>
+                    <select class="form-select" id="qualitySelect">
+                        <option value="high">High Quality</option>
+                        <option value="medium" selected>Medium Quality</option>
+                        <option value="low">Low Quality</option>
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Frame Rate</label>
+                    <select class="form-select" id="frameRateSelect">
+                        <option value="60">60 FPS</option>
+                        <option value="30" selected>30 FPS</option>
+                        <option value="15">15 FPS</option>
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="scaleToFitCheck" checked>
+                        <label class="form-check-label" for="scaleToFitCheck">
+                            Scale to fit window
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="showStatsCheck">
+                        <label class="form-check-label" for="showStatsCheck">
+                            Show connection statistics
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="applySettings()">Apply Settings</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/webrtc-client.js') }}"></script>
+<script>
+let guiClient = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize GUI WebRTC client
+    const container = document.getElementById('guiViewerContent');
+    
+    guiClient = new GUIWebRTCClient('{{ gui_session.session_id }}', container, {
+        autoConnect: true,
+        enableInput: {{ 'true' if gui_session.active else 'false' }},
+        scaleToFit: true,
+        quality: 'medium',
+        frameRate: {{ gui_session.frame_rate or 30 }},
+        onConnected: onGUIConnected,
+        onWebRTCConnected: onWebRTCConnected,
+        onWebRTCDisconnected: onWebRTCDisconnected,
+        onError: onGUIError
+    });
+});
+
+function onGUIConnected(data) {
+    document.getElementById('loadingOverlay').style.display = 'none';
+    document.getElementById('statusIndicator').className = 'status-indicator connected';
+    document.getElementById('statusText').textContent = 'Connected';
+    
+    if (data.screen_resolution) {
+        document.getElementById('displayResolution').textContent = 
+            `${data.screen_resolution.width}×${data.screen_resolution.height}`;
+    }
+}
+
+function onWebRTCConnected() {
+    document.getElementById('statusText').textContent = 'WebRTC Connected';
+}
+
+function onWebRTCDisconnected() {
+    document.getElementById('statusText').textContent = 'Fallback Mode';
+}
+
+function onGUIError(message, error) {
+    document.getElementById('statusIndicator').className = 'status-indicator disconnected';
+    document.getElementById('statusText').textContent = 'Connection Error';
+    console.error('GUI Error:', message, error);
+}
+
+function toggleFullscreen() {
+    const container = document.querySelector('.gui-viewer-container');
+    if (!document.fullscreenElement) {
+        container.requestFullscreen().catch(err => {
+            console.error('Error entering fullscreen:', err);
+        });
+    } else {
+        document.exitFullscreen();
+    }
+}
+
+function fitToScreen() {
+    if (guiClient) {
+        guiClient.options.scaleToFit = !guiClient.options.scaleToFit;
+        guiClient.handleResize();
+    }
+}
+
+function showSettings() {
+    const modal = new bootstrap.Modal(document.getElementById('settingsModal'));
+    modal.show();
+}
+
+function applySettings() {
+    const quality = document.getElementById('qualitySelect').value;
+    const frameRate = parseInt(document.getElementById('frameRateSelect').value);
+    const scaleToFit = document.getElementById('scaleToFitCheck').checked;
+    const showStats = document.getElementById('showStatsCheck').checked;
+    
+    if (guiClient) {
+        guiClient.options.quality = quality;
+        guiClient.options.frameRate = frameRate;
+        guiClient.options.scaleToFit = scaleToFit;
+        
+        // Show/hide stats
+        const statsElement = document.getElementById('connectionInfo');
+        statsElement.style.display = showStats ? 'block' : 'none';
+        
+        guiClient.handleResize();
+    }
+    
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('settingsModal'));
+    modal.hide();
+}
+
+function sendCtrlAltDel() {
+    if (guiClient) {
+        guiClient.sendInputEvent('key_combination', {
+            keys: ['ctrl', 'alt', 'Delete']
+        });
+    }
+}
+
+function sendAltTab() {
+    if (guiClient) {
+        guiClient.sendInputEvent('key_combination', {
+            keys: ['alt', 'Tab']
+        });
+    }
+}
+
+function showOnScreenKeyboard() {
+    // Implement virtual keyboard
+    alert('Virtual keyboard not implemented yet');
+}
+
+function closeGUISession() {
+    if (confirm('Are you sure you want to close this GUI session?\n\nThis will terminate the running application.')) {
+        window.location.href = '{{ url_for("gui.close_session", session_id=gui_session.session_id) }}';
+    }
+}
+
+// Update stats periodically
+setInterval(() => {
+    if (guiClient && guiClient.stats) {
+        document.getElementById('displayFPS').textContent = Math.round(guiClient.stats.fps);
+        document.getElementById('displayLatency').textContent = guiClient.stats.latency + 'ms';
+    }
+}, 1000);
+</script>
+{% endblock %}

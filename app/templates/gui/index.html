@@ -1,0 +1,378 @@
+<!-- app/templates/gui/index.html -->
+{% extends "gui/base_gui.html" %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h2 fw-bold mb-1">
+                    <i class="bi bi-display me-2"></i>GUI Applications
+                </h1>
+                <p class="text-muted mb-0">Launch and manage graphical applications</p>
+            </div>
+            <div class="btn-group" role="group">
+                <a href="{{ url_for('gui.sessions') }}" class="btn btn-outline-primary">
+                    <i class="bi bi-layers me-1"></i>My Sessions
+                </a>
+                <a href="{{ url_for('gui.applications') }}" class="btn btn-primary">
+                    <i class="bi bi-grid-3x3-gap me-1"></i>All Applications
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card gui-stats-card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-app-indicator text-primary mb-2" style="font-size: 2rem;"></i>
+                <h3 class="mb-1">{{ applications|length }}</h3>
+                <p class="text-muted mb-0 small">Available Apps</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card gui-stats-card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-play-circle text-success mb-2" style="font-size: 2rem;"></i>
+                <h3 class="mb-1">{{ active_sessions|length }}</h3>
+                <p class="text-muted mb-0 small">Active Sessions</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card gui-stats-card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-collection text-info mb-2" style="font-size: 2rem;"></i>
+                <h3 class="mb-1">{{ categories|length }}</h3>
+                <p class="text-muted mb-0 small">Categories</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card gui-stats-card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-display text-warning mb-2" style="font-size: 2rem;"></i>
+                <h3 class="mb-1">{{ current_user.gui_sessions.filter_by(active=True).count() }}</h3>
+                <p class="text-muted mb-0 small">My Active</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Active Sessions -->
+{% if active_sessions %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0 fw-semibold">
+                    <i class="bi bi-play-circle me-2"></i>Your Active Sessions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="session-grid">
+                    {% for session in active_sessions %}
+                    <div class="card gui-card" data-session-id="{{ session.session_id }}">
+                        <div class="card-body">
+                            <div class="d-flex align-items-start justify-content-between mb-3">
+                                <div class="d-flex align-items-center">
+                                    {% if session.application.icon_path %}
+                                    <img src="{{ session.application.icon_path }}" alt="{{ session.application.name }}" class="app-icon me-3">
+                                    {% else %}
+                                    <div class="app-icon-placeholder me-3">
+                                        <i class="bi bi-app"></i>
+                                    </div>
+                                    {% endif %}
+                                    <div>
+                                        <h6 class="mb-1">{{ session.name }}</h6>
+                                        <p class="text-muted small mb-0">{{ session.application.display_name }}</p>
+                                    </div>
+                                </div>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                        <i class="bi bi-three-dots"></i>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li>
+                                            <a class="dropdown-item" href="{{ url_for('gui.connect_session', session_id=session.session_id) }}">
+                                                <i class="bi bi-display me-2"></i>Connect
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="{{ url_for('gui.session_detail', session_id=session.session_id) }}">
+                                                <i class="bi bi-info-circle me-2"></i>Details
+                                            </a>
+                                        </li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <button class="dropdown-item text-danger" onclick="closeSessionConfirm('{{ session.session_id }}', '{{ session.name }}')">
+                                                <i class="bi bi-x-circle me-2"></i>Close Session
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <div class="row text-center mb-3">
+                                <div class="col-4">
+                                    <small class="text-muted d-block">Display</small>
+                                    <strong>:{{ session.display_number }}</strong>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted d-block">VNC Port</small>
+                                    <strong>{{ session.vnc_port }}</strong>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted d-block">Resolution</small>
+                                    <strong>{{ session.screen_resolution }}</strong>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div class="d-flex align-items-center">
+                                    <span class="session-status-indicator session-status-active"></span>
+                                    <small class="text-success">Active {{ session.get_duration() }}</small>
+                                </div>
+                                <a href="{{ url_for('gui.connect_session', session_id=session.session_id) }}" 
+                                   class="btn btn-sm btn-success">
+                                    <i class="bi bi-display me-1"></i>Connect
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Applications by Category -->
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0 fw-semibold">
+                    <i class="bi bi-grid-3x3-gap me-2"></i>Available Applications
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if applications %}
+                <!-- Category Tabs -->
+                <ul class="nav nav-pills mb-4" id="categoryTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="all-tab" data-bs-toggle="pill" data-bs-target="#all-apps" type="button" role="tab">
+                            <i class="bi bi-grid-3x3-gap me-1"></i>All Applications
+                        </button>
+                    </li>
+                    {% for category in categories %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="{{ category.name }}-tab" data-bs-toggle="pill" data-bs-target="#{{ category.name }}-apps" type="button" role="tab">
+                            <i class="{{ category.icon_class or 'bi-folder' }} me-1"></i>{{ category.display_name }}
+                        </button>
+                    </li>
+                    {% endfor %}
+                </ul>
+
+                <!-- Tab Content -->
+                <div class="tab-content" id="categoryTabsContent">
+                    <!-- All Applications -->
+                    <div class="tab-pane fade show active" id="all-apps" role="tabpanel">
+                        <div class="row g-3">
+                            {% for app in applications %}
+                            <div class="col-md-6 col-lg-4">
+                                <div class="card gui-card h-100">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-start mb-3">
+                                            {% if app.icon_path %}
+                                            <img src="{{ app.icon_path }}" alt="{{ app.name }}" class="app-icon me-3">
+                                            {% else %}
+                                            <div class="app-icon-placeholder me-3">
+                                                <i class="bi bi-app"></i>
+                                            </div>
+                                            {% endif %}
+                                            <div class="flex-grow-1">
+                                                <h6 class="mb-1">{{ app.display_name }}</h6>
+                                                <p class="text-muted small mb-2">{{ app.description|truncate(60) }}</p>
+                                                <span class="badge bg-light text-dark">{{ app.category or 'Uncategorized' }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="d-grid gap-2">
+                                            <a href="{{ url_for('gui.launch_application', app_id=app.id) }}" 
+                                               class="btn btn-primary btn-sm">
+                                                <i class="bi bi-play-fill me-1"></i>Launch
+                                            </a>
+                                            <a href="{{ url_for('gui.application_detail', app_id=app.id) }}" 
+                                               class="btn btn-outline-secondary btn-sm">
+                                                <i class="bi bi-info-circle me-1"></i>Details
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Category-specific tabs -->
+                    {% for category_name, category_apps in apps_by_category.items() %}
+                    <div class="tab-pane fade" id="{{ category_name }}-apps" role="tabpanel">
+                        <div class="row g-3">
+                            {% for app in category_apps %}
+                            <div class="col-md-6 col-lg-4">
+                                <div class="card gui-card h-100">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-start mb-3">
+                                            {% if app.icon_path %}
+                                            <img src="{{ app.icon_path }}" alt="{{ app.name }}" class="app-icon me-3">
+                                            {% else %}
+                                            <div class="app-icon-placeholder me-3">
+                                                <i class="bi bi-app"></i>
+                                            </div>
+                                            {% endif %}
+                                            <div class="flex-grow-1">
+                                                <h6 class="mb-1">{{ app.display_name }}</h6>
+                                                <p class="text-muted small mb-0">{{ app.description|truncate(60) }}</p>
+                                            </div>
+                                        </div>
+                                        <div class="d-grid gap-2">
+                                            <a href="{{ url_for('gui.launch_application', app_id=app.id) }}" 
+                                               class="btn btn-primary btn-sm">
+                                                <i class="bi bi-play-fill me-1"></i>Launch
+                                            </a>
+                                            <a href="{{ url_for('gui.application_detail', app_id=app.id) }}" 
+                                               class="btn btn-outline-secondary btn-sm">
+                                                <i class="bi bi-info-circle me-1"></i>Details
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="col-12">
+                                <div class="text-center py-4">
+                                    <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
+                                    <h5 class="mt-3">No applications in this category</h5>
+                                    <p class="text-muted">Check back later for new applications.</p>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <!-- No Applications State -->
+                <div class="text-center py-5">
+                    <i class="bi bi-app-indicator text-muted" style="font-size: 4rem;"></i>
+                    <h4 class="mt-3">No GUI Applications Available</h4>
+                    <p class="text-muted mb-4">No GUI applications have been configured yet.</p>
+                    {% if current_user.is_admin() %}
+                    <div class="alert alert-info">
+                        <h6><i class="bi bi-info-circle me-1"></i>Administrator Note</h6>
+                        <p class="mb-2">You can initialize default applications using the CLI command:</p>
+                        <code>flask gui-init</code>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Close Session Modal -->
+<div class="modal fade" id="closeSessionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Close GUI Session</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to close the session <strong id="sessionNameToClose"></strong>?</p>
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    This will terminate the GUI application and close the VNC connection.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmCloseSession">
+                    <i class="bi bi-x-circle me-1"></i>Close Session
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+let sessionToClose = null;
+
+function closeSessionConfirm(sessionId, sessionName) {
+    sessionToClose = sessionId;
+    document.getElementById('sessionNameToClose').textContent = sessionName;
+    new bootstrap.Modal(document.getElementById('closeSessionModal')).show();
+}
+
+document.getElementById('confirmCloseSession').addEventListener('click', function() {
+    if (sessionToClose) {
+        const button = this;
+        const originalText = button.innerHTML;
+        
+        // Show loading state
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Closing...';
+        button.disabled = true;
+        
+        GUI.closeSession(sessionToClose, function(data) {
+            if (data.success) {
+                // Hide modal
+                bootstrap.Modal.getInstance(document.getElementById('closeSessionModal')).hide();
+                
+                // Show success message
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-success alert-dismissible fade show';
+                alert.innerHTML = `
+                    <i class="bi bi-check-circle me-2"></i>Session closed successfully
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.querySelector('.container-fluid').insertBefore(alert, document.querySelector('.row'));
+                
+                // Remove session card from DOM
+                const sessionCard = document.querySelector(`[data-session-id="${sessionToClose}"]`);
+                if (sessionCard) {
+                    sessionCard.closest('.col-md-6, .col-lg-4, .card').remove();
+                }
+                
+                // Update stats
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+                
+            } else {
+                alert('Error closing session: ' + (data.message || 'Unknown error'));
+            }
+            
+            // Reset button
+            button.innerHTML = originalText;
+            button.disabled = false;
+            sessionToClose = null;
+        });
+    }
+});
+
+// Auto-refresh active sessions every 30 seconds
+setInterval(function() {
+    GUI.updateSessionIndicators();
+}, 30000);
+</script>
+{% endblock %}

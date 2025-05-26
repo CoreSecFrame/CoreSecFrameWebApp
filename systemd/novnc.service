@@ -1,0 +1,17 @@
+[Unit]
+Description=noVNC Web Client
+After=network.target
+Wants=coresecframe.service
+
+[Service]
+Type=simple
+User=sdksdk
+Group=sdksdk
+WorkingDirectory=/usr/share/novnc
+ExecStart=/usr/bin/websockify --web /usr/share/novnc 6080 localhost:5900
+Restart=always
+RestartSec=3
+Environment=HOME=/home/sdksdk
+
+[Install]
+WantedBy=multi-user.target

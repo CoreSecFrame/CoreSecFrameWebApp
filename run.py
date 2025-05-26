@@ -1,4 +1,5 @@
 from app import create_app, socketio
+from app.gui.models import GUIApplication, GUISession, GUICategory, GUISessionLog
 
 app = create_app()
 

@@ -93,7 +93,45 @@ check_requirements() {
     else
         print_status "git is available"
     fi
+
+    print_status "Checking noVNC requirements..."
+    if ! command -v websockify &> /dev/null; then
+        gui_missing+=("websockify")
+    fi
+
+    # Check if noVNC is available or can be installed
+    if [ ! -d "/usr/share/novnc" ] && [ ! -d "./novnc" ]; then
+        print_status "noVNC not found, will be installed automatically"
+    fi
     
+    if [ ${#gui_missing[@]} -ne 0 ]; then
+        print_warning "Missing GUI dependencies: ${gui_missing[*]}"
+        print_status "Installing GUI dependencies..."
+        
+        if command -v apt-get &> /dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y "${gui_missing[@]}" python3-websockify novnc
+        elif command -v yum &> /dev/null; then
+            sudo yum install -y "${gui_missing[@]}" python3-websockify
+            # Install noVNC manually for RHEL/CentOS
+            install_novnc_manual
+        elif command -v dnf &> /dev/null; then
+            sudo dnf install -y "${gui_missing[@]}" python3-websockify
+            # Install noVNC manually for Fedora
+            install_novnc_manual
+        else
+            print_error "Cannot install GUI dependencies automatically. Please install: ${gui_missing[*]}"
+            print_warning "GUI module will be disabled without these dependencies"
+        fi
+    else
+        print_success "GUI requirements satisfied"
+    fi
+
+    # Install noVNC if not available
+    if [ ! -d "/usr/share/novnc" ] && [ ! -d "./novnc" ]; then
+        install_novnc_manual
+    fi
+
     # Install missing dependencies
     if [ ${#missing_deps[@]} -ne 0 ]; then
         print_warning "Missing dependencies: ${missing_deps[*]}"
@@ -167,6 +205,7 @@ from app.auth.models import User
 from app.modules.models import Module, ModuleCategory
 from app.terminal.models import TerminalSession, TerminalLog, TerminalLogSummary
 from app.core.models import SystemLog, LogSearchQuery, SystemMetric
+from app.gui.models import GUIApplication, GUISession, GUICategory, GUISessionLog
 from datetime import datetime
 
 def initialize_database():
@@ -243,11 +282,67 @@ def initialize_database():
             db.session.add(category)
             print(f"  ✅ {category.name}")
         
+        # Create GUI categories (structure only, no example apps)
+        print("\n🖥️  Creating GUI application categories...")
+        gui_categories = [
+            GUICategory(
+                name='browsers',
+                display_name='Web Browsers',
+                description='Web browsing applications',
+                icon_class='bi-globe',
+                sort_order=1
+            ),
+            GUICategory(
+                name='editors',
+                display_name='Text Editors',
+                description='Text and code editors',
+                icon_class='bi-file-text',
+                sort_order=2
+            ),
+            GUICategory(
+                name='terminals',
+                display_name='Terminal Emulators',
+                description='Terminal applications',
+                icon_class='bi-terminal',
+                sort_order=3
+            ),
+            GUICategory(
+                name='utilities',
+                display_name='Utilities',
+                description='System utilities and tools',
+                icon_class='bi-tools',
+                sort_order=4
+            ),
+            GUICategory(
+                name='development',
+                display_name='Development',
+                description='Development tools and IDEs',
+                icon_class='bi-code-slash',
+                sort_order=5
+            ),
+            GUICategory(
+                name='multimedia',
+                display_name='Multimedia',
+                description='Audio and video applications',
+                icon_class='bi-play-btn',
+                sort_order=6
+            )
+        ]
+        
+        for category in gui_categories:
+            db.session.add(category)
+            print(f"  ✅ GUI: {category.display_name}")
+        
         # Commit the changes
         print("\n💾 Committing changes to database...")
         db.session.commit()
         
         print("\n🎉 Database initialization completed successfully!")
+        print("\n📋 Summary:")
+        print(f"  • Users: 2 (admin, user)")
+        print(f"  • Module categories: {len(categories)}")
+        print(f"  • GUI categories: {len(gui_categories)}")
+        print(f"  • GUI applications: 0 (use 'flask gui-init' to add)")
         
         return True
 
@@ -255,6 +350,10 @@ if __name__ == '__main__':
     try:
         if initialize_database():
             print("✅ Database is ready for use!")
+            print("\n🔧 Next steps:")
+            print("  1. Start the application: python run.py")
+            print("  2. Add GUI applications: flask gui-init")
+            print("  3. Access web interface: http://localhost:5000")
         else:
             print("❌ Database initialization failed!")
             sys.exit(1)
@@ -300,6 +399,127 @@ reset_database() {
     echo
 }
 
+# Function to install noVNC manually
+# Function to install noVNC manually
+install_novnc_manual() {
+    print_status "Installing noVNC manually..."
+    
+    if [ ! -d "$SCRIPT_DIR/novnc" ]; then
+        print_status "Downloading noVNC..."
+        if git clone https://github.com/novnc/noVNC.git "$SCRIPT_DIR/novnc"; then
+            print_success "noVNC downloaded successfully"
+            
+            # Make sure it's accessible
+            chmod -R 755 "$SCRIPT_DIR/novnc"
+            
+            print_status "noVNC installed to $SCRIPT_DIR/novnc"
+        else
+            print_warning "Failed to download noVNC. GUI module may have limited functionality."
+            return 1
+        fi
+    else
+        print_status "noVNC already exists in $SCRIPT_DIR/novnc"
+    fi
+    
+    return 0
+}
+
+# Function to setup noVNC service
+# Function to setup noVNC service
+setup_novnc_service() {
+    print_header "=== noVNC Web Service Setup ==="
+    
+    read -p "Would you like to set up noVNC web service for browser-based VNC access? (y/N): " setup_novnc
+    
+    if [[ $setup_novnc =~ ^[Yy]$ ]]; then
+        print_status "Setting up noVNC service..."
+        
+        # Create systemd directory if it doesn't exist
+        mkdir -p "$SYSTEMD_DIR"
+        
+        # Check if websockify is available
+        if ! command -v websockify &> /dev/null; then
+            print_error "websockify not found. Please install it first:"
+            echo "  Ubuntu/Debian: sudo apt-get install websockify"
+            echo "  RHEL/CentOS: sudo yum install python3-websockify"
+            echo "  Fedora: sudo dnf install python3-websockify"
+            return 1
+        fi
+        
+        # Determine noVNC path
+        NOVNC_PATH=""
+        if [ -d "/usr/share/novnc" ]; then
+            NOVNC_PATH="/usr/share/novnc"
+        elif [ -d "$SCRIPT_DIR/novnc" ]; then
+            NOVNC_PATH="$SCRIPT_DIR/novnc"
+        else
+            print_warning "noVNC not found. Installing it now..."
+            install_novnc_manual
+            NOVNC_PATH="$SCRIPT_DIR/novnc"
+        fi
+        
+        # Create noVNC systemd service
+        cat > "$SYSTEMD_DIR/novnc.service" << EOF
+[Unit]
+Description=noVNC Web Client
+After=network.target
+Wants=coresecframe.service
+
+[Service]
+Type=simple
+User=$USER
+Group=$USER
+WorkingDirectory=$NOVNC_PATH
+ExecStart=/usr/bin/websockify --web $NOVNC_PATH 6080 localhost:5900
+Restart=always
+RestartSec=3
+Environment=HOME=/home/$USER
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+        # Install service
+        if sudo cp "$SYSTEMD_DIR/novnc.service" /etc/systemd/system/; then
+            sudo systemctl daemon-reload
+            sudo systemctl enable novnc.service
+            
+            print_success "noVNC service created and enabled"
+            print_status "noVNC will be available at: http://localhost:6080"
+            print_status "Service commands:"
+            echo "  Start:   sudo systemctl start novnc"
+            echo "  Stop:    sudo systemctl stop novnc"
+            echo "  Status:  sudo systemctl status novnc"
+            
+            read -p "Would you like to start the noVNC service now? (y/N): " start_novnc
+            if [[ $start_novnc =~ ^[Yy]$ ]]; then
+                if sudo systemctl start novnc; then
+                    print_success "noVNC service started!"
+                    print_status "Access noVNC at: http://localhost:6080"
+                    
+                    # Give it a moment to start
+                    sleep 2
+                    if systemctl is-active --quiet novnc; then
+                        print_success "noVNC service is running correctly"
+                    else
+                        print_warning "noVNC service may not be running correctly"
+                        print_status "Check status with: sudo systemctl status novnc"
+                    fi
+                else
+                    print_error "Failed to start noVNC service"
+                    print_status "Check logs with: sudo journalctl -u novnc -f"
+                fi
+            fi
+        else
+            print_error "Failed to install noVNC service"
+        fi
+    else
+        print_status "Skipping noVNC web service setup"
+        print_status "You can still use native VNC clients to connect directly"
+    fi
+    echo
+}
+
 # Function for local installation
 install_local() {
     print_header "=== Local Installation ==="
@@ -328,6 +548,7 @@ install_local() {
     
     # Set up systemd service (optional)
     setup_systemd_service
+    setup_novnc_service
     
     print_success "Local installation completed!"
     echo
@@ -475,57 +696,47 @@ install_docker() {
     # Create Dockerfile
     print_status "Creating Dockerfile..."
     cat > "$DOCKER_DIR/Dockerfile" << 'EOF'
+# Dockerfile
 FROM python:3.11-slim
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV FLASK_APP=run.py
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Install system dependencies
+# Instalación de dependencias del sistema
 RUN apt-get update && apt-get install -y \
-    tmux \
+    sudo \
     git \
     curl \
-    sudo \
+    tmux \
+    xvfb \
+    x11vnc \
+    fluxbox \
+    python3-websockify \
+    novnc \
+    net-tools \
+    x11-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# Create app user
-RUN useradd -m -s /bin/bash coresecframe && \
-    echo 'coresecframe ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+# Crear usuario no root
+RUN useradd -ms /bin/bash coresecframe && echo "coresecframe ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
-# Set work directory
+USER coresecframe
+WORKDIR /home/coresecframe
+
+# Copiar el código de la aplicación
+COPY . /app
 WORKDIR /app
 
-# Copy requirements first for better caching
-COPY requirements.txt .
+# Crear y activar entorno virtual
+RUN python3 -m venv venv && \
+    . venv/bin/activate && \
+    pip install --upgrade pip && \
+    pip install -r requirements.txt
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Exponer puertos
+EXPOSE 5000 5900 6080
 
-# Copy application code
-COPY . .
-
-# Create required directories
-RUN mkdir -p logs modules instance && \
-    chown -R coresecframe:coresecframe /app && \
-    chmod -R 755 /app && \
-    chmod -R 777 logs modules instance
-
-# Switch to app user
-USER coresecframe
-
-# Copy and make entrypoint executable
-COPY docker/entrypoint.sh /entrypoint.sh
-USER root
-RUN chmod +x /entrypoint.sh
-USER coresecframe
-
-# Expose port
-EXPOSE 5000
-
-# Set entrypoint
-ENTRYPOINT ["/entrypoint.sh"]
+# Entrypoint de la aplicación
+ENTRYPOINT [ "bash", "entrypoint.sh" ]
 EOF
 
     # Create entrypoint script

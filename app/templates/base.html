@@ -60,6 +60,12 @@
                                 <i class="bi bi-terminal me-1"></i> Terminal
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint and 'gui' in request.endpoint %}active{% endif %}" 
+                               href="{{ url_for('gui.index') }}">
+                                <i class="bi bi-display me-1"></i> GUI Apps
+                            </a>
+                        </li>
                         {% endif %}
                     </ul>
 

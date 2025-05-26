@@ -1,0 +1,399 @@
+<!-- app/templates/gui/launch_application.html -->
+{% extends "gui/base_gui.html" %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h2 fw-bold mb-1">
+                    <i class="bi bi-play-fill me-2"></i>Launch Application
+                </h1>
+                <p class="text-muted mb-0">Configure and launch {{ application.display_name }}</p>
+            </div>
+            <div class="btn-group" role="group">
+                <a href="{{ url_for('gui.application_detail', app_id=application.id) }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Details
+                </a>
+                <a href="{{ url_for('gui.index') }}" class="btn btn-secondary">
+                    <i class="bi bi-house me-1"></i>GUI Home
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Application Info -->
+    <div class="col-lg-4 mb-4">
+        <div class="card border-0 shadow-sm sticky-top" style="top: 1rem;">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0 fw-semibold">
+                    <i class="bi bi-info-circle me-2"></i>Application Info
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    {% if application.icon_path %}
+                    <img src="{{ application.icon_path }}" alt="{{ application.name }}" class="app-icon mb-3" style="width: 80px; height: 80px;">
+                    {% else %}
+                    <div class="app-icon-placeholder mb-3 mx-auto" style="width: 80px; height: 80px; font-size: 2rem;">
+                        <i class="bi bi-app"></i>
+                    </div>
+                    {% endif %}
+                    <h5>{{ application.display_name }}</h5>
+                    <p class="text-muted">{{ application.description }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-muted mb-2">Technical Details</h6>
+                    <table class="table table-sm">
+                        <tr>
+                            <td><strong>Command:</strong></td>
+                            <td><code class="small">{{ application.command }}</code></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Category:</strong></td>
+                            <td><span class="badge bg-light text-dark">{{ application.category or 'Uncategorized' }}</span></td>
+                        </tr>
+                        {% if application.version %}
+                        <tr>
+                            <td><strong>Version:</strong></td>
+                            <td>{{ application.version }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if application.working_directory %}
+                        <tr>
+                            <td><strong>Working Dir:</strong></td>
+                            <td><code class="small">{{ application.working_directory }}</code></td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+                
+                {% if application.get_environment_dict() %}
+                <div class="mb-3">
+                    <h6 class="text-muted mb-2">Environment Variables</h6>
+                    <div class="bg-light p-2 rounded">
+                        {% for key, value in application.get_environment_dict().items() %}
+                        <div class="small"><code>{{ key }}={{ value }}</code></div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Launch Form -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0 fw-semibold">
+                    <i class="bi bi-gear me-2"></i>Launch Configuration
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="launchForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <!-- Session Name -->
+                    <div class="mb-4">
+                        <label for="session_name" class="form-label">
+                            <i class="bi bi-tag me-1"></i>Session Name
+                        </label>
+                        <input type="text" class="form-control" id="session_name" name="session_name" 
+                               placeholder="Enter a name for this session"
+                               value="{{ application.display_name }} - {{ moment().format('HH:mm:ss') if moment else (application.display_name + ' - New Session') }}">
+                        <div class="form-text">Choose a descriptive name to identify this session later.</div>
+                    </div>
+                    
+                    <!-- Display Configuration -->
+                    <div class="row mb-4">
+                        <div class="col-md-8">
+                            <label for="resolution" class="form-label">
+                                <i class="bi bi-aspect-ratio me-1"></i>Screen Resolution
+                            </label>
+                            <select class="form-select" id="resolution" name="resolution">
+                                <option value="1024x768" selected>1024×768 (4:3 - Classic)</option>
+                                <option value="1280x720">1280×720 (16:9 - HD)</option>
+                                <option value="1280x800">1280×800 (16:10 - Wide)</option>
+                                <option value="1280x1024">1280×1024 (5:4 - Square)</option>
+                                <option value="1366x768">1366×768 (16:9 - Common)</option>
+                                <option value="1440x900">1440×900 (16:10 - Wide+)</option>
+                                <option value="1600x900">1600×900 (16:9 - Wide HD)</option>
+                                <option value="1600x1200">1600×1200 (4:3 - Large)</option>
+                                <option value="1920x1080">1920×1080 (16:9 - Full HD)</option>
+                                <option value="1920x1200">1920×1200 (16:10 - Full Wide)</option>
+                            </select>
+                            <div class="form-text">Choose the virtual display resolution.</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="color_depth" class="form-label">
+                                <i class="bi bi-palette me-1"></i>Color Depth
+                            </label>
+                            <select class="form-select" id="color_depth" name="color_depth">
+                                <option value="16">16-bit (Fast)</option>
+                                <option value="24" selected>24-bit (Standard)</option>
+                                <option value="32">32-bit (Best Quality)</option>
+                            </select>
+                            <div class="form-text">Higher depth = better colors, slower performance.</div>
+                        </div>
+                    </div>
+                    
+                    <!-- VNC Connection Info -->
+                    <div class="alert alert-info">
+                        <h6><i class="bi bi-info-circle me-1"></i>VNC Connection Instructions</h6>
+                        <p class="mb-2">Once launched, you'll connect using a VNC client:</p>
+                        <ol class="mb-2">
+                            <li>The session will start on a virtual display (e.g., :99)</li>
+                            <li>A VNC server will be available on a specific port (e.g., 5999)</li>
+                            <li>Use any VNC client to connect to <code>localhost:PORT</code></li>
+                        </ol>
+                        <p class="mb-0"><strong>Recommended VNC clients:</strong> TigerVNC, RealVNC, TightVNC</p>
+                    </div>
+                    
+                    <!-- Launch Options -->
+                    <div class="mb-4">
+                        <h6 class="text-muted mb-3">Launch Options</h6>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="auto_connect" checked>
+                            <label class="form-check-label" for="auto_connect">
+                                Show connection details immediately after launch
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="close_existing">
+                            <label class="form-check-label" for="close_existing">
+                                Close any existing sessions of this application first
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- System Requirements Check -->
+                    <div class="mb-4">
+                        <h6 class="text-muted mb-3">System Status</h6>
+                        <div class="row text-center">
+                            <div class="col-md-4">
+                                <div class="p-3 bg-light rounded">
+                                    <i class="bi bi-display text-primary" style="font-size: 1.5rem;"></i>
+                                    <div class="mt-2">
+                                        <strong id="available-displays">Checking...</strong>
+                                        <div class="small text-muted">Available Displays</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="p-3 bg-light rounded">
+                                    <i class="bi bi-ethernet text-success" style="font-size: 1.5rem;"></i>
+                                    <div class="mt-2">
+                                        <strong id="available-ports">Checking...</strong>
+                                        <div class="small text-muted">Available VNC Ports</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="p-3 bg-light rounded">
+                                    <i class="bi bi-cpu text-warning" style="font-size: 1.5rem;"></i>
+                                    <div class="mt-2">
+                                        <strong id="system-load">Checking...</strong>
+                                        <div class="small text-muted">System Load</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Launch Button -->
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success btn-lg" id="launchBtn">
+                            <i class="bi bi-play-fill me-2"></i>Launch {{ application.display_name }}
+                        </button>
+                        <div class="text-center mt-2">
+                            <small class="text-muted">
+                                Launching may take 10-15 seconds to complete
+                            </small>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Recent Sessions -->
+        {% if user_sessions %}
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0 fw-semibold">
+                    <i class="bi bi-clock-history me-2"></i>Your Recent Sessions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Session Name</th>
+                                <th>Status</th>
+                                <th>Started</th>
+                                <th>Duration</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for session in user_sessions[:5] %}
+                            <tr>
+                                <td>{{ session.name }}</td>
+                                <td>
+                                    {% if session.active %}
+                                    <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Closed</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small>{{ session.start_time.strftime('%Y-%m-%d %H:%M') }}</small>
+                                </td>
+                                <td>{{ session.get_duration() }}</td>
+                                <td>
+                                    {% if session.active %}
+                                    <a href="{{ url_for('gui.session_detail', session_id=session.session_id) }}" 
+                                       class="btn btn-sm btn-outline-primary">Connect</a>
+                                    {% else %}
+                                    <a href="{{ url_for('gui.session_detail', session_id=session.session_id) }}" 
+                                       class="btn btn-sm btn-outline-secondary">View</a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if user_sessions|length > 5 %}
+                <div class="text-center mt-3">
+                    <a href="{{ url_for('gui.sessions') }}" class="btn btn-sm btn-outline-primary">
+                        View All Sessions
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+// Auto-generate session name with current time
+document.addEventListener('DOMContentLoaded', function() {
+    updateSessionName();
+    
+    // Update session name when resolution changes
+    document.getElementById('resolution').addEventListener('change', updateSessionName);
+});
+
+function updateSessionName() {
+    const nameField = document.getElementById('session_name');
+    const resolution = document.getElementById('resolution').value;
+    const now = new Date();
+    const timeStr = now.toTimeString().substr(0, 8);
+    
+    nameField.value = `{{ application.display_name }} ${resolution} - ${timeStr}`;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Check system status
+    checkSystemStatus();
+    
+    // Auto-generate session name
+    updateSessionName();
+    
+    // Handle form submission
+    document.getElementById('launchForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        launchApplication();
+    });
+    
+    // Update session name when resolution changes
+    document.getElementById('resolution').addEventListener('change', updateSessionName);
+});
+
+function updateSessionName() {
+    const nameField = document.getElementById('session_name');
+    const resolution = document.getElementById('resolution').value;
+    const now = new Date();
+    const timeStr = now.toTimeString().substr(0, 8);
+    
+    nameField.value = `{{ application.display_name }} ${resolution} - ${timeStr}`;
+}
+
+function checkSystemStatus() {
+    // This would typically make an API call to check system status
+    // For now, we'll simulate the check
+    setTimeout(() => {
+        document.getElementById('available-displays').innerHTML = '<span class="text-success">12 Available</span>';
+        document.getElementById('available-ports').innerHTML = '<span class="text-success">8 Available</span>';
+        document.getElementById('system-load').innerHTML = '<span class="text-warning">Normal</span>';
+    }, 1000);
+}
+
+function launchApplication() {
+    const form = document.getElementById('launchForm');
+    const launchBtn = document.getElementById('launchBtn');
+    const originalBtnText = launchBtn.innerHTML;
+    
+    // Show loading state
+    launchBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Launching...';
+    launchBtn.disabled = true;
+    
+    // Get form data
+    const formData = new FormData(form);
+    const config = {};
+    
+    for (let [key, value] of formData.entries()) {
+        if (key !== 'csrf_token') {
+            config[key] = value;
+        }
+    }
+    
+    // Launch via API
+    GUI.launchApplication({{ application.id }}, config, function(data) {
+        // En la función launchApplication, cambiar esta parte:
+        if (data.success) {
+            // Show success message (CAMBIAR ESTA SECCIÓN)
+            const message = `Application Launched Successfully!\n${data.session.application_name} is starting up...`;
+            showNotification(message, 'success');
+            
+            // Auto-redirect if requested
+            if (document.getElementById('auto_connect').checked) {
+                setTimeout(() => {
+                    window.location.href = `/gui/session/${data.session.session_id}`;
+                }, 3000);
+            }
+        } else {
+            // Show error message (CAMBIAR ESTA SECCIÓN)
+            showNotification(`Launch Failed: ${data.error || 'Unknown error occurred'}`, 'danger');
+        }
+        
+        // Reset button
+        launchBtn.innerHTML = originalBtnText;
+        launchBtn.disabled = false;
+    });
+}
+
+function copyVNCInfo(port) {
+    const vncConnection = `localhost:${port}`;
+    navigator.clipboard.writeText(vncConnection).then(() => {
+        // Show temporary feedback
+        const btn = event.target.closest('button');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check me-1"></i>Copied!';
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+        }, 2000);
+    });
+}
+</script>
+{% endblock %}

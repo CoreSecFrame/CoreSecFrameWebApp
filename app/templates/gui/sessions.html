@@ -1,0 +1,878 @@
+<!-- app/templates/gui/sessions.html -->
+{% extends "gui/base_gui.html" %}
+{% block head %}
+{{ super() }}
+<style>
+/* Notification animations */
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+/* Notification container styles */
+#notification-container {
+    position: fixed !important;
+    top: 80px !important;
+    right: 20px !important;
+    z-index: 9999 !important;
+    max-width: 400px !important;
+    pointer-events: none !important;
+}
+
+.gui-notification {
+    pointer-events: auto !important;
+    margin-bottom: 10px !important;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.4) !important;
+    border: 2px solid rgba(0,0,0,0.1) !important;
+    border-radius: 8px !important;
+    opacity: 1 !important;
+    background-color: white !important;
+    filter: brightness(1.05) !important;
+}
+
+/* Aumentar opacidad según tipo de notificación */
+.gui-notification.alert-success {
+    background-color: rgba(209, 231, 221, 0.98) !important;
+    border-color: rgba(25, 135, 84, 0.3) !important;
+}
+
+.gui-notification.alert-danger {
+    background-color: rgba(248, 215, 218, 0.98) !important;
+    border-color: rgba(220, 53, 69, 0.3) !important;
+}
+
+.gui-notification.alert-warning {
+    background-color: rgba(255, 243, 205, 0.98) !important;
+    border-color: rgba(255, 193, 7, 0.3) !important;
+}
+
+.gui-notification.alert-info {
+    background-color: rgba(207, 244, 252, 0.98) !important;
+    border-color: rgba(13, 202, 240, 0.3) !important;
+}
+</style>
+{% endblock %}
+{% block content %}
+<!-- Page Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h2 fw-bold mb-1">
+                    <i class="bi bi-layers me-2"></i>My GUI Sessions
+                </h1>
+                <p class="text-muted mb-0">Manage your active and past GUI application sessions</p>
+            </div>
+            <div class="btn-group" role="group">
+                <a href="{{ url_for('gui.index') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>GUI Home
+                </a>
+                <a href="{{ url_for('gui.applications') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-1"></i>Launch New
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Session Statistics -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card gui-stats-card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-layers text-primary mb-2" style="font-size: 2rem;"></i>
+                <h3 class="mb-1">{{ total_sessions }}</h3>
+                <p class="text-muted mb-0 small">Total Sessions</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card gui-stats-card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-play-circle text-success mb-2" style="font-size: 2rem;"></i>
+                <h3 class="mb-1">{{ active_sessions }}</h3>
+                <p class="text-muted mb-0 small">Active Now</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card gui-stats-card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-pause-circle text-secondary mb-2" style="font-size: 2rem;"></i>
+                <h3 class="mb-1">{{ total_sessions - active_sessions }}</h3>
+                <p class="text-muted mb-0 small">Closed</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card gui-stats-card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-clock-history text-info mb-2" style="font-size: 2rem;"></i>
+                <h3 class="mb-1">{{ sessions_pagination.total }}</h3>
+                <p class="text-muted mb-0 small">This Page</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter and Search -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <form method="GET" class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label for="search" class="form-label">Search Sessions</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="bi bi-search"></i>
+                            </span>
+                            <input type="text" class="form-control" id="search" name="search"
+                                placeholder="Search by name, application..."
+                                value="{{ request.args.get('search', '') }}">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="status" class="form-label">Status</label>
+                        <select class="form-select" id="status" name="status">
+                            <option value="">All Sessions</option>
+                            <option value="active" {% if request.args.get('status')=='active' %}selected{% endif %}>
+                                Active Only</option>
+                            <option value="inactive" {% if request.args.get('status')=='inactive' %}selected{% endif %}>
+                                Closed Only</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="app" class="form-label">Application</label>
+                        <select class="form-select" id="app" name="app">
+                            <option value="">All Apps</option>
+                            {% for session in sessions_pagination.items %}
+                            {% if session.application.name not in (apps_seen or []) %}
+                            {% set _ = (apps_seen or []).append(session.application.name) %}
+                            <option value="{{ session.application.name }}" {% if
+                                request.args.get('app')==session.application.name %}selected{% endif %}>
+                                {{ session.application.display_name }}
+                            </option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="per_page" class="form-label">Per Page</label>
+                        <select class="form-select" id="per_page" name="per_page">
+                            <option value="10" {% if request.args.get('per_page', '20' )=='10' %}selected{% endif %}>10
+                            </option>
+                            <option value="20" {% if request.args.get('per_page', '20' )=='20' %}selected{% endif %}>20
+                            </option>
+                            <option value="50" {% if request.args.get('per_page', '20' )=='50' %}selected{% endif %}>50
+                            </option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-funnel me-1"></i>Filter
+                            </button>
+                            {% if request.args %}
+                            <a href="{{ url_for('gui.sessions') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-1"></i>Clear
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sessions List -->
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-semibold">
+                    <i class="bi bi-list me-2"></i>Sessions
+                    {% if request.args.get('search') or request.args.get('status') or request.args.get('app') %}
+                    <span class="badge bg-light text-primary ms-2">Filtered</span>
+                    {% endif %}
+                </h5>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-outline-light" onclick="refreshSessions()" title="Refresh">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="autoRefresh">
+                        <label class="form-check-label text-white small" for="autoRefresh">Auto-refresh</label>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                {% if sessions_pagination.items %}
+                <!-- Desktop View -->
+                <div class="d-none d-lg-block">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Session</th>
+                                    <th>Application</th>
+                                    <th>Status</th>
+                                    <th>Connection</th>
+                                    <th>Started</th>
+                                    <th>Duration</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for session in sessions_pagination.items %}
+                                <tr data-session-id="{{ session.session_id }}"
+                                    class="{{ 'table-success' if session.active else '' }}">
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <span
+                                                class="session-status-indicator {{ 'session-status-active' if session.active else 'session-status-inactive' }} me-2"></span>
+                                            <div>
+                                                <strong>{{ session.name }}</strong>
+                                                <div class="small text-muted">{{ session.session_id[:8] }}...</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            {% if session.application.icon_path %}
+                                            <img src="{{ session.application.icon_path }}"
+                                                alt="{{ session.application.name }}" class="me-2"
+                                                style="width: 24px; height: 24px; object-fit: contain;">
+                                            {% else %}
+                                            <i class="bi bi-app me-2"></i>
+                                            {% endif %}
+                                            <div>
+                                                <div>{{ session.application.display_name }}</div>
+                                                <div class="small text-muted">{{ session.application.category or
+                                                    'Uncategorized' }}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if session.active %}
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-circle-fill me-1"></i>Active
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">
+                                            <i class="bi bi-circle me-1"></i>Closed
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if session.active %}
+                                        <div class="small">
+                                            <div><strong>Display:</strong> :{{ session.display_number }}</div>
+                                            <div><strong>VNC:</strong> {{ session.vnc_port }}</div>
+                                        </div>
+                                        {% else %}
+                                        <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="small">
+                                            {{ session.start_time.strftime('%Y-%m-%d') }}
+                                            <div class="text-muted">{{ session.start_time.strftime('%H:%M:%S') }}</div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">{{ session.get_duration() }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            {% if session.active %}
+                                            <a href="{{ url_for('gui.session_detail', session_id=session.session_id) }}"
+                                                class="btn btn-success" title="Connect">
+                                                <i class="bi bi-display"></i>
+                                            </a>
+                                            {% endif %}
+                                            <a href="{{ url_for('gui.session_detail', session_id=session.session_id) }}"
+                                                class="btn btn-outline-info" title="Details">
+                                                <i class="bi bi-info-circle"></i>
+                                            </a>
+                                            {% if session.active %}
+                                            <button class="btn btn-outline-danger"
+                                                onclick="closeSessionConfirm('{{ session.session_id }}', '{{ session.name }}')"
+                                                title="Close">
+                                                <i class="bi bi-x-circle"></i>
+                                            </button>
+                                            {% else %}
+                                            <button class="btn btn-outline-danger"
+                                                onclick="deleteSessionConfirm('{{ session.session_id }}', '{{ session.name }}')"
+                                                title="Delete">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Mobile/Tablet View -->
+                <div class="d-lg-none">
+                    <div class="session-grid p-3">
+                        {% for session in sessions_pagination.items %}
+                        <div class="card gui-card mb-3" data-session-id="{{ session.session_id }}">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div class="d-flex align-items-center">
+                                        <span
+                                            class="session-status-indicator {{ 'session-status-active' if session.active else 'session-status-inactive' }} me-2"></span>
+                                        <div>
+                                            <h6 class="mb-1">{{ session.name }}</h6>
+                                            <p class="text-muted small mb-0">{{ session.application.display_name }}</p>
+                                        </div>
+                                    </div>
+                                    {% if session.active %}
+                                    <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Closed</span>
+                                    {% endif %}
+                                </div>
+
+                                {% if session.active %}
+                                <div class="row text-center mb-3">
+                                    <div class="col-4">
+                                        <small class="text-muted d-block">Display</small>
+                                        <strong>:{{ session.display_number }}</strong>
+                                    </div>
+                                    <div class="col-4">
+                                        <small class="text-muted d-block">VNC Port</small>
+                                        <strong>{{ session.vnc_port }}</strong>
+                                    </div>
+                                    <div class="col-4">
+                                        <small class="text-muted d-block">Duration</small>
+                                        <strong>{{ session.get_duration() }}</strong>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div class="text-center mb-3">
+                                    <small class="text-muted">Closed {{ session.get_duration() }} ago</small>
+                                </div>
+                                {% endif %}
+
+                                <div class="d-grid gap-2">
+                                    {% if session.active %}
+                                    <a href="{{ url_for('gui.session_detail', session_id=session.session_id) }}"
+                                        class="btn btn-success btn-sm">
+                                        <i class="bi bi-display me-1"></i>Connect
+                                    </a>
+                                    {% endif %}
+                                    <div class="btn-group" role="group">
+                                        <a href="{{ url_for('gui.session_detail', session_id=session.session_id) }}"
+                                            class="btn btn-outline-info btn-sm">
+                                            <i class="bi bi-info-circle me-1"></i>Details
+                                        </a>
+                                        {% if session.active %}
+                                        <button class="btn btn-outline-danger btn-sm"
+                                            onclick="closeSessionConfirm('{{ session.session_id }}', '{{ session.name }}')">
+                                            <i class="bi bi-x-circle me-1"></i>Close
+                                        </button>
+                                        {% else %}
+                                        <button class="btn btn-outline-danger btn-sm"
+                                            onclick="deleteSessionConfirm('{{ session.session_id }}', '{{ session.name }}')">
+                                            <i class="bi bi-trash me-1"></i>Delete
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% else %}
+                <!-- No Sessions State -->
+                <div class="text-center py-5">
+                    <i class="bi bi-layers text-muted" style="font-size: 4rem;"></i>
+                    <h4 class="mt-3">
+                        {% if request.args.get('search') or request.args.get('status') or request.args.get('app') %}
+                        No Sessions Match Your Filters
+                        {% else %}
+                        No GUI Sessions Found
+                        {% endif %}
+                    </h4>
+                    <p class="text-muted mb-4">
+                        {% if request.args.get('search') or request.args.get('status') or request.args.get('app') %}
+                        Try adjusting your search criteria or filters.
+                        {% else %}
+                        You haven't created any GUI sessions yet.
+                        {% endif %}
+                    </p>
+                    <div class="d-flex gap-2 justify-content-center">
+                        {% if request.args.get('search') or request.args.get('status') or request.args.get('app') %}
+                        <a href="{{ url_for('gui.sessions') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-x-circle me-1"></i>Clear Filters
+                        </a>
+                        {% endif %}
+                        <a href="{{ url_for('gui.applications') }}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle me-1"></i>Launch Application
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Pagination -->
+            {% if sessions_pagination.pages > 1 %}
+            <div class="card-footer">
+                <nav aria-label="Sessions pagination">
+                    <ul class="pagination justify-content-center mb-0">
+                        <li class="page-item {% if not sessions_pagination.has_prev %}disabled{% endif %}">
+                            <a class="page-link"
+                                href="{{ url_for('gui.sessions', page=1, **request.args) if sessions_pagination.has_prev else '#' }}">
+                                <i class="bi bi-chevron-double-left"></i>
+                            </a>
+                        </li>
+                        <li class="page-item {% if not sessions_pagination.has_prev %}disabled{% endif %}">
+                            <a class="page-link"
+                                href="{{ url_for('gui.sessions', page=sessions_pagination.prev_num, **request.args) if sessions_pagination.has_prev else '#' }}">
+                                <i class="bi bi-chevron-left"></i> Previous
+                            </a>
+                        </li>
+
+                        {% for page_num in sessions_pagination.iter_pages() %}
+                        {% if page_num %}
+                        {% if page_num != sessions_pagination.page %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('gui.sessions', page=page_num, **request.args) }}">{{
+                                page_num }}</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                        {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">…</span>
+                        </li>
+                        {% endif %}
+                        {% endfor %}
+
+                        <li class="page-item {% if not sessions_pagination.has_next %}disabled{% endif %}">
+                            <a class="page-link"
+                                href="{{ url_for('gui.sessions', page=sessions_pagination.next_num, **request.args) if sessions_pagination.has_next else '#' }}">
+                                Next <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                        <li class="page-item {% if not sessions_pagination.has_next %}disabled{% endif %}">
+                            <a class="page-link"
+                                href="{{ url_for('gui.sessions', page=sessions_pagination.pages, **request.args) if sessions_pagination.has_next else '#' }}">
+                                <i class="bi bi-chevron-double-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+                <div class="text-center mt-2">
+                    <small class="text-muted">
+                        Showing {{ ((sessions_pagination.page - 1) * sessions_pagination.per_page) + 1 }} to
+                        {{ sessions_pagination.page * sessions_pagination.per_page if sessions_pagination.page *
+                        sessions_pagination.per_page < sessions_pagination.total else sessions_pagination.total }} of {{
+                            sessions_pagination.total }} sessions </small>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Close Session Modal -->
+<div class="modal fade" id="closeSessionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Close GUI Session</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to close the session <strong id="sessionNameToClose"></strong>?</p>
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    This will terminate the GUI application and close the VNC connection.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmCloseSession">
+                    <i class="bi bi-x-circle me-1"></i>Close Session
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Session Modal -->
+<div class="modal fade" id="deleteSessionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete GUI Session</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to permanently delete the session <strong id="sessionNameToDelete"></strong>?</p>
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>This action cannot be undone!</strong> All session data and logs will be permanently deleted.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteSession">
+                    <i class="bi bi-trash me-1"></i>Delete Permanently
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Actions Modal -->
+<div class="modal fade" id="bulkActionsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Bulk Actions</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Select an action to perform on active sessions:</p>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-warning" onclick="closeAllActiveSessions()">
+                        <i class="bi bi-x-circle me-2"></i>Close All Active Sessions
+                    </button>
+                    <button class="btn btn-outline-info" onclick="refreshAllSessions()">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Refresh All Session Status
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    let sessionToClose = null;
+    let autoRefreshInterval = null;
+
+    // Session management functions
+    function closeSessionConfirm(sessionId, sessionName) {
+        sessionToClose = sessionId;
+        document.getElementById('sessionNameToClose').textContent = sessionName;
+        new bootstrap.Modal(document.getElementById('closeSessionModal')).show();
+    }
+
+    document.getElementById('confirmCloseSession').addEventListener('click', function () {
+        if (sessionToClose) {
+            const button = this;
+            const originalText = button.innerHTML;
+
+            button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Closing...';
+            button.disabled = true;
+
+            GUI.closeSession(sessionToClose, function (data) {
+                if (data.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('closeSessionModal')).hide();
+
+                    // Remove session from table/grid
+                    const sessionRow = document.querySelector(`[data-session-id="${sessionToClose}"]`);
+                    if (sessionRow) {
+                        sessionRow.remove();
+                    }
+
+                    showNotification('Session closed successfully', 'success');
+
+                    // Update counters
+                    updateSessionCounters();
+
+                } else {
+                    showNotification('Error closing session: ' + (data.message || 'Unknown error'), 'danger');
+                }
+
+                button.innerHTML = originalText;
+                button.disabled = false;
+                sessionToClose = null;
+            });
+        }
+    });
+
+    // Auto-refresh functionality
+    document.getElementById('autoRefresh').addEventListener('change', function () {
+        if (this.checked) {
+            autoRefreshInterval = setInterval(refreshSessions, 30000);
+            showNotification('Auto-refresh enabled (30 seconds)', 'info');
+        } else {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+            showNotification('Auto-refresh disabled', 'info');
+        }
+    });
+
+    function refreshSessions() {
+        const button = document.querySelector('[onclick="refreshSessions()"]');
+        if (button) {
+            const originalHtml = button.innerHTML;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+            button.disabled = true;
+
+            // Update session indicators
+            GUI.updateSessionIndicators();
+
+            setTimeout(() => {
+                button.innerHTML = originalHtml;
+                button.disabled = false;
+            }, 2000);
+        }
+    }
+
+    function updateSessionCounters() {
+        // Update active session counter
+        const activeCount = document.querySelectorAll('[data-session-id] .session-status-active').length;
+        const totalCount = document.querySelectorAll('[data-session-id]').length;
+
+        // Update stats cards if they exist
+        const statsCards = document.querySelectorAll('.gui-stats-card h3');
+        if (statsCards.length >= 2) {
+            statsCards[1].textContent = activeCount; // Active sessions
+            statsCards[2].textContent = totalCount - activeCount; // Closed sessions
+        }
+    }
+
+    // Bulk actions
+    function closeAllActiveSessions() {
+        const activeSessions = document.querySelectorAll('[data-session-id] .session-status-active');
+
+        if (activeSessions.length === 0) {
+            showNotification('No active sessions to close', 'warning');
+            return;
+        }
+
+        const confirmed = confirm(`Are you sure you want to close all ${activeSessions.length} active sessions?`);
+        if (!confirmed) return;
+
+        let closedCount = 0;
+        activeSessions.forEach(indicator => {
+            const sessionRow = indicator.closest('[data-session-id]');
+            const sessionId = sessionRow.getAttribute('data-session-id');
+
+            GUI.closeSession(sessionId, function (data) {
+                if (data.success) {
+                    sessionRow.remove();
+                    closedCount++;
+
+                    if (closedCount === activeSessions.length) {
+                        showNotification(`Successfully closed ${closedCount} sessions`, 'success');
+                        updateSessionCounters();
+                    }
+                }
+            });
+        });
+
+        bootstrap.Modal.getInstance(document.getElementById('bulkActionsModal')).hide();
+    }
+
+    function refreshAllSessions() {
+        GUI.updateSessionIndicators();
+        showNotification('Refreshing all session status...', 'info');
+        bootstrap.Modal.getInstance(document.getElementById('bulkActionsModal')).hide();
+    }
+
+    // Helper function for notifications (VERSIÓN MEJORADA)
+    function showNotification(message, type = 'info') {
+        // Remove existing notifications
+        const existingNotifications = document.querySelectorAll('.gui-notification');
+        existingNotifications.forEach(notification => notification.remove());
+        
+        // Create notification container if it doesn't exist
+        let notificationContainer = document.getElementById('notification-container');
+        if (!notificationContainer) {
+            notificationContainer = document.createElement('div');
+            notificationContainer.id = 'notification-container';
+            notificationContainer.style.cssText = `
+                position: fixed;
+                top: 80px;
+                right: 20px;
+                z-index: 9999;
+                max-width: 400px;
+                pointer-events: none;
+            `;
+            document.body.appendChild(notificationContainer);
+        }
+        
+        // Create notification
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type} gui-notification shadow-lg fade show`;
+        notification.style.cssText = `
+            margin-bottom: 10px;
+            pointer-events: auto;
+            animation: slideInRight 0.3s ease-out;
+            opacity: 1 !important;
+            background-color: white !important;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4) !important;
+            border: 2px solid rgba(0,0,0,0.1) !important;
+            border-radius: 8px !important;
+            filter: brightness(1.05) !important;
+        `;
+        
+        const iconMap = {
+            'success': 'check-circle',
+            'danger': 'exclamation-circle',
+            'warning': 'exclamation-triangle',
+            'info': 'info-circle'
+        };
+        
+        notification.innerHTML = `
+            <div class="d-flex align-items-start">
+                <i class="bi bi-${iconMap[type] || 'info-circle'} me-2 mt-1"></i>
+                <div class="flex-grow-1">
+                    <div style="white-space: pre-line; font-weight: 500;">${message}</div>
+                </div>
+                <button type="button" class="btn-close ms-2" onclick="this.closest('.gui-notification').remove()"></button>
+            </div>
+        `;
+        
+        notificationContainer.appendChild(notification);
+        
+        // Auto-remove after 8 seconds
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.style.animation = 'slideOutRight 0.3s ease-in';
+                setTimeout(() => notification.remove(), 300);
+            }
+        }, 8000);
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function (e) {
+        // R key to refresh
+        if (e.key === 'r' && !e.ctrlKey && !e.altKey && !e.metaKey) {
+            const activeElement = document.activeElement;
+            if (activeElement.tagName !== 'INPUT' && activeElement.tagName !== 'TEXTAREA') {
+                e.preventDefault();
+                refreshSessions();
+            }
+        }
+
+        // Escape to clear search
+        if (e.key === 'Escape') {
+            const searchInput = document.getElementById('search');
+            if (searchInput.value) {
+                searchInput.value = '';
+                searchInput.form.submit();
+            }
+        }
+    });
+
+    // Initialize auto-refresh based on active sessions
+    document.addEventListener('DOMContentLoaded', function () {
+        const activeSessions = document.querySelectorAll('.session-status-active').length;
+        if (activeSessions > 0) {
+            // Auto-enable refresh if there are active sessions
+            setTimeout(() => {
+                const autoRefreshCheckbox = document.getElementById('autoRefresh');
+                if (autoRefreshCheckbox && !autoRefreshCheckbox.checked) {
+                    autoRefreshCheckbox.checked = true;
+                    autoRefreshCheckbox.dispatchEvent(new Event('change'));
+                }
+            }, 1000);
+        }
+    });
+
+let sessionToDelete = null;
+
+// Delete session confirmation
+function deleteSessionConfirm(sessionId, sessionName) {
+    sessionToDelete = sessionId;
+    document.getElementById('sessionNameToDelete').textContent = sessionName;
+    new bootstrap.Modal(document.getElementById('deleteSessionModal')).show();
+}
+
+// Handle delete confirmation
+document.getElementById('confirmDeleteSession').addEventListener('click', function() {
+    if (sessionToDelete) {
+        const button = this;
+        const originalText = button.innerHTML;
+        
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Deleting...';
+        button.disabled = true;
+        
+        GUI.deleteSession(sessionToDelete, function(data) {
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('deleteSessionModal')).hide();
+                
+                // Remove session from table/grid
+                const sessionRow = document.querySelector(`[data-session-id="${sessionToDelete}"]`);
+                if (sessionRow) {
+                    sessionRow.remove();
+                }
+                
+                showNotification('Session deleted permanently', 'success');
+                
+                // Update counters
+                updateSessionCounters();
+                
+            } else {
+                showNotification('Error deleting session: ' + (data.message || 'Unknown error'), 'danger');
+            }
+            
+            button.innerHTML = originalText;
+            button.disabled = false;
+            sessionToDelete = null;
+        });
+    }
+});
+
+// Add delete function to GUI object
+GUI.deleteSession = function(sessionId, callback) {
+    fetch(`/gui/api/session/${sessionId}/delete`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (callback) callback(data);
+    })
+    .catch(error => {
+        console.error('Error deleting session:', error);
+        if (callback) callback({success: false, error: error.message});
+    });
+};
+</script>
+{% endblock %}

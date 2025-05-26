@@ -1,0 +1,283 @@
+<!-- app/templates/gui/application_detail.html -->
+{% extends "gui/base_gui.html" %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h2 fw-bold mb-1">
+                    {{ application.display_name }}
+                </h1>
+                <p class="text-muted mb-0">{{ application.description }}</p>
+            </div>
+            <div class="btn-group" role="group">
+                <a href="{{ url_for('gui.applications') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>All Applications
+                </a>
+                <a href="{{ url_for('gui.launch_application', app_id=application.id) }}" class="btn btn-success">
+                    <i class="bi bi-play-fill me-1"></i>Launch Now
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Application Information -->
+    <div class="col-lg-8 mb-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0 fw-semibold">
+                    <i class="bi bi-info-circle me-2"></i>Application Details
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 text-center mb-4">
+                        {% if application.icon_path %}
+                        <img src="{{ application.icon_path }}" alt="{{ application.name }}" 
+                             class="mb-3" style="width: 100px; height: 100px; object-fit: contain;">
+                        {% else %}
+                        <div class="mb-3 mx-auto" style="width: 100px; height: 100px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-app text-white" style="font-size: 3rem;"></i>
+                        </div>
+                        {% endif %}
+                        <h5>{{ application.display_name }}</h5>
+                        <span class="badge bg-primary">{{ application.category or 'Uncategorized' }}</span>
+                        {% if application.version %}
+                        <span class="badge bg-secondary">v{{ application.version }}</span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-9">
+                        <h6 class="text-muted mb-3">Technical Information</h6>
+                        <table class="table table-borderless">
+                            <tr>
+                                <td width="150"><strong>Command:</strong></td>
+                                <td><code>{{ application.command }}</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Category:</strong></td>
+                                <td>{{ application.category or 'Uncategorized' }}</td>
+                            </tr>
+                            {% if application.working_directory %}
+                            <tr>
+                                <td><strong>Working Directory:</strong></td>
+                                <td><code>{{ application.working_directory }}</code></td>
+                            </tr>
+                            {% endif %}
+                            {% if application.version %}
+                            <tr>
+                                <td><strong>Version:</strong></td>
+                                <td>{{ application.version }}</td>
+                            </tr>
+                            {% endif %}
+                            <tr>
+                                <td><strong>Status:</strong></td>
+                                <td>
+                                    {% if application.installed %}
+                                    <span class="badge bg-success">Installed</span>
+                                    {% else %}
+                                    <span class="badge bg-warning">Not Installed</span>
+                                    {% endif %}
+                                    {% if application.enabled %}
+                                    <span class="badge bg-info">Enabled</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Disabled</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Created:</strong></td>
+                                <td>{{ application.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            </tr>
+                            {% if application.last_used %}
+                            <tr>
+                                <td><strong>Last Used:</strong></td>
+                                <td>{{ application.last_used.strftime('%Y-%m-%d %H:%M') }}</td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                        
+                        {% if application.get_environment_dict() %}
+                        <h6 class="text-muted mb-3 mt-4">Environment Variables</h6>
+                        <div class="bg-light p-3 rounded">
+                            {% for key, value in application.get_environment_dict().items() %}
+                            <div class="mb-1">
+                                <code class="small">{{ key }}={{ value }}</code>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        {% if application.get_required_packages_list() %}
+                        <h6 class="text-muted mb-3 mt-4">Required Packages</h6>
+                        <div class="d-flex flex-wrap gap-1">
+                            {% for package in application.get_required_packages_list() %}
+                            <span class="badge bg-light text-dark">{{ package }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Sessions -->
+        {% if user_sessions %}
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0 fw-semibold">
+                    <i class="bi bi-clock-history me-2"></i>Your Recent Sessions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Session Name</th>
+                                <th>Status</th>
+                                <th>Started</th>
+                                <th>Duration</th>
+                                <th>Connection</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for session in user_sessions %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <span class="session-status-indicator {{ 'session-status-active' if session.active else 'session-status-inactive' }} me-2"></span>
+                                        {{ session.name }}
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if session.active %}
+                                    <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Closed</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small>{{ session.start_time.strftime('%Y-%m-%d %H:%M') }}</small>
+                                </td>
+                                <td>{{ session.get_duration() }}</td>
+                                <td>
+                                    {% if session.active %}
+                                    <small>
+                                        :{{ session.display_number }}<br>
+                                        Port {{ session.vnc_port }}
+                                    </small>
+                                    {% else %}
+                                    <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        {% if session.active %}
+                                        <a href="{{ url_for('gui.session_detail', session_id=session.session_id) }}" 
+                                           class="btn btn-success">
+                                            <i class="bi bi-display"></i>
+                                        </a>
+                                        {% endif %}
+                                        <a href="{{ url_for('gui.session_detail', session_id=session.session_id) }}" 
+                                           class="btn btn-outline-info">
+                                            <i class="bi bi-info-circle"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-center mt-3">
+                    <a href="{{ url_for('gui.sessions') }}?app={{ application.name }}" 
+                       class="btn btn-sm btn-outline-primary">
+                        View All Sessions for This App
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm sticky-top" style="top: 1rem;">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0 fw-semibold">
+                    <i class="bi bi-lightning me-2"></i>Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-3">
+                    <a href="{{ url_for('gui.launch_application', app_id=application.id) }}" 
+                       class="btn btn-success btn-lg">
+                        <i class="bi bi-play-fill me-2"></i>Launch Application
+                    </a>
+                    
+                    <!-- Quick Launch Options -->
+                    <div class="border rounded p-3">
+                        <h6 class="text-muted mb-3">Quick Launch Presets</h6>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-primary btn-sm" 
+                                    onclick="quickLaunch('1024x768', 24)">
+                                <i class="bi bi-display me-1"></i>Standard (1024×768)
+                            </button>
+                            <button class="btn btn-outline-primary btn-sm" 
+                                    onclick="quickLaunch('1280x720', 24)">
+                                <i class="bi bi-aspect-ratio me-1"></i>HD (1280×720)
+                            </button>
+                            <button class="btn btn-outline-primary btn-sm" 
+                                    onclick="quickLaunch('1920x1080', 24)">
+                                <i class="bi bi-aspect-ratio-fill me-1"></i>Full HD (1920×1080)
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Statistics -->
+                    <div class="border rounded p-3">
+                        <h6 class="text-muted mb-3">Session Statistics</h6>
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <h4 class="text-success">{{ application.sessions.filter_by(active=True).count() }}</h4>
+                                <small class="text-muted">Active</small>
+                            </div>
+                            <div class="col-6">
+                                <h4 class="text-info">{{ application.sessions.count() }}</h4>
+                                <small class="text-muted">Total</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+function quickLaunch(resolution, colorDepth) {
+    const config = {
+        session_name: `{{ application.display_name }} ${resolution} - ${new Date().toTimeString().substr(0, 8)}`,
+        resolution: resolution,
+        color_depth: colorDepth
+    };
+    
+    GUI.launchApplication({{ application.id }}, config, function(data) {
+        if (data.success) {
+            window.location.href = `/gui/session/${data.session.session_id}`;
+        } else {
+            alert('Launch failed: ' + (data.error || 'Unknown error'));
+        }
+    });
+}
+</script>
+{% endblock %}

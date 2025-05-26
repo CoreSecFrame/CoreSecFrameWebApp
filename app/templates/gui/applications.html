@@ -1,0 +1,277 @@
+<!-- app/templates/gui/applications.html -->
+{% extends "gui/base_gui.html" %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h2 fw-bold mb-1">
+                    <i class="bi bi-grid-3x3-gap me-2"></i>GUI Applications
+                </h1>
+                <p class="text-muted mb-0">Browse and launch available GUI applications</p>
+            </div>
+            <div class="btn-group" role="group">
+                <a href="{{ url_for('gui.index') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-house me-1"></i>GUI Home
+                </a>
+                <a href="{{ url_for('gui.sessions') }}" class="btn btn-primary">
+                    <i class="bi bi-layers me-1"></i>My Sessions
+                </a>
+                                <a href="{{ url_for('gui.add_application') }}" class="btn btn-success">
+                    <i class="bi bi-plus-circle me-1"></i>Add Application
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search and Filter -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <form method="GET" class="row g-3 align-items-end">
+                    <div class="col-md-6">
+                        <label for="q" class="form-label">Search Applications</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="bi bi-search"></i>
+                            </span>
+                            <input type="text" class="form-control" id="q" name="q" 
+                                   placeholder="Search by name, description..."
+                                   value="{{ search_query }}">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="category" class="form-label">Category</label>
+                        <select class="form-select" id="category" name="category">
+                            <option value="">All Categories</option>
+                            {% for category in categories %}
+                            <option value="{{ category.name }}" {% if current_category == category.name %}selected{% endif %}>
+                                {{ category.display_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-funnel me-1"></i>Filter
+                            </button>
+                            {% if search_query or current_category %}
+                            <a href="{{ url_for('gui.applications') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-1"></i>Clear
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Applications Grid -->
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0 fw-semibold">
+                    <i class="bi bi-app-indicator me-2"></i>Available Applications
+                    {% if search_query or current_category %}
+                    <span class="badge bg-light text-primary ms-2">Filtered</span>
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if applications %}
+                <div class="row g-4">
+                    {% for app in applications %}
+                    <div class="col-md-6 col-lg-4 col-xl-3">
+                        <div class="card gui-card h-100">
+                            <div class="card-body d-flex flex-column">
+                                <!-- App Header -->
+                                <div class="text-center mb-3">
+                                    {% if app.icon_path %}
+                                    <img src="{{ app.icon_path }}" alt="{{ app.name }}" class="app-icon mb-2">
+                                    {% else %}
+                                    <div class="app-icon-placeholder mb-2 mx-auto">
+                                        <i class="bi bi-app"></i>
+                                    </div>
+                                    {% endif %}
+                                    <h6 class="mb-1">{{ app.display_name }}</h6>
+                                    <p class="text-muted small mb-2">{{ app.description|truncate(80) }}</p>
+                                    <div class="d-flex justify-content-center gap-1">
+                                        <span class="badge bg-light text-dark">{{ app.category or 'Uncategorized' }}</span>
+                                        {% if app.version %}
+                                        <span class="badge bg-secondary">v{{ app.version }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <!-- App Details -->
+                                <div class="flex-grow-1 mb-3">
+                                    <div class="small text-muted">
+                                        <div class="d-flex justify-content-between">
+                                            <span>Command:</span>
+                                            <code class="small">{{ app.command.split()[0] }}</code>
+                                        </div>
+                                        {% if app.last_used %}
+                                        <div class="d-flex justify-content-between mt-1">
+                                            <span>Last used:</span>
+                                            <span>{{ app.last_used.strftime('%m/%d') }}</span>
+                                        </div>
+                                        {% endif %}
+                                        <div class="d-flex justify-content-between mt-1">
+                                            <span>Sessions:</span>
+                                            <span>
+                                                <span class="badge bg-success badge-sm">{{ app.sessions.filter_by(active=True).count() }}</span>
+                                                active
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Action Buttons -->
+                                <div class="d-grid gap-2">
+                                    <a href="{{ url_for('gui.launch_application', app_id=app.id) }}" 
+                                       class="btn btn-success">
+                                        <i class="bi bi-play-fill me-1"></i>Launch
+                                    </a>
+                                    <div class="btn-group" role="group">
+                                        <a href="{{ url_for('gui.application_detail', app_id=app.id) }}" 
+                                           class="btn btn-outline-info btn-sm">
+                                            <i class="bi bi-info-circle me-1"></i>Details
+                                        </a>
+                                        {% if app.sessions.filter_by(active=True).count() > 0 %}
+                                        <div class="btn-group" role="group">
+                                            <button type="button" class="btn btn-outline-primary btn-sm dropdown-toggle" 
+                                                    data-bs-toggle="dropdown">
+                                                <i class="bi bi-display me-1"></i>Sessions
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                {% for session in app.sessions.filter_by(active=True).limit(3) %}
+                                                <li>
+                                                    <a class="dropdown-item" href="{{ url_for('gui.session_detail', session_id=session.session_id) }}">
+                                                        <i class="bi bi-circle-fill text-success me-2" style="font-size: 0.5rem;"></i>
+                                                        {{ session.name|truncate(25) }}
+                                                    </a>
+                                                </li>
+                                                {% endfor %}
+                                                {% if app.sessions.filter_by(active=True).count() > 3 %}
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <a class="dropdown-item" href="{{ url_for('gui.sessions') }}?app={{ app.name }}">
+                                                        <i class="bi bi-three-dots me-2"></i>
+                                                        View all ({{ app.sessions.filter_by(active=True).count() }})
+                                                    </a>
+                                                </li>
+                                                {% endif %}
+                                            </ul>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <!-- Quick Launch Section -->
+                {% if not search_query and not current_category %}
+                <hr class="my-4">
+                <div class="row">
+                    <div class="col-12">
+                        <h6 class="text-muted mb-3">Quick Launch</h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for app in applications[:6] %}
+                            <a href="{{ url_for('gui.launch_application', app_id=app.id) }}" 
+                               class="btn btn-outline-primary btn-sm">
+                                {% if app.icon_path %}
+                                <img src="{{ app.icon_path }}" alt="{{ app.name }}" 
+                                     class="me-1" style="width: 16px; height: 16px;">
+                                {% else %}
+                                <i class="bi bi-app me-1"></i>
+                                {% endif %}
+                                {{ app.display_name }}
+                            </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% else %}
+                <!-- No Applications State -->
+                <div class="text-center py-5">
+                    <i class="bi bi-app-indicator text-muted" style="font-size: 4rem;"></i>
+                    <h4 class="mt-3">
+                        {% if search_query or current_category %}
+                        No Applications Match Your Search
+                        {% else %}
+                        No GUI Applications Available
+                        {% endif %}
+                    </h4>
+                    <p class="text-muted mb-4">
+                        {% if search_query or current_category %}
+                        Try adjusting your search terms or category filter.
+                        {% else %}
+                        No GUI applications have been configured yet.
+                        {% endif %}
+                    </p>
+                    <div class="d-flex gap-2 justify-content-center">
+                        {% if search_query or current_category %}
+                        <a href="{{ url_for('gui.applications') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-x-circle me-1"></i>Clear Filters
+                        </a>
+                        {% endif %}
+                        {% if current_user.is_admin() %}
+                        <div class="alert alert-info">
+                            <h6><i class="bi bi-info-circle me-1"></i>Administrator Note</h6>
+                            <p class="mb-2">Initialize default GUI applications using:</p>
+                            <code>flask gui-init</code>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-focus search input
+    const searchInput = document.getElementById('q');
+    if (searchInput && !searchInput.value) {
+        searchInput.focus();
+    }
+    
+    // Handle Enter key in search
+    searchInput?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            this.form.submit();
+        }
+    });
+    
+    // Quick launch keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key >= '1' && e.key <= '6') {
+            e.preventDefault();
+            const index = parseInt(e.key) - 1;
+            const quickLaunchButtons = document.querySelectorAll('.btn-outline-primary[href*="launch"]');
+            if (quickLaunchButtons[index]) {
+                quickLaunchButtons[index].click();
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

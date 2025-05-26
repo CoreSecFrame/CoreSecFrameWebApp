@@ -89,6 +89,7 @@ def create_app(config_class=Config):
         from app.sessions.routes import sessions_bp
         from app.terminal.routes import terminal_bp
         from app.admin.routes import admin_bp
+        from app.gui.routes import gui_bp
         
         app.register_blueprint(auth_bp)
         app.register_blueprint(core_bp)
@@ -96,7 +97,29 @@ def create_app(config_class=Config):
         app.register_blueprint(sessions_bp)
         app.register_blueprint(terminal_bp)
         app.register_blueprint(admin_bp)
+        app.register_blueprint(gui_bp)
         
+        try:
+            from app.gui import init_gui_module, register_gui_commands, gui_context_processor
+            
+            # Check if GUI blueprint is already registered
+            blueprint_names = [bp.name for bp in app.blueprints.values()]
+            if 'gui' not in blueprint_names:
+                init_gui_module(app)
+                register_gui_commands(app)
+                
+                # Add GUI context processor
+                app.context_processor(gui_context_processor)
+                
+                log_system_event('gui_module_loaded', 'GUI module initialized successfully')
+            else:
+                app.logger.warning("GUI blueprint already registered, skipping initialization")
+                
+        except Exception as e:
+            app.logger.warning(f"GUI module initialization failed: {e}")
+            # Continue without GUI module if it fails
+            log_system_event('gui_module_error', f'GUI module failed to load: {e}')
+                 
         # Initialize socketio with app
         socketio.init_app(app, cors_allowed_origins="*")
         
@@ -108,6 +131,14 @@ def create_app(config_class=Config):
         
         # Register request logging
         register_request_logging(app)
+        
+        try:
+            from app.gui.routes import gui_bp
+            app.logger.info("GUI blueprint registered successfully")
+        except ImportError as e:
+            app.logger.warning(f"GUI blueprint not available: {e}")
+        except Exception as e:
+            app.logger.error(f"Error registering GUI blueprint: {e}")
         
         # Register security event handlers (with error handling)
         try:
