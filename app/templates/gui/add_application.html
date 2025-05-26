@@ -223,413 +223,339 @@
 {% block scripts %}
 {{ super() }}
 <script>
-// Application templates
-const templates = {
-    firefox: {
-        name: 'firefox',
-        display_name: 'Firefox Web Browser',
-        description: 'Free and open-source web browser developed by Mozilla',
-        command: 'firefox',
-        category: 'browsers',
-        icon_path: '/usr/share/pixmaps/firefox.png'
-    },
-    chromium: {
-        name: 'chromium',
-        display_name: 'Chromium Browser',
-        description: 'Open-source web browser project',
-        command: 'chromium-browser',
-        category: 'browsers',
-        icon_path: '/usr/share/pixmaps/chromium.png'
-    },
-    gedit: {
-        name: 'gedit',
-        display_name: 'Text Editor',
-        description: 'GNOME text editor',
-        command: 'gedit',
-        category: 'editors',
-        icon_path: '/usr/share/pixmaps/gedit.png'
-    },
-    xterm: {
-        name: 'xterm',
-        display_name: 'XTerm Terminal',
-        description: 'Classic X terminal emulator',
-        command: 'xterm',
-        category: 'terminals',
-        icon_path: '/usr/share/pixmaps/xterm.png'
-    },
-    calculator: {
-        name: 'calculator',
-        display_name: 'Calculator',
-        description: 'Desktop calculator application',
-        command: 'gnome-calculator',
-        category: 'utilities',
-        icon_path: '/usr/share/pixmaps/calc.png'
-    },
-    libreoffice: {
-        name: 'libreoffice',
-        display_name: 'LibreOffice Writer',
-        description: 'Full-featured word processor',
-        command: 'libreoffice --writer',
-        category: 'utilities',
-        icon_path: '/usr/share/pixmaps/libreoffice-writer.png'
-    }
-};
-
-function fillTemplate(templateName) {
-    const template = templates[templateName];
-    if (!template) return;
-    
-    document.getElementById('name').value = template.name;
-    document.getElementById('display_name').value = template.display_name;
-    document.getElementById('description').value = template.description;
-    document.getElementById('command').value = template.command;
-    document.getElementById('category').value = template.category;
-    document.getElementById('icon_path').value = template.icon_path;
-    
-    // Test command availability
-    testCommand();
-}
-
-function testCommand() {
-    const command = document.getElementById('command').value.trim();
-    if (!command) return;
-    
-    const statusEl = document.getElementById('commandStatus');
-    statusEl.innerHTML = '<div class="spinner-border spinner-border-sm text-primary me-2"></div>Testing command...';
-    
-    fetch('/gui/api/test-command', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+    // Application templates
+    const templates = {
+        firefox: {
+            name: 'firefox',
+            display_name: 'Firefox Web Browser',
+            description: 'Free and open-source web browser developed by Mozilla',
+            command: 'firefox',
+            category: 'browsers',
+            icon_path: '/usr/share/pixmaps/firefox.png'
         },
-        body: JSON.stringify({ command: command })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.available) {
-            statusEl.innerHTML = '<div class="alert alert-success alert-sm py-2 mb-0"><i class="bi bi-check-circle me-1"></i>Command available</div>';
-        } else {
-            statusEl.innerHTML = '<div class="alert alert-warning alert-sm py-2 mb-0"><i class="bi bi-exclamation-triangle me-1"></i>Command not found</div>';
+        chromium: {
+            name: 'chromium',
+            display_name: 'Chromium Browser',
+            description: 'Open-source web browser project',
+            command: 'chromium-browser',
+            category: 'browsers',
+            icon_path: '/usr/share/pixmaps/chromium.png'
+        },
+        gedit: {
+            name: 'gedit',
+            display_name: 'Text Editor',
+            description: 'GNOME text editor',
+            command: 'gedit',
+            category: 'editors',
+            icon_path: '/usr/share/pixmaps/gedit.png'
+        },
+        xterm: {
+            name: 'xterm',
+            display_name: 'XTerm Terminal',
+            description: 'Classic X terminal emulator',
+            command: 'xterm',
+            category: 'terminals',
+            icon_path: '/usr/share/pixmaps/xterm.png'
+        },
+        calculator: {
+            name: 'calculator',
+            display_name: 'Calculator',
+            description: 'Desktop calculator application',
+            command: 'gnome-calculator',
+            category: 'utilities',
+            icon_path: '/usr/share/pixmaps/calc.png'
+        },
+        libreoffice: {
+            name: 'libreoffice',
+            display_name: 'LibreOffice Writer',
+            description: 'Full-featured word processor',
+            command: 'libreoffice --writer',
+            category: 'utilities',
+            icon_path: '/usr/share/pixmaps/libreoffice-writer.png'
         }
-    })
-    .catch(error => {
-        statusEl.innerHTML = '<div class="alert alert-danger alert-sm py-2 mb-0"><i class="bi bi-x-circle me-1"></i>Error testing command</div>';
-    });
-}
+    };
 
-function addEnvVar() {
-    const envVarsDiv = document.getElementById('envVars');
-    const newRow = document.createElement('div');
-    newRow.className = 'row mb-2';
-    newRow.innerHTML = `
-        <div class="col-5">
-            <input type="text" class="form-control form-control-sm" 
-                   placeholder="Variable Name" name="env_keys[]">
-        </div>
-        <div class="col-5">
-            <input type="text" class="form-control form-control-sm" 
-                   placeholder="Value" name="env_values[]">
-        </div>
-        <div class="col-2">
-            <button type="button" class="btn btn-sm btn-danger" onclick="this.closest('.row').remove()">
-                <i class="bi bi-dash"></i>
-            </button>
-        </div>
-    `;
-    envVarsDiv.appendChild(newRow);
-}
+    function fillTemplate(templateName) {
+        const template = templates[templateName];
+        if (!template) return;
 
-// Auto-scan functionality
-document.getElementById('scanModal').addEventListener('shown.bs.modal', function() {
-    fetch('/gui/api/scan-applications', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        displayScanResults(data.applications || []);
-    })
-    .catch(error => {
-        document.getElementById('scanResults').innerHTML = `
-            <div class="alert alert-danger">
-                <i class="bi bi-exclamation-triangle me-2"></i>
-                Error scanning applications: ${error.message}
-            </div>
-        `;
-    });
-});
+        document.getElementById('name').value = template.name;
+        document.getElementById('display_name').value = template.display_name;
+        document.getElementById('description').value = template.description;
+        document.getElementById('command').value = template.command;
+        document.getElementById('category').value = template.category;
+        document.getElementById('icon_path').value = template.icon_path;
 
-function displayScanResults(applications) {
-    const resultsDiv = document.getElementById('scanResults');
-    
-    if (applications.length === 0) {
-        resultsDiv.innerHTML = `
-            <div class="alert alert-info">
-                <i class="bi bi-info-circle me-2"></i>
-                No new GUI applications found on your system.
-            </div>
-        `;
-        return;
+        // Test command availability
+        testCommand();
     }
-    
-    let html = `
-        <p><strong>Found ${applications.length} GUI applications:</strong></p>
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th width="50">
-                            <input type="checkbox" id="selectAll" onchange="toggleAllApps(this.checked)">
-                        </th>
-                        <th>Application</th>
-                        <th>Command</th>
-                        <th>Category</th>
-                    </tr>
-                </thead>
-                <tbody>
-    `;
-    
-    applications.forEach((app, index) => {
-        html += `
-            <tr>
-                <td>
-                    <input type="checkbox" name="selectedApps" value="${index}" checked onchange="updateSelectedCount()">
-                </td>
-                <td>
-                    <strong>${app.display_name}</strong>
-                    <div class="small text-muted">${app.description}</div>
-                </td>
-                <td><code>${app.command}</code></td>
-                <td><span class="badge bg-primary">${app.category}</span></td>
-            </tr>
-        `;
-    });
-    
-    html += `
-                </tbody>
-            </table>
-        </div>
-    `;
-    
-    resultsDiv.innerHTML = html;
-    document.getElementById('addSelectedApps').style.display = 'inline-block';
-    
-    // Store applications data
-    window.scannedApps = applications;
-    
-    // Initialize the selected count
-    updateSelectedCount();
-}
 
-function toggleAllApps(checked) {
-    const checkboxes = document.querySelectorAll('input[name="selectedApps"]');
-    checkboxes.forEach(cb => {
-        cb.checked = checked;
-    });
-    
-    // Update the count display if needed
-    updateSelectedCount();
-}
+    function testCommand() {
+        const command = document.getElementById('command').value.trim();
+        if (!command) return;
 
-function updateSelectedCount() {
-    const selectedCount = document.querySelectorAll('input[name="selectedApps"]:checked').length;
-    const totalCount = document.querySelectorAll('input[name="selectedApps"]').length;
-    
-    const button = document.getElementById('addSelectedApps');
-    if (selectedCount > 0) {
-        button.innerHTML = `<i class="bi bi-plus-circle me-1"></i>Add Selected Applications (${selectedCount})`;
-        button.disabled = false;
-    } else {
-        button.innerHTML = '<i class="bi bi-plus-circle me-1"></i>Add Selected Applications';
-        button.disabled = true;
-    }
-}
+        const statusEl = document.getElementById('commandStatus');
+        statusEl.innerHTML = '<div class="spinner-border spinner-border-sm text-primary me-2"></div>Testing command...';
 
-// Form submission
-document.getElementById('addAppForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(this);
-    const submitBtn = this.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Adding...';
-    
-    fetch('/gui/add-application', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            window.location.href = `/gui/application/${data.application.id}`;
-        } else {
-            alert('Error: ' + (data.error || 'Unknown error occurred'));
-        }
-    })
-    .catch(error => {
-        alert('Error: ' + error.message);
-    })
-    .finally(() => {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-    });
-});
-
-// Load system info
-document.addEventListener('DOMContentLoaded', function() {
-    fetch('/gui/api/system-info')
+        fetch('/gui/api/test-command', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({ command: command })
+        })
         .then(response => response.json())
         .then(data => {
+            if (data.available) {
+                statusEl.innerHTML = '<div class="alert alert-success alert-sm py-2 mb-0"><i class="bi bi-check-circle me-1"></i>Command available</div>';
+            } else {
+                statusEl.innerHTML = '<div class="alert alert-warning alert-sm py-2 mb-0"><i class="bi bi-exclamation-triangle me-1"></i>Command not found</div>';
+            }
+        })
+        .catch(error => {
+            statusEl.innerHTML = '<div class="alert alert-danger alert-sm py-2 mb-0"><i class="bi bi-x-circle me-1"></i>Error testing command</div>';
+        });
+    }
+
+    function addEnvVar() {
+        const envVarsDiv = document.getElementById('envVars');
+        const newRow = document.createElement('div');
+        newRow.className = 'row mb-2';
+        newRow.innerHTML = `
+            <div class="col-5">
+                <input type="text" class="form-control form-control-sm" 
+                       placeholder="Variable Name" name="env_keys[]">
+            </div>
+            <div class="col-5">
+                <input type="text" class="form-control form-control-sm" 
+                       placeholder="Value" name="env_values[]">
+            </div>
+            <div class="col-2">
+                <button type="button" class="btn btn-sm btn-danger" onclick="this.closest('.row').remove()">
+                    <i class="bi bi-dash"></i>
+                </button>
+            </div>
+        `;
+        envVarsDiv.appendChild(newRow);
+    }
+
+    // Auto-scan functionality
+    document.getElementById('scanModal').addEventListener('shown.bs.modal', function () {
+        startScan();
+    });
+
+    function startScan() {
+        // Show loading
+        document.getElementById('scanResults').innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-3">Scanning for applications...</p>
+            </div>
+        `;
+
+        // Make the API call
+        fetch('/gui/api/scan-applications', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Scan result:', data);
+            if (data.success) {
+                showResults(data.applications || []);
+            } else {
+                showError(data.error || 'Scan failed');
+            }
+        })
+        .catch(error => {
+            console.error('Scan error:', error);
+            showError('Network error: ' + error.message);
+        });
+    }
+
+    function showResults(applications) {
+        const resultsDiv = document.getElementById('scanResults');
+
+        if (applications.length === 0) {
+            resultsDiv.innerHTML = `
+                <div class="alert alert-info">
+                    <h6>No New Applications Found</h6>
+                    <p>All detected applications are already added to the system.</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Store apps globally
+        window.scannedApps = applications;
+
+        // Build results HTML
+        let html = `
+            <h6>Found ${applications.length} new applications:</h6>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th width="50">
+                                <input type="checkbox" id="selectAll" onchange="toggleAll(this.checked)">
+                            </th>
+                            <th>Application</th>
+                            <th>Command</th>
+                            <th>Category</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        applications.forEach((app, index) => {
+            html += `
+                <tr>
+                    <td>
+                        <input type="checkbox" name="appCheckbox" value="${index}" checked>
+                    </td>
+                    <td>
+                        <strong>${app.display_name}</strong><br>
+                        <small class="text-muted">${app.description}</small>
+                    </td>
+                    <td><code>${app.command}</code></td>
+                    <td><span class="badge bg-primary">${app.category}</span></td>
+                </tr>
+            `;
+        });
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        resultsDiv.innerHTML = html;
+        document.getElementById('addSelectedApps').style.display = 'block';
+    }
+
+    function showError(message) {
+        document.getElementById('scanResults').innerHTML = `
+            <div class="alert alert-danger">
+                <h6>Scan Failed</h6>
+                <p>${message}</p>
+            </div>
+        `;
+    }
+
+    function toggleAll(checked) {
+        document.querySelectorAll('input[name="appCheckbox"]').forEach(cb => {
+            cb.checked = checked;
+        });
+    }
+
+    // Add selected applications
+    document.getElementById('addSelectedApps').addEventListener('click', function () {
+        const selectedIndexes = [];
+        document.querySelectorAll('input[name="appCheckbox"]:checked').forEach(cb => {
+            selectedIndexes.push(parseInt(cb.value));
+        });
+
+        if (selectedIndexes.length === 0) {
+            alert('Please select at least one application.');
+            return;
+        }
+
+        const selectedApps = selectedIndexes.map(index => window.scannedApps[index]);
+
+        // Show loading
+        const button = this;
+        const originalText = button.textContent;
+        button.textContent = 'Adding...';
+        button.disabled = true;
+
+        // Add applications
+        fetch('/gui/api/add-scanned-applications', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({
+                applications: selectedApps
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Close modal and refresh page
+                bootstrap.Modal.getInstance(document.getElementById('scanModal')).hide();
+                window.location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Network error: ' + error.message);
+        })
+        .finally(() => {
+            button.textContent = originalText;
+            button.disabled = false;
+        });
+    });
+
+    // Form validation and submission
+    document.getElementById('addAppForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Adding...';
+        
+        fetch('/gui/add-application', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = `/gui/application/${data.application.id}`;
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error occurred'));
+            }
+        })
+        .catch(error => {
+            alert('Error: ' + error.message);
+        })
+        .finally(() => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        });
+    });
+
+    // Load system info when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Loading system info...');
+        
+        fetch('/gui/api/system-info')
+        .then(response => response.json())
+        .then(data => {
+            console.log('System info received:', data);
             document.getElementById('osInfo').textContent = data.os || 'Unknown';
             document.getElementById('desktopInfo').textContent = data.desktop || 'Unknown';
             document.getElementById('availableApps').textContent = data.gui_apps_count || '0';
         })
-        .catch(() => {
-            document.getElementById('osInfo').textContent = 'Unknown';
-            document.getElementById('desktopInfo').textContent = 'Unknown';
+        .catch(error => {
+            console.error('Error loading system info:', error);
+            document.getElementById('osInfo').textContent = 'Error';
+            document.getElementById('desktopInfo').textContent = 'Error';
             document.getElementById('availableApps').textContent = 'Error';
         });
-});
 
-// Agregar al final del bloque de scripts, antes del cierre:
-
-// Handle add selected applications button
-document.getElementById('addSelectedApps').addEventListener('click', function() {
-    const selectedCheckboxes = document.querySelectorAll('input[name="selectedApps"]:checked');
-    
-    if (selectedCheckboxes.length === 0) {
-        alert('Please select at least one application to add.');
-        return;
-    }
-    
-    const selectedApps = [];
-    selectedCheckboxes.forEach(checkbox => {
-        const index = parseInt(checkbox.value);
-        if (window.scannedApps && window.scannedApps[index]) {
-            selectedApps.push(window.scannedApps[index]);
-        }
+        // Auto-focus on session name
+        document.getElementById('name').focus();
     });
-    
-    if (selectedApps.length === 0) {
-        alert('No valid applications selected.');
-        return;
-    }
-    
-    // Show loading state
-    const button = this;
-    const originalText = button.innerHTML;
-    button.disabled = true;
-    button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Adding Applications...';
-    
-    // Send applications to server
-    fetch('/gui/api/add-scanned-applications', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        },
-        body: JSON.stringify({
-            applications: selectedApps
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Hide modal
-            bootstrap.Modal.getInstance(document.getElementById('scanModal')).hide();
-            
-            // Show success message
-            const message = `Successfully added ${data.added_count} applications!`;
-            if (data.errors && data.errors.length > 0) {
-                message += `\n\nWarnings:\n${data.errors.join('\n')}`;
-            }
-            
-            // Show success notification
-            showNotification(message, 'success');
-            
-            // Redirect to applications page after a delay
-            setTimeout(() => {
-                window.location.href = '/gui/applications';
-            }, 2000);
-            
-        } else {
-            alert('Error adding applications: ' + (data.error || 'Unknown error'));
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error adding applications: ' + error.message);
-    })
-    .finally(() => {
-        // Reset button
-        button.disabled = false;
-        button.innerHTML = originalText;
-    });
-});
 
-// Helper function for notifications
-// Reemplazar la función showNotification en add_application.html con la misma de arriba
-function showNotification(message, type = 'info') {
-    // Remove existing notifications
-    const existingNotifications = document.querySelectorAll('.gui-notification');
-    existingNotifications.forEach(notification => notification.remove());
-    
-    // Create notification container if it doesn't exist
-    let notificationContainer = document.getElementById('notification-container');
-    if (!notificationContainer) {
-        notificationContainer = document.createElement('div');
-        notificationContainer.id = 'notification-container';
-        notificationContainer.style.cssText = `
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            z-index: 9999;
-            max-width: 400px;
-            pointer-events: none;
-        `;
-        document.body.appendChild(notificationContainer);
-    }
-    
-    // Create notification
-    const notification = document.createElement('div');
-    notification.className = `alert alert-${type} gui-notification shadow-lg fade show`;
-    notification.style.cssText = `
-        margin-bottom: 10px;
-        pointer-events: auto;
-        animation: slideInRight 0.3s ease-out;
-    `;
-    
-    const iconMap = {
-        'success': 'check-circle',
-        'danger': 'exclamation-circle',
-        'warning': 'exclamation-triangle',
-        'info': 'info-circle'
-    };
-    
-    notification.innerHTML = `
-        <div class="d-flex align-items-start">
-            <i class="bi bi-${iconMap[type] || 'info-circle'} me-2 mt-1"></i>
-            <div class="flex-grow-1">
-                <div style="white-space: pre-line;">${message}</div>
-            </div>
-            <button type="button" class="btn-close ms-2" onclick="this.closest('.gui-notification').remove()"></button>
-        </div>
-    `;
-    
-    notificationContainer.appendChild(notification);
-    
-    // Auto-remove after 8 seconds
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.style.animation = 'slideOutRight 0.3s ease-in';
-            setTimeout(() => notification.remove(), 300);
-        }
-    }, 8000);
-}
+</script>
 {% endblock %}
