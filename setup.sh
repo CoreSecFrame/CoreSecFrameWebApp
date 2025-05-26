@@ -1,6 +1,6 @@
 #!/bin/bash
-# Enhanced CoreSecFrame Setup Script
-# Supports local installation, Docker deployment, and database management
+# CoreSecFrame Setup Script - Local Installation Only
+# Supports local installation and database management
 
 set -e  # Exit on any error
 
@@ -18,7 +18,6 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_NAME="coresecframe"
 VENV_PATH="$SCRIPT_DIR/venv"
-DOCKER_DIR="$SCRIPT_DIR/docker"
 SYSTEMD_DIR="$SCRIPT_DIR/systemd"
 
 # Function to print colored output
@@ -56,7 +55,7 @@ show_banner() {
 EOF
     echo -e "${NC}"
     echo -e "${WHITE}Professional Cybersecurity Framework${NC}"
-    echo -e "${CYAN}Enhanced Interactive Setup Script v2.0${NC}"
+    echo -e "${CYAN}Local Installation Setup Script v2.0${NC}"
     echo ""
 }
 
@@ -65,6 +64,7 @@ check_requirements() {
     print_header "=== Checking System Requirements ==="
     
     local missing_deps=()
+    local gui_missing=()
     
     # Check Python
     if ! command -v python3 &> /dev/null; then
@@ -154,43 +154,10 @@ check_requirements() {
     echo
 }
 
-# Function to check Docker requirements
-check_docker_requirements() {
-    print_header "=== Checking Docker Requirements ==="
-    
-    if ! command -v docker &> /dev/null; then
-        print_error "Docker is not installed. Please install Docker first."
-        echo "Visit: https://docs.docker.com/get-docker/"
-        exit 1
-    fi
-    
-    if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
-        print_error "Docker Compose is not installed. Please install Docker Compose first."
-        echo "Visit: https://docs.docker.com/compose/install/"
-        exit 1
-    fi
-    
-    # Check if Docker is running
-    if ! docker ps &> /dev/null; then
-        print_error "Docker daemon is not running. Please start Docker first."
-        exit 1
-    fi
-    
-    print_success "Docker requirements satisfied"
-    echo
-}
-
 # Function to initialize database
 init_database() {
     print_header "=== Database Initialization ==="
     
-    if [ "$1" = "docker" ]; then
-        # For Docker, the database will be initialized in the container
-        print_status "Database will be initialized automatically in Docker container"
-        return
-    fi
-    
-    # For local installation
     print_status "Initializing CoreSecFrame database..."
     
     # Create Python script for database initialization
@@ -390,7 +357,7 @@ reset_database() {
     fi
     
     print_status "Resetting database..."
-    init_database "local"
+    init_database
     print_success "Database has been reset successfully!"
     echo
     echo -e "${YELLOW}Default credentials after reset:${NC}"
@@ -399,7 +366,6 @@ reset_database() {
     echo
 }
 
-# Function to install noVNC manually
 # Function to install noVNC manually
 install_novnc_manual() {
     print_status "Installing noVNC manually..."
@@ -424,7 +390,6 @@ install_novnc_manual() {
     return 0
 }
 
-# Function to setup noVNC service
 # Function to setup noVNC service
 setup_novnc_service() {
     print_header "=== noVNC Web Service Setup ==="
@@ -544,7 +509,7 @@ install_local() {
     print_success "Directories created with proper permissions"
     
     # Initialize database
-    init_database "local"
+    init_database
     
     # Set up systemd service (optional)
     setup_systemd_service
@@ -626,308 +591,17 @@ EOF
     echo
 }
 
-# Function to get Docker configuration
-get_docker_config() {
-    print_header "=== Docker Configuration ==="
-    
-    echo -e "${WHITE}Configure resource allocation for the Docker container:${NC}"
-    echo
-    
-    # CPU configuration
-    echo -e "${CYAN}CPU Configuration:${NC}"
-    read -p "Number of CPU cores (default: 2): " cpu_cores
-    cpu_cores=${cpu_cores:-2}
-    
-    # Memory configuration
-    echo -e "${CYAN}Memory Configuration:${NC}"
-    read -p "Memory allocation in GB (default: 4): " memory_gb
-    memory_gb=${memory_gb:-4}
-    
-    # Storage configuration
-    echo -e "${CYAN}Storage Configuration:${NC}"
-    read -p "Persistent storage size in GB (default: 10): " storage_gb
-    storage_gb=${storage_gb:-10}
-    
-    # Port configuration
-    echo -e "${CYAN}Network Configuration:${NC}"
-    read -p "Host port for web interface (default: 5000): " host_port
-    host_port=${host_port:-5000}
-    
-    # Validate inputs
-    if ! [[ "$cpu_cores" =~ ^[0-9]+$ ]] || [ "$cpu_cores" -lt 1 ]; then
-        print_warning "Invalid CPU cores, using default: 2"
-        cpu_cores=2
-    fi
-    
-    if ! [[ "$memory_gb" =~ ^[0-9]+$ ]] || [ "$memory_gb" -lt 1 ]; then
-        print_warning "Invalid memory size, using default: 4GB"
-        memory_gb=4
-    fi
-    
-    if ! [[ "$storage_gb" =~ ^[0-9]+$ ]] || [ "$storage_gb" -lt 5 ]; then
-        print_warning "Invalid storage size, using default: 10GB"
-        storage_gb=10
-    fi
-    
-    if ! [[ "$host_port" =~ ^[0-9]+$ ]] || [ "$host_port" -lt 1024 ] || [ "$host_port" -gt 65535 ]; then
-        print_warning "Invalid port, using default: 5000"
-        host_port=5000
-    fi
-    
-    echo
-    print_status "Docker configuration:"
-    echo "  CPU Cores: $cpu_cores"
-    echo "  Memory: ${memory_gb}GB"
-    echo "  Storage: ${storage_gb}GB"
-    echo "  Port: $host_port"
-    echo
-}
-
-# Function for Docker installation
-install_docker() {
-    print_header "=== Docker Installation ==="
-    
-    # Get Docker configuration
-    get_docker_config
-    
-    # Create Docker directory
-    mkdir -p "$DOCKER_DIR"
-    
-    # Create Dockerfile
-    print_status "Creating Dockerfile..."
-    cat > "$DOCKER_DIR/Dockerfile" << 'EOF'
-FROM python:3.11-slim
-
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV FLASK_APP=run.py
-
-# Instalación de dependencias del sistema
-RUN apt-get update && apt-get install -y \
-    sudo \
-    git \
-    curl \
-    tmux \
-    xvfb \
-    x11vnc \
-    fluxbox \
-    python3-websockify \
-    novnc \
-    net-tools \
-    x11-utils \
-    && rm -rf /var/lib/apt/lists/*
-
-# Crear usuario no root
-RUN useradd -ms /bin/bash coresecframe && echo "coresecframe ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
-
-# Set working dir
-WORKDIR /app
-
-# Copy dependencies and install
-COPY requirements.txt .
-
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy the full app, set ownership, and set permissions
-COPY --chown=coresecframe:coresecframe . /app
-
-# Ensure entrypoint is executable
-RUN chmod +x /app/docker/entrypoint.sh
-
-# Cambiar a usuario no root
-USER coresecframe
-
-# Exponer puertos necesarios
-EXPOSE 5000 5900 6080
-
-# Entry point
-ENTRYPOINT [ "bash", "/app/docker/entrypoint.sh" ]
-EOF
-
-    # Create entrypoint script
-    print_status "Creating entrypoint script..."
-    cat > "$DOCKER_DIR/entrypoint.sh" << 'EOF'
-#!/bin/bash
-set -e
-
-echo "🚀 Starting CoreSecFrame in Docker container..."
-
-# Initialize database if it doesn't exist
-if [ ! -f "/app/app.db" ]; then
-    echo "📊 Initializing database..."
-    python3 << 'PYTHON_EOF'
-import sys
-import os
-sys.path.insert(0, '/app')
-
-from app import create_app, db
-from app.auth.models import User
-from app.modules.models import Module, ModuleCategory
-from datetime import datetime
-
-def initialize_database():
-    app = create_app()
-    
-    with app.app_context():
-        print("Creating database tables...")
-        db.create_all()
-        
-        # Create admin user
-        admin = User(
-            username='admin', 
-            email='admin@coresecframe.local', 
-            role='admin',
-            created_at=datetime.utcnow()
-        )
-        admin.set_password('admin')
-        db.session.add(admin)
-        
-        # Create regular user
-        user = User(
-            username='user', 
-            email='user@coresecframe.local', 
-            role='user',
-            created_at=datetime.utcnow()
-        )
-        user.set_password('password')
-        db.session.add(user)
-        
-        # Create categories
-        categories = [
-            ModuleCategory(name='Reconnaissance', description='Information gathering tools'),
-            ModuleCategory(name='Vulnerability Analysis', description='Security scanning tools'),
-            ModuleCategory(name='Exploitation', description='Penetration testing tools'),
-            ModuleCategory(name='Post Exploitation', description='Post-exploitation tools'),
-            ModuleCategory(name='Reporting', description='Report generation tools'),
-            ModuleCategory(name='Utils', description='Utility tools')
-        ]
-        
-        for category in categories:
-            db.session.add(category)
-        
-        db.session.commit()
-        print("✅ Database initialized successfully!")
-
-if __name__ == '__main__':
-    initialize_database()
-PYTHON_EOF
-    echo "✅ Database initialization completed!"
-else
-    echo "📊 Database already exists, skipping initialization"
-fi
-
-echo "🌐 Starting CoreSecFrame web application..."
-exec python3 run.py
-EOF
-
-    # Create docker-compose.yml
-    print_status "Creating Docker Compose configuration..."
-    cat > "$DOCKER_DIR/docker-compose.yml" << EOF
-version: '3.8'
-
-services:
-  coresecframe:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-    container_name: coresecframe-app
-    ports:
-      - "${host_port}:5000"
-    volumes:
-      - coresecframe_data:/app/instance
-      - coresecframe_logs:/app/logs
-      - coresecframe_modules:/app/modules
-    environment:
-      - FLASK_ENV=production
-      - FLASK_APP=run.py
-    deploy:
-      resources:
-        limits:
-          cpus: '${cpu_cores}'
-          memory: ${memory_gb}G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-volumes:
-  coresecframe_data:
-    driver: local
-    driver_opts:
-      type: none
-      device: $SCRIPT_DIR/docker/data
-      o: bind
-  coresecframe_logs:
-    driver: local
-    driver_opts:
-      type: none
-      device: $SCRIPT_DIR/docker/logs
-      o: bind
-  coresecframe_modules:
-    driver: local
-    driver_opts:
-      type: none
-      device: $SCRIPT_DIR/docker/modules
-      o: bind
-EOF
-
-    # Create volume directories
-    print_status "Creating Docker volumes..."
-    mkdir -p "$DOCKER_DIR/data" "$DOCKER_DIR/logs" "$DOCKER_DIR/modules"
-    
-    # Build and start containers
-    print_status "Building Docker image..."
-    cd "$DOCKER_DIR"
-    docker-compose build
-    
-    print_status "Starting Docker containers..."
-    docker-compose up -d
-    
-    print_success "Docker installation completed!"
-    echo
-    print_header "=== Docker Installation Summary ==="
-    echo -e "${WHITE}Container Name:${NC} coresecframe-app"
-    echo -e "${WHITE}Web Interface:${NC} http://localhost:$host_port"
-    echo -e "${WHITE}CPU Cores:${NC} $cpu_cores"
-    echo -e "${WHITE}Memory:${NC} ${memory_gb}GB"
-    echo -e "${WHITE}Storage:${NC} ${storage_gb}GB"
-    echo -e "${WHITE}Default Admin:${NC} admin/admin"
-    echo -e "${WHITE}Default User:${NC} user/password"
-    echo
-    echo -e "${CYAN}Docker commands:${NC}"
-    echo "  Status:  docker-compose -f $DOCKER_DIR/docker-compose.yml ps"
-    echo "  Logs:    docker-compose -f $DOCKER_DIR/docker-compose.yml logs -f"
-    echo "  Stop:    docker-compose -f $DOCKER_DIR/docker-compose.yml down"
-    echo "  Start:   docker-compose -f $DOCKER_DIR/docker-compose.yml up -d"
-    echo
-    
-    # Check container status
-    print_status "Checking container status..."
-    sleep 5
-    docker-compose ps
-    
-    cd "$SCRIPT_DIR"
-}
-
 # Main menu function
 show_main_menu() {
     while true; do
         show_banner
-        echo -e "${WHITE}Choose an installation option:${NC}"
+        echo -e "${WHITE}Choose an option:${NC}"
         echo
         echo "  1) 🖥️  Local Installation"
-        echo "  2) 🐳 Docker Container Deployment"
-        echo "  3) 🔄 Reset Database (DESTRUCTIVE)"
-        echo "  4) ❌ Exit"
+        echo "  2) 🔄 Reset Database (DESTRUCTIVE)"
+        echo "  3) ❌ Exit"
         echo
-        read -p "Enter your choice (1-4): " choice
+        read -p "Enter your choice (1-3): " choice
         
         case $choice in
             1)
@@ -936,27 +610,22 @@ show_main_menu() {
                 break
                 ;;
             2)
-                check_docker_requirements
-                install_docker
-                break
-                ;;
-            3)
                 # Check if local installation exists
                 if [ -d "$VENV_PATH" ] && [ -f "$SCRIPT_DIR/app.db" ]; then
                     source "$VENV_PATH/bin/activate" 2>/dev/null || true
                     reset_database
                 else
-                    print_error "No local installation found. Database reset is only available for local installations."
+                    print_error "No local installation found. Please run local installation first."
                     echo "Press Enter to continue..."
                     read
                 fi
                 ;;
-            4)
+            3)
                 print_status "Goodbye!"
                 exit 0
                 ;;
             *)
-                print_error "Invalid choice. Please select 1-4."
+                print_error "Invalid choice. Please select 1-3."
                 sleep 2
                 ;;
         esac
