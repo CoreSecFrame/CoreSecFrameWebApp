@@ -725,6 +725,8 @@ WORKDIR /home/coresecframe
 # Copiar el código de la aplicación
 COPY . /app
 RUN chown -R coresecframe:coresecframe /app
+
+USER coresecframe
 WORKDIR /app
 
 # Crear y activar entorno virtual
