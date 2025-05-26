@@ -65,6 +65,7 @@ check_requirements() {
     print_header "=== Checking System Requirements ==="
     
     local missing_deps=()
+    local gui_missing=()
     
     # Check Python
     if ! command -v python3 &> /dev/null; then
@@ -400,7 +401,6 @@ reset_database() {
 }
 
 # Function to install noVNC manually
-# Function to install noVNC manually
 install_novnc_manual() {
     print_status "Installing noVNC manually..."
     
@@ -424,7 +424,6 @@ install_novnc_manual() {
     return 0
 }
 
-# Function to setup noVNC service
 # Function to setup noVNC service
 setup_novnc_service() {
     print_header "=== noVNC Web Service Setup ==="
@@ -683,9 +682,99 @@ get_docker_config() {
     echo
 }
 
-# Function for Docker installation
+# Function to check and resolve port conflicts
+check_port_conflicts() {
+    print_header "=== Checking Port Conflicts ==="
+    
+    local ports_to_check=(5000 5900 6080)
+    local conflicts_found=false
+    local conflicting_ports=()
+    
+    for port in "${ports_to_check[@]}"; do
+        if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
+            conflicts_found=true
+            conflicting_ports+=($port)
+            print_warning "Port $port is already in use"
+            
+            # Show what's using it
+            echo "  Process: $(lsof -Pi :$port -sTCP:LISTEN | tail -n +2 | awk '{print $1, $2}' | head -1)"
+        fi
+    done
+    
+    if $conflicts_found; then
+        print_warning "Found port conflicts: ${conflicting_ports[*]}"
+        echo
+        read -p "Would you like to automatically resolve these conflicts? (y/N): " resolve_conflicts
+        
+        if [[ $resolve_conflicts =~ ^[Yy]$ ]]; then
+            print_status "Resolving port conflicts..."
+            
+            # Stop systemd services that might conflict
+            if systemctl is-active --quiet novnc 2>/dev/null; then
+                print_status "Stopping noVNC systemd service..."
+                sudo systemctl stop novnc 2>/dev/null || true
+                sudo systemctl disable novnc 2>/dev/null || true
+            fi
+            
+            if systemctl is-active --quiet coresecframe 2>/dev/null; then
+                print_status "Stopping CoreSecFrame systemd service..."
+                sudo systemctl stop coresecframe 2>/dev/null || true
+            fi
+            
+            # Stop any existing Docker containers
+            if docker ps -q 2>/dev/null | grep -q .; then
+                print_status "Stopping existing Docker containers..."
+                docker stop $(docker ps -q) 2>/dev/null || true
+            fi
+            
+            # Clean up Docker compose if it exists
+            if [ -f "$DOCKER_DIR/docker-compose.yml" ]; then
+                print_status "Cleaning up existing Docker Compose..."
+                cd "$DOCKER_DIR" && docker-compose down --remove-orphans 2>/dev/null || true
+                cd "$SCRIPT_DIR"
+            fi
+            
+            # Wait for processes to stop
+            sleep 3
+            
+            # Check if conflicts are resolved
+            local remaining_conflicts=false
+            for port in "${conflicting_ports[@]}"; do
+                if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
+                    remaining_conflicts=true
+                    print_warning "Port $port is still in use after cleanup"
+                fi
+            done
+            
+            if $remaining_conflicts; then
+                print_error "Some port conflicts remain. You may need to:"
+                echo "  1. Manually stop the conflicting processes"
+                echo "  2. Reboot the system"
+                echo "  3. Use different ports in the configuration"
+                return 1
+            else
+                print_success "All port conflicts resolved!"
+            fi
+        else
+            print_error "Cannot proceed with conflicting ports. Please resolve manually."
+            return 1
+        fi
+    else
+        print_success "No port conflicts detected"
+    fi
+    
+    return 0
+}
+
+# Function for Docker installation - CORREGIDA
 install_docker() {
     print_header "=== Docker Installation ==="
+    
+    # Check for port conflicts first
+    if ! check_port_conflicts; then
+        print_error "Port conflicts detected. Please resolve them before continuing."
+        return 1
+    fi
     
     # Get Docker configuration
     get_docker_config
@@ -693,15 +782,19 @@ install_docker() {
     # Create Docker directory
     mkdir -p "$DOCKER_DIR"
     
-    # Create Dockerfile
+    # Create Dockerfile - MEJORADO
     print_status "Creating Dockerfile..."
     cat > "$DOCKER_DIR/Dockerfile" << 'EOF'
-# Dockerfile
-FROM python:3.11-slim
+FROM python:3.13-slim
 
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV FLASK_APP=run.py
+ENV FLASK_ENV=production
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Instalación de dependencias del sistema
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     sudo \
     git \
@@ -714,112 +807,295 @@ RUN apt-get update && apt-get install -y \
     novnc \
     net-tools \
     x11-utils \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Crear usuario no root
-RUN useradd -ms /bin/bash coresecframe && echo "coresecframe ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+# Create user
+RUN useradd -ms /bin/bash coresecframe && \
+    echo "coresecframe ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
+    mkdir -p /app /app/logs /app/modules /app/instance && \
+    chown -R coresecframe:coresecframe /app
 
-USER coresecframe
-WORKDIR /home/coresecframe
-
-# Copiar el código de la aplicación
-COPY . /app
+# Set working directory
 WORKDIR /app
 
-# Crear y activar entorno virtual
-RUN python3 -m venv venv && \
-    . venv/bin/activate && \
-    pip install --upgrade pip && \
-    pip install -r requirements.txt
+# Switch to non-root user for dependency installation
+USER coresecframe
 
-# Exponer puertos
+# Copy requirements first (for better caching)
+COPY --chown=coresecframe:coresecframe requirements.txt /app/
+
+# Install Python dependencies including email_validator
+RUN pip install --no-cache-dir --user -r requirements.txt && \
+    pip install --no-cache-dir --user email_validator
+
+# Copy application code
+COPY --chown=coresecframe:coresecframe . /app/
+
+# Ensure proper permissions
+USER root
+RUN chmod +x /app/docker/entrypoint.sh && \
+    chown -R coresecframe:coresecframe /app
+USER coresecframe
+
+# Expose ports
 EXPOSE 5000 5900 6080
 
-# Entrypoint de la aplicación
-ENTRYPOINT [ "bash", "entrypoint.sh" ]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:5000 || exit 1
+
+# Entry point
+ENTRYPOINT ["/app/docker/entrypoint.sh"]
 EOF
 
-    # Create entrypoint script
+    # Create entrypoint script - MEJORADO CON DEBUGGING
     print_status "Creating entrypoint script..."
     cat > "$DOCKER_DIR/entrypoint.sh" << 'EOF'
 #!/bin/bash
 set -e
 
-echo "🚀 Starting CoreSecFrame in Docker container..."
+# Enable debugging
+exec > >(tee -a /app/logs/entrypoint.log)
+exec 2>&1
+
+echo "🚀 Starting CoreSecFrame Docker Container - $(date)"
+echo "==================================================="
+
+# Show environment info
+echo "📊 Environment Information:"
+echo "  User: $(whoami)"
+echo "  Working Directory: $(pwd)"
+echo "  Python Version: $(python3 --version)"
+echo "  Flask App: $FLASK_APP"
+echo "  Flask Env: $FLASK_ENV"
+
+# Check if we're in the right directory
+if [ ! -f "/app/run.py" ]; then
+    echo "❌ ERROR: run.py not found in /app/"
+    ls -la /app/
+    exit 1
+fi
+
+# Create required directories with proper permissions
+echo "📁 Creating required directories..."
+mkdir -p /app/logs /app/modules /app/instance
+chmod -R 755 /app/logs /app/modules /app/instance
+
+# Check Python dependencies
+echo "🔍 Checking Python dependencies..."
+missing_deps=()
+
+# Check critical dependencies
+for dep in "email_validator" "flask_migrate" "flask_sqlalchemy" "flask_login" "flask_wtf"; do
+    if ! python3 -c "import $dep" 2>/dev/null; then
+        missing_deps+=("$dep")
+    fi
+done
+
+if [ ${#missing_deps[@]} -ne 0 ]; then
+    echo "❌ Missing dependencies: ${missing_deps[*]}"
+    echo "🔧 Installing missing dependencies..."
+    for dep in "${missing_deps[@]}"; do
+        pip install --user "$dep" || pip install --user "${dep//_/-}"
+    done
+else
+    echo "✅ All critical dependencies are available"
+fi
 
 # Initialize database if it doesn't exist
-if [ ! -f "/app/app.db" ]; then
+if [ ! -f "/app/instance/app.db" ]; then
     echo "📊 Initializing database..."
-    python3 << 'PYTHON_EOF'
+    
+    # Create database initialization script with better error handling
+    cat > /tmp/init_db.py << 'PYTHON_SCRIPT_END'
 import sys
 import os
 sys.path.insert(0, '/app')
 
-from app import create_app, db
-from app.auth.models import User
-from app.modules.models import Module, ModuleCategory
-from datetime import datetime
-
 def initialize_database():
-    app = create_app()
-    
-    with app.app_context():
-        print("Creating database tables...")
-        db.create_all()
+    try:
+        print("🔄 Importing required modules...")
+        from app import create_app, db
+        from app.auth.models import User
+        from app.modules.models import ModuleCategory
+        from app.gui.models import GUICategory
+        from datetime import datetime
+        from sqlalchemy.exc import IntegrityError
         
-        # Create admin user
-        admin = User(
-            username='admin', 
-            email='admin@coresecframe.local', 
-            role='admin',
-            created_at=datetime.utcnow()
-        )
-        admin.set_password('admin')
-        db.session.add(admin)
+        print("🏗️ Creating Flask application...")
+        app = create_app()
         
-        # Create regular user
-        user = User(
-            username='user', 
-            email='user@coresecframe.local', 
-            role='user',
-            created_at=datetime.utcnow()
-        )
-        user.set_password('password')
-        db.session.add(user)
+        if app is None:
+            print("❌ ERROR: create_app() returned None")
+            return False
         
-        # Create categories
-        categories = [
-            ModuleCategory(name='Reconnaissance', description='Information gathering tools'),
-            ModuleCategory(name='Vulnerability Analysis', description='Security scanning tools'),
-            ModuleCategory(name='Exploitation', description='Penetration testing tools'),
-            ModuleCategory(name='Post Exploitation', description='Post-exploitation tools'),
-            ModuleCategory(name='Reporting', description='Report generation tools'),
-            ModuleCategory(name='Utils', description='Utility tools')
-        ]
+        print("✅ Flask application created successfully")
         
-        for category in categories:
-            db.session.add(category)
-        
-        db.session.commit()
-        print("✅ Database initialized successfully!")
+        with app.app_context():
+            print("🗄️ Creating database tables...")
+            db.create_all()
+            
+            # Check if users already exist
+            existing_admin = User.query.filter_by(username='admin').first()
+            existing_user = User.query.filter_by(username='user').first()
+            
+            if not existing_admin:
+                print("👤 Creating admin user...")
+                admin = User(
+                    username='admin', 
+                    email='admin@coresecframe.local', 
+                    role='admin',
+                    created_at=datetime.utcnow()
+                )
+                admin.set_password('admin')
+                db.session.add(admin)
+                print("  ✅ Admin user created")
+            else:
+                print("👤 Admin user already exists, skipping...")
+            
+            if not existing_user:
+                print("👤 Creating regular user...")
+                user = User(
+                    username='user', 
+                    email='user@coresecframe.local', 
+                    role='user',
+                    created_at=datetime.utcnow()
+                )
+                user.set_password('password')
+                db.session.add(user)
+                print("  ✅ Regular user created")
+            else:
+                print("👤 Regular user already exists, skipping...")
+            
+            # Check if module categories exist
+            existing_categories = ModuleCategory.query.count()
+            if existing_categories == 0:
+                print("📂 Creating module categories...")
+                categories = [
+                    ModuleCategory(name='Reconnaissance', description='Information gathering tools'),
+                    ModuleCategory(name='Vulnerability Analysis', description='Security scanning tools'),
+                    ModuleCategory(name='Exploitation', description='Penetration testing tools'),
+                    ModuleCategory(name='Post Exploitation', description='Post-exploitation tools'),
+                    ModuleCategory(name='Reporting', description='Report generation tools'),
+                    ModuleCategory(name='Utils', description='Utility tools')
+                ]
+                
+                for category in categories:
+                    db.session.add(category)
+                    print(f"  ✅ Added category: {category.name}")
+            else:
+                print(f"📂 Module categories already exist ({existing_categories} found), skipping...")
+            
+            # Check if GUI categories exist
+            existing_gui_categories = GUICategory.query.count()
+            if existing_gui_categories == 0:
+                print("🖥️ Creating GUI categories...")
+                gui_categories = [
+                    GUICategory(name='browsers', display_name='Web Browsers', description='Web browsing applications', icon_class='bi-globe', sort_order=1),
+                    GUICategory(name='editors', display_name='Text Editors', description='Text and code editors', icon_class='bi-file-text', sort_order=2),
+                    GUICategory(name='terminals', display_name='Terminal Emulators', description='Terminal applications', icon_class='bi-terminal', sort_order=3),
+                    GUICategory(name='utilities', display_name='Utilities', description='System utilities and tools', icon_class='bi-tools', sort_order=4),
+                    GUICategory(name='development', display_name='Development', description='Development tools and IDEs', icon_class='bi-code-slash', sort_order=5),
+                    GUICategory(name='multimedia', display_name='Multimedia', description='Audio and video applications', icon_class='bi-play-btn', sort_order=6)
+                ]
+                
+                for category in gui_categories:
+                    db.session.add(category)
+                    print(f"  ✅ Added GUI category: {category.display_name}")
+            else:
+                print(f"🖥️ GUI categories already exist ({existing_gui_categories} found), skipping...")
+            
+            print("💾 Committing to database...")
+            db.session.commit()
+            print("✅ Database initialization completed successfully!")
+            return True
+            
+    except ImportError as e:
+        print(f"❌ Import error: {e}")
+        print("Make sure all required modules are installed")
+        return False
+    except IntegrityError as e:
+        print(f"⚠️ Database integrity constraint (data already exists): {e}")
+        print("✅ Database appears to be already initialized")
+        return True
+    except Exception as e:
+        print(f"❌ Database initialization error: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 
 if __name__ == '__main__':
-    initialize_database()
-PYTHON_EOF
-    echo "✅ Database initialization completed!"
+    if initialize_database():
+        print("🎉 Database is ready!")
+    else:
+        print("💥 Database initialization failed!")
+        sys.exit(1)
+PYTHON_SCRIPT_END
+
+    # Run database initialization
+    if python3 /tmp/init_db.py; then
+        echo "✅ Database initialization completed successfully!"
+    else
+        echo "❌ Database initialization failed!"
+        echo "🔍 Debugging information:"
+        echo "Python path: $PYTHONPATH"
+        echo "Installed packages:"
+        pip list | grep -E "(Flask|email|wtf)" || echo "No Flask packages found"
+        exit 1
+    fi
+    
+    # Clean up
+    rm -f /tmp/init_db.py
 else
     echo "📊 Database already exists, skipping initialization"
 fi
 
+# Test Flask app import with better error handling
+echo "🔍 Testing Flask application import..."
+python3 -c "
+import sys
+sys.path.insert(0, '/app')
+try:
+    from app import create_app
+    app = create_app()
+    if app:
+        print('✅ Flask app import and creation successful')
+    else:
+        print('❌ Flask app creation returned None')
+        sys.exit(1)
+except Exception as e:
+    print(f'❌ Flask application import failed: {e}')
+    import traceback
+    traceback.print_exc()
+    sys.exit(1)
+"
+
+if [ $? -ne 0 ]; then
+    echo "❌ Flask application test failed"
+    exit 1
+fi
+
+# Set Python path
+export PYTHONPATH="/app:$PYTHONPATH"
+
+# Final check
+echo "🏁 Final checks before starting..."
+echo "  - Database file: $(ls -la /app/instance/app.db 2>/dev/null || echo 'Not found')"
+echo "  - Run script: $(ls -la /app/run.py 2>/dev/null || echo 'Not found')"
+echo "  - Python path: $PYTHONPATH"
+
 echo "🌐 Starting CoreSecFrame web application..."
-exec python3 run.py
+echo "Application will be available at: http://localhost:5000"
+echo "Default credentials: admin/admin"
+
+# Start the application
+exec python3 /app/run.py
 EOF
 
-    # Create docker-compose.yml
+    # Create docker-compose.yml - MEJORADO
     print_status "Creating Docker Compose configuration..."
     cat > "$DOCKER_DIR/docker-compose.yml" << EOF
-version: '3.8'
-
 services:
   coresecframe:
     build:
@@ -828,6 +1104,8 @@ services:
     container_name: coresecframe-app
     ports:
       - "${host_port}:5000"
+      - "5901:5900"  # VNC port (using 5901 to avoid conflicts)
+      - "6081:6080"  # noVNC web interface (using 6081 to avoid conflicts)
     volumes:
       - coresecframe_data:/app/instance
       - coresecframe_logs:/app/logs
@@ -835,6 +1113,7 @@ services:
     environment:
       - FLASK_ENV=production
       - FLASK_APP=run.py
+      - PYTHONPATH=/app
     deploy:
       resources:
         limits:
@@ -845,11 +1124,17 @@ services:
           memory: 512M
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000"]
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 40s
+      retries: 5
+      start_period: 60s
+    networks:
+      - coresecframe-network
+
+networks:
+  coresecframe-network:
+    driver: bridge
 
 volumes:
   coresecframe_data:
@@ -859,7 +1144,7 @@ volumes:
       device: $SCRIPT_DIR/docker/data
       o: bind
   coresecframe_logs:
-    driver: local
+    driver: local  
     driver_opts:
       type: none
       device: $SCRIPT_DIR/docker/logs
@@ -872,23 +1157,78 @@ volumes:
       o: bind
 EOF
 
-    # Create volume directories
+    # Create health check endpoint file
+    print_status "Creating health check endpoint..."
+    cat > "$SCRIPT_DIR/health.py" << 'EOF'
+# Simple health check for Docker
+from flask import Flask, jsonify
+
+def add_health_check(app):
+    @app.route('/health')
+    def health_check():
+        return jsonify({
+            'status': 'healthy',
+            'message': 'CoreSecFrame is running'
+        }), 200
+EOF
+
+    # Add health check to run.py if it doesn't exist
+    if [ -f "$SCRIPT_DIR/run.py" ]; then
+        if ! grep -q "health_check" "$SCRIPT_DIR/run.py"; then
+            print_status "Adding health check to run.py..."
+            cat >> "$SCRIPT_DIR/run.py" << 'EOF'
+
+# Add health check for Docker
+try:
+    from health import add_health_check
+    add_health_check(app)
+except ImportError:
+    pass
+EOF
+        fi
+    fi
+
+    # Create volume directories with proper permissions
     print_status "Creating Docker volumes..."
     mkdir -p "$DOCKER_DIR/data" "$DOCKER_DIR/logs" "$DOCKER_DIR/modules"
+    chmod -R 755 "$DOCKER_DIR"
     
-    # Build and start containers
-    print_status "Building Docker image..."
+    # Clean up any existing containers/images
+    print_status "Cleaning up existing containers..."
+    docker-compose -f "$DOCKER_DIR/docker-compose.yml" down --remove-orphans 2>/dev/null || true
+    docker rmi -f docker_coresecframe 2>/dev/null || true
+    
+    # Build Docker image
+    print_status "Building Docker image (this may take a few minutes)..."
     cd "$DOCKER_DIR"
-    docker-compose build
     
+    if docker-compose build --no-cache; then
+        print_success "Docker image built successfully!"
+    else
+        print_error "Failed to build Docker image"
+        cd "$SCRIPT_DIR"
+        return 1
+    fi
+    
+    # Start containers
     print_status "Starting Docker containers..."
-    docker-compose up -d
+    if docker-compose up -d; then
+        print_success "Docker containers started!"
+    else
+        print_error "Failed to start Docker containers"
+        print_status "Checking logs for errors..."
+        docker-compose logs
+        cd "$SCRIPT_DIR"
+        return 1
+    fi
     
     print_success "Docker installation completed!"
     echo
     print_header "=== Docker Installation Summary ==="
     echo -e "${WHITE}Container Name:${NC} coresecframe-app"
     echo -e "${WHITE}Web Interface:${NC} http://localhost:$host_port"
+    echo -e "${WHITE}VNC Port:${NC} 5901 (mapped from 5900)"
+    echo -e "${WHITE}noVNC Web:${NC} http://localhost:6081 (mapped from 6080)"
     echo -e "${WHITE}CPU Cores:${NC} $cpu_cores"
     echo -e "${WHITE}Memory:${NC} ${memory_gb}GB"
     echo -e "${WHITE}Storage:${NC} ${storage_gb}GB"
@@ -900,28 +1240,125 @@ EOF
     echo "  Logs:    docker-compose -f $DOCKER_DIR/docker-compose.yml logs -f"
     echo "  Stop:    docker-compose -f $DOCKER_DIR/docker-compose.yml down"
     echo "  Start:   docker-compose -f $DOCKER_DIR/docker-compose.yml up -d"
+    echo "  Rebuild: docker-compose -f $DOCKER_DIR/docker-compose.yml build --no-cache"
+    echo
+    echo -e "${CYAN}VNC Connection:${NC}"
+    echo "  Direct VNC: localhost:5901"
+    echo "  Web VNC:    http://localhost:6081"
     echo
     
-    # Check container status
-    print_status "Checking container status..."
-    sleep 5
+    # Wait for container to start and check status
+    print_status "Waiting for container to start..."
+    sleep 10
+    
+    echo -e "${CYAN}Container Status:${NC}"
     docker-compose ps
+    
+    echo -e "${CYAN}Recent Logs:${NC}"
+    docker-compose logs --tail=20
+    
+    # Check if the application is responding
+    print_status "Checking application health..."
+    sleep 5
+    
+    if curl -f "http://localhost:$host_port/health" >/dev/null 2>&1; then
+        print_success "✅ Application is responding correctly!"
+        echo -e "${GREEN}🎉 CoreSecFrame is ready!${NC}"
+        echo -e "${WHITE}Web Interface:${NC} http://localhost:$host_port"
+        echo -e "${WHITE}VNC Access:${NC} localhost:5901"
+        echo -e "${WHITE}Web VNC:${NC} http://localhost:6081"
+    else
+        print_warning "⚠️  Application may still be starting up..."
+        echo -e "${YELLOW}Check logs with: docker-compose -f $DOCKER_DIR/docker-compose.yml logs -f${NC}"
+        echo -e "${YELLOW}Wait a few more minutes and try: http://localhost:$host_port${NC}"
+    fi
     
     cd "$SCRIPT_DIR"
 }
 
-# Main menu function
+# Function to check Docker container status
+check_docker_status() {
+    print_header "=== Docker Container Status ==="
+    
+    if [ -f "$DOCKER_DIR/docker-compose.yml" ]; then
+        cd "$DOCKER_DIR"
+        
+        echo -e "${CYAN}Container Status:${NC}"
+        docker-compose ps
+        
+        echo -e "\n${CYAN}Resource Usage:${NC}"
+        docker stats --no-stream coresecframe-app 2>/dev/null || echo "Container not running"
+        
+        echo -e "\n${CYAN}Recent Logs (last 10 lines):${NC}"
+        docker-compose logs --tail=10
+        
+        echo -e "\n${CYAN}Health Check:${NC}"
+        container_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' coresecframe-app 2>/dev/null)
+        if [ -n "$container_ip" ]; then
+            if curl -f "http://localhost:5000/health" >/dev/null 2>&1; then
+                echo "✅ Application is healthy"
+            else
+                echo "⚠️  Application health check failed"
+            fi
+        else
+            echo "❌ Container not running"
+        fi
+        
+        cd "$SCRIPT_DIR"
+    else
+        print_error "Docker installation not found"
+    fi
+    
+    echo
+}
+
+# Function to troubleshoot Docker issues
+troubleshoot_docker() {
+    print_header "=== Docker Troubleshooting ==="
+    
+    if [ ! -f "$DOCKER_DIR/docker-compose.yml" ]; then
+        print_error "Docker installation not found"
+        return 1
+    fi
+    
+    cd "$DOCKER_DIR"
+    
+    echo -e "${CYAN}1. Container Status:${NC}"
+    docker-compose ps
+    
+    echo -e "\n${CYAN}2. Detailed Logs:${NC}"
+    docker-compose logs --tail=50
+    
+    echo -e "\n${CYAN}3. Container Inspect:${NC}"
+    docker inspect coresecframe-app 2>/dev/null | grep -E "(Status|Health|RestartCount)" || echo "Container not found"
+    
+    echo -e "\n${CYAN}4. Resource Usage:${NC}"
+    docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}\t{{.BlockIO}}" 2>/dev/null || echo "No running containers"
+    
+    echo -e "\n${CYAN}5. Suggested Actions:${NC}"
+    echo "  • Restart container: docker-compose restart"
+    echo "  • Rebuild image: docker-compose build --no-cache"
+    echo "  • View live logs: docker-compose logs -f"
+    echo "  • Enter container: docker exec -it coresecframe-app bash"
+    echo "  • Reset completely: docker-compose down && docker-compose up -d"
+    
+    cd "$SCRIPT_DIR"
+}
+
+# Main menu function - EXPANDED
 show_main_menu() {
     while true; do
         show_banner
-        echo -e "${WHITE}Choose an installation option:${NC}"
+        echo -e "${WHITE}Choose an option:${NC}"
         echo
         echo "  1) 🖥️  Local Installation"
         echo "  2) 🐳 Docker Container Deployment"
         echo "  3) 🔄 Reset Database (DESTRUCTIVE)"
-        echo "  4) ❌ Exit"
+        echo "  4) 📊 Check Docker Status"
+        echo "  5) 🔧 Docker Troubleshooting"
+        echo "  6) ❌ Exit"
         echo
-        read -p "Enter your choice (1-4): " choice
+        read -p "Enter your choice (1-6): " choice
         
         case $choice in
             1)
@@ -946,11 +1383,21 @@ show_main_menu() {
                 fi
                 ;;
             4)
+                check_docker_status
+                echo "Press Enter to continue..."
+                read
+                ;;
+            5)
+                troubleshoot_docker
+                echo "Press Enter to continue..."
+                read
+                ;;
+            6)
                 print_status "Goodbye!"
                 exit 0
                 ;;
             *)
-                print_error "Invalid choice. Please select 1-4."
+                print_error "Invalid choice. Please select 1-6."
                 sleep 2
                 ;;
         esac
