@@ -244,7 +244,7 @@
                             <div class="row">
                                 <div class="col-sm-4"><strong>Host:</strong></div>
                                 <div class="col-sm-8">
-                                    <code id="vnc-host">localhost</code>
+                                    <code id="vnc-host">{{ session.get_connection_info().host if session.get_connection_info() else 'localhost' }}</code>
                                     <button class="btn btn-sm btn-outline-secondary ms-2"
                                         onclick="copyToClipboard('vnc-host', this)">
                                         <i class="bi bi-clipboard"></i>
@@ -264,7 +264,7 @@
                             <div class="row mt-2">
                                 <div class="col-sm-4"><strong>Full Address:</strong></div>
                                 <div class="col-sm-8">
-                                    <code id="vnc-full">localhost:{{ session.vnc_port }}</code>
+                                    <code id="vnc-full">{{ session.get_connection_info().connection_string if session.get_connection_info() else ('localhost:' + (session.vnc_port|string)) }}</code>
                                     <button class="btn btn-sm btn-outline-secondary ms-2"
                                         onclick="copyToClipboard('vnc-full', this)">
                                         <i class="bi bi-clipboard"></i>
@@ -281,6 +281,16 @@
                                     </button>
                                 </div>
                             </div>
+                            {% if session.get_connection_info() and session.get_connection_info().is_remote %}
+                            <div class="row mt-2">
+                                <div class="col-12">
+                                    <div class="alert alert-info alert-sm mb-0">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        <small>Remote connection detected - using server IP: {{ session.get_connection_info().host }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
 
@@ -712,7 +722,12 @@
     }
 
     function copyConnectionString() {
+        {% if session.get_connection_info() %}
+        const connectionString = `{{ session.get_connection_info().connection_string }}`;
+        {% else %}
         const connectionString = `localhost:{{ session.vnc_port }}`;
+        {% endif %}
+        
         navigator.clipboard.writeText(connectionString).then(() => {
             const btn = event.target;
             const originalHtml = btn.innerHTML;

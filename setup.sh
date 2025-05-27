@@ -74,12 +74,15 @@ check_requirements() {
         python_version=$(python3 --version 2>&1 | cut -d' ' -f2)
         print_status "Python version: ${python_version}"
         
-        # Check if version is >= 3.8
         if ! python3 -c "import sys; exit(0 if sys.version_info >= (3, 8) else 1)" 2>/dev/null; then
             print_error "Python 3.8 or higher is required"
             exit 1
         fi
     fi
+
+    # Add required system dependencies for Python development
+    missing_deps+=("build-essential" "python3-dev" "python3-pip" "python3-venv")
+
     
     # Check tmux
     if ! command -v tmux &> /dev/null; then
@@ -168,6 +171,18 @@ check_requirements() {
                         ;;
                     "websockify")
                         apt_packages+=("websockify" "python3-websockify")
+                        ;;
+                    "build-essential")
+                        apt_packages+=("build-essential")
+                        ;;
+                    "python3-dev")
+                        apt_packages+=("python3-dev")
+                        ;;                        
+                    "python3-pip")
+                        apt_packages+=("python3-pip")
+                        ;;                        
+                    "python3-venv")
+                        apt_packages+=("python3-venv")
                         ;;
                 esac
             done
@@ -651,37 +666,39 @@ verify_gui_installation() {
 setup_novnc_service() {
     print_header "=== noVNC Web Service Setup ==="
     
-    read -p "Would you like to set up noVNC web service for browser-based VNC access? (y/N): " setup_novnc
+    # Detect if we are in WSL
+    if grep -qiE "(microsoft|wsl)" /proc/sys/kernel/osrelease 2>/dev/null; then
+        print_status "Detected WSL environment - Skipping noVNC systemd service setup"
+        return
+    fi
+
+    print_status "Non-WSL environment detected - Proceeding with noVNC service setup"
+
+    # Create systemd directory if it doesn't exist
+    mkdir -p "$SYSTEMD_DIR"
     
-    if [[ $setup_novnc =~ ^[Yy]$ ]]; then
-        print_status "Setting up noVNC service..."
-        
-        # Create systemd directory if it doesn't exist
-        mkdir -p "$SYSTEMD_DIR"
-        
-        # Check if websockify is available
-        if ! command -v websockify &> /dev/null; then
-            print_error "websockify not found. Please install it first:"
-            echo "  Ubuntu/Debian: sudo apt-get install websockify"
-            echo "  RHEL/CentOS: sudo yum install python3-websockify"
-            echo "  Fedora: sudo dnf install python3-websockify"
-            return 1
-        fi
-        
-        # Determine noVNC path
-        NOVNC_PATH=""
-        if [ -d "/usr/share/novnc" ]; then
-            NOVNC_PATH="/usr/share/novnc"
-        elif [ -d "$SCRIPT_DIR/novnc" ]; then
-            NOVNC_PATH="$SCRIPT_DIR/novnc"
-        else
-            print_warning "noVNC not found. Installing it now..."
-            install_novnc_manual
-            NOVNC_PATH="$SCRIPT_DIR/novnc"
-        fi
-        
-        # Create noVNC systemd service
-        cat > "$SYSTEMD_DIR/novnc.service" << EOF
+    # Check if websockify is available
+    if ! command -v websockify &> /dev/null; then
+        print_error "websockify not found. Please install it first:"
+        echo "  Ubuntu/Debian: sudo apt-get install websockify"
+        echo "  RHEL/CentOS: sudo yum install python3-websockify"
+        return 1
+    fi
+    
+    # Determine noVNC path
+    NOVNC_PATH=""
+    if [ -d "/usr/share/novnc" ]; then
+        NOVNC_PATH="/usr/share/novnc"
+    elif [ -d "$SCRIPT_DIR/novnc" ]; then
+        NOVNC_PATH="$SCRIPT_DIR/novnc"
+    else
+        print_warning "noVNC not found. Installing it now..."
+        install_novnc_manual
+        NOVNC_PATH="$SCRIPT_DIR/novnc"
+    fi
+    
+    # Create noVNC systemd service
+    cat > "$SYSTEMD_DIR/novnc.service" << EOF
 [Unit]
 Description=noVNC Web Client
 After=network.target
@@ -701,43 +718,18 @@ Environment=HOME=/home/$USER
 WantedBy=multi-user.target
 EOF
 
-        # Install service
-        if sudo cp "$SYSTEMD_DIR/novnc.service" /etc/systemd/system/; then
-            sudo systemctl daemon-reload
-            sudo systemctl enable novnc.service
-            
-            print_success "noVNC service created and enabled"
-            print_status "noVNC will be available at: http://localhost:6080"
-            print_status "Service commands:"
-            echo "  Start:   sudo systemctl start novnc"
-            echo "  Stop:    sudo systemctl stop novnc"
-            echo "  Status:  sudo systemctl status novnc"
-            
-            read -p "Would you like to start the noVNC service now? (y/N): " start_novnc
-            if [[ $start_novnc =~ ^[Yy]$ ]]; then
-                if sudo systemctl start novnc; then
-                    print_success "noVNC service started!"
-                    print_status "Access noVNC at: http://localhost:6080"
-                    
-                    # Give it a moment to start
-                    sleep 2
-                    if systemctl is-active --quiet novnc; then
-                        print_success "noVNC service is running correctly"
-                    else
-                        print_warning "noVNC service may not be running correctly"
-                        print_status "Check status with: sudo systemctl status novnc"
-                    fi
-                else
-                    print_error "Failed to start noVNC service"
-                    print_status "Check logs with: sudo journalctl -u novnc -f"
-                fi
-            fi
-        else
-            print_error "Failed to install noVNC service"
-        fi
+    # Install and start service
+    if sudo cp "$SYSTEMD_DIR/novnc.service" /etc/systemd/system/; then
+        sudo systemctl daemon-reload
+        sudo systemctl enable novnc.service
+        sudo systemctl start novnc.service
+        
+        print_success "noVNC systemd service installed and started automatically"
+        print_status "You can access it at: http://localhost:6080"
+        print_status "Manage it with:"
+        echo "  sudo systemctl start|stop|status novnc"
     else
-        print_status "Skipping noVNC web service setup"
-        print_status "You can still use native VNC clients to connect directly"
+        print_error "Failed to install noVNC service"
     fi
     echo
 }

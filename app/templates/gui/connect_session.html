@@ -171,7 +171,7 @@
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">VNC Server Address:</label>
                                 <div class="input-group">
-                                    <input type="text" class="form-control" value="localhost:{{ session.vnc_port }}" readonly id="vncAddress">
+                                    <input type="text" class="form-control" value="{{ session.get_connection_info().connection_string if session.get_connection_info() else ('localhost:' + (session.vnc_port|string)) }}" readonly id="vncAddress">
                                     <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('vncAddress')">
                                         <i class="bi bi-clipboard"></i>
                                     </button>
@@ -180,6 +180,29 @@
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Display Number:</label>
                                 <div class="input-group">
+                                    <input type="text" class="form-control" value=":{{ session.display_number }}" readonly id="displayNumber">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('displayNumber')">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Host IP:</label>
+                                <input type="text" class="form-control" value="{{ session.get_connection_info().host if session.get_connection_info() else 'localhost' }}" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">VNC Port:</label>
+                                <input type="text" class="form-control" value="{{ session.vnc_port }}" readonly>
+                            </div>
+                        </div>
+                        {% if session.get_connection_info() and session.get_connection_info().is_remote %}
+                        <div class="alert alert-success mt-3 mb-0">
+                            <i class="bi bi-wifi me-2"></i>
+                            <strong>Remote Access Configured:</strong> VNC connection optimized for remote access using server IP {{ session.get_connection_info().host }}
+                        </div>
+                        {% endif %} class="input-group">
                                     <input type="text" class="form-control" value=":{{ session.display_number }}" readonly id="displayNumber">
                                     <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('displayNumber')">
                                         <i class="bi bi-clipboard"></i>
@@ -238,7 +261,7 @@
                                 <ol>
                                     <li>Download and install a VNC client</li>
                                     <li>Open the VNC client</li>
-                                    <li>Enter server address: <code>localhost:{{ session.vnc_port }}</code></li>
+                                    <li>Enter server address: <code>{{ session.get_connection_info().connection_string if session.get_connection_info() else ('localhost:' + (session.vnc_port|string)) }}</code></li>
                                     <li>Click Connect (no password required)</li>
                                 </ol>
                             </div>
@@ -253,7 +276,7 @@
                         <div id="linuxInstructions" class="accordion-collapse collapse" data-bs-parent="#connectionInstructions">
                             <div class="accordion-body">
                                 <h6>Command Line:</h6>
-                                <pre><code>vncviewer localhost:{{ session.vnc_port }}</code></pre>
+                                <pre><code>vncviewer {{ session.get_connection_info().connection_string if session.get_connection_info() else ('localhost:' + (session.vnc_port|string)) }}</code></pre>
                                 <h6>GUI Applications:</h6>
                                 <ul>
                                     <li><strong>Remmina</strong> - Full-featured remote desktop client</li>
@@ -275,7 +298,7 @@
                                 <ol>
                                     <li>Open Finder</li>
                                     <li>Press Cmd+K (Go → Connect to Server)</li>
-                                    <li>Enter: <code>vnc://localhost:{{ session.vnc_port }}</code></li>
+                                    <li>Enter: <code>{{ session.get_vnc_url() if session.get_vnc_url() else ('vnc://localhost:' + (session.vnc_port|string)) }}</code></li>
                                     <li>Click Connect</li>
                                 </ol>
                                 <h6>Third-party Options:</h6>
@@ -397,7 +420,7 @@ function copyToClipboard(elementId) {
 }
 
 function copyConnectionString() {
-    const connectionString = `Host: localhost:{{ session.vnc_port }}\nDisplay: :{{ session.display_number }}\nResolution: {{ session.screen_resolution }}`;
+    const connectionString = `Host: {{ session.get_connection_info().host if session.get_connection_info() else 'localhost' }}:{{ session.vnc_port }}\nDisplay: :{{ session.display_number }}\nResolution: {{ session.screen_resolution }}`;
     
     navigator.clipboard.writeText(connectionString).then(() => {
         showNotification('📋 Full connection details copied to clipboard!', 'success');
@@ -408,7 +431,7 @@ function copyConnectionString() {
 
 function launchVNCClient() {
     // Try to launch VNC protocol handler
-    const vncUrl = `vnc://localhost:{{ session.vnc_port }}`;
+    const vncUrl = `{{ session.get_vnc_url() if session.get_vnc_url() else ('vnc://localhost:' + (session.vnc_port|string)) }}`;
     
     try {
         const link = document.createElement('a');
@@ -424,9 +447,10 @@ function launchVNCClient() {
             'info'
         );
     } catch (error) {
+        const connectionString = `{{ session.get_connection_info().connection_string if session.get_connection_info() else ('localhost:' + (session.vnc_port|string)) }}`;
         showNotification(
             '⚠️ Could not auto-launch VNC client.\n' +
-            'Please install a VNC viewer and connect to: localhost:{{ session.vnc_port }}',
+            `Please install a VNC viewer and connect to: ${connectionString}`,
             'warning'
         );
     }

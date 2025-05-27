@@ -14,3 +14,4 @@ requests==2.31.0
 email-validator==2.0.0
 python-dotenv==1.0.0
 blinker==1.6.2
+netifaces>=0.11.0

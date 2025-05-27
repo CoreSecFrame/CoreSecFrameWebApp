@@ -175,18 +175,28 @@ class GUISession(db.Model):
         """Get X11 display string (e.g., ':99')"""
         return f":{self.display_number}" if self.display_number else None
     
+
     def get_vnc_url(self):
-        """Get direct VNC connection URL"""
+        """Get direct VNC connection URL with proper IP detection"""
         if self.vnc_port:
-            return f"vnc://localhost:{self.vnc_port}"
+            from app.gui.network_utils import VNCConnectionHelper
+            return VNCConnectionHelper.get_vnc_url(self.vnc_port)
         return None
     
-    def get_novnc_url(self, base_url="http://localhost:6080"):
-        """Get noVNC web client URL"""
+    def get_novnc_url(self, base_url=None):
+        """Get noVNC web client URL with proper IP detection"""
         if self.vnc_port:
-            return f"{base_url}/vnc.html?host=localhost&port={self.vnc_port}&autoconnect=true&resize=scale"
+            from app.gui.network_utils import VNCConnectionHelper
+            return VNCConnectionHelper.get_novnc_url(self.vnc_port, base_url)
         return None
-    
+
+    def get_connection_info(self):
+        """Get complete VNC connection information"""
+        if self.vnc_port:
+            from app.gui.network_utils import VNCConnectionHelper
+            return VNCConnectionHelper.get_connection_info(self.vnc_port, self.display_number)
+        return None
+
     def update_activity(self):
         """Update last activity timestamp"""
         self.last_activity = datetime.utcnow()

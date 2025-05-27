@@ -144,7 +144,7 @@
                                         <li><hr class="dropdown-divider"></li>
                                         {% else %}
                                         <li>
-                                            <a class="dropdown-item" href="{{ url_for('gui.connect_session', session_id=session.session_id) }}">
+                                            <a class="dropdown-item" href="{{ session.get_novnc_url() }}">
                                                 <i class="bi bi-display me-2"></i>Connect via VNC
                                             </a>
                                         </li>
@@ -201,7 +201,7 @@
                                     <i class="bi bi-info-circle me-1"></i>Details
                                 </a>
                                 {% else %}
-                                <a href="{{ url_for('gui.connect_session', session_id=session.session_id) }}" 
+                                <a href="{{ session.get_novnc_url() }}" 
                                    class="btn btn-sm btn-success">
                                     <i class="bi bi-display me-1"></i>Connect
                                 </a>
@@ -221,7 +221,7 @@
 {% if gui_uses_wslg %}
 <div class="row mb-4">
     <div class="col-12">
-        <div class="card border-0 shadow-sm bg-gradient" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <div class="card border-0 shadow-sm bg-gradient" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea;">
             <div class="card-body text-white">
                 <div class="row align-items-center">
                     <div class="col-md-8">
