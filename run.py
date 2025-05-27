@@ -151,3 +151,9 @@ if __name__ == '__main__':
         import traceback
         traceback.print_exc()
         sys.exit(1)
+# Add health check for Docker
+try:
+    from health import add_health_check
+    add_health_check(app)
+except ImportError:
+    pass
