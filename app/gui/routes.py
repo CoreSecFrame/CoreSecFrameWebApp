@@ -1,4 +1,3 @@
-# app/gui/routes.py
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
 from app import db
@@ -12,7 +11,12 @@ gui_bp = Blueprint('gui', __name__, url_prefix='/gui')
 @gui_bp.route('/')
 @login_required
 def index():
-    """Main GUI applications page"""
+    """Main GUI applications page with WSLg awareness"""
+    from app.gui.manager import GUIEnvironmentDetector
+    
+    # Detect environment
+    env_info = GUIEnvironmentDetector.detect_environment()
+    
     # Get applications grouped by category
     categories = GUICategory.query.order_by(GUICategory.sort_order, GUICategory.name).all()
     applications = GUIApplication.query.filter_by(enabled=True).order_by(GUIApplication.name).all()
@@ -37,15 +41,25 @@ def index():
         categories=categories,
         applications=applications,
         apps_by_category=apps_by_category,
-        active_sessions=active_sessions
+        active_sessions=active_sessions,
+        # Environment info for templates
+        gui_environment=env_info['display_method'],
+        gui_uses_wslg=env_info['has_wslg'],
+        gui_has_wayland=bool(env_info['wayland_display']),
+        gui_has_x11=bool(env_info['x11_display']),
+        gui_is_wsl=env_info['is_wsl']
     )
+
 
 @gui_bp.route('/applications')
 @login_required
 def applications():
-    """List all GUI applications"""
+    """List all GUI applications with environment awareness"""
+    from app.gui.manager import GUIEnvironmentDetector
+    
     category_filter = request.args.get('category')
     search_query = request.args.get('q', '')
+    env_info = GUIEnvironmentDetector.detect_environment()
     
     # Base query
     query = GUIApplication.query.filter_by(enabled=True)
@@ -72,7 +86,10 @@ def applications():
         applications=applications,
         categories=categories,
         current_category=category_filter,
-        search_query=search_query
+        search_query=search_query,
+        # Environment info
+        gui_environment=env_info['display_method'],
+        gui_uses_wslg=env_info['has_wslg']
     )
 
 @gui_bp.route('/application/<int:app_id>')
@@ -97,10 +114,13 @@ def application_detail(app_id):
 @gui_bp.route('/sessions')
 @login_required
 def sessions():
-    """List user's GUI sessions"""
+    """List user's GUI sessions with environment awareness"""
+    from app.gui.manager import GUIEnvironmentDetector
+    
     # Get pagination parameters
     page = request.args.get('page', 1, type=int)
     per_page = 20
+    env_info = GUIEnvironmentDetector.detect_environment()
     
     # Get user's sessions
     sessions_query = GUISession.query.filter_by(user_id=current_user.id).order_by(
@@ -121,13 +141,67 @@ def sessions():
         title='GUI Sessions',
         sessions_pagination=sessions_pagination,
         total_sessions=total_sessions,
-        active_sessions=active_sessions
+        active_sessions=active_sessions,
+        # Environment info
+        gui_environment=env_info['display_method'],
+        gui_uses_wslg=env_info['has_wslg']
     )
+
+@gui_bp.route('/api/environment')
+@login_required
+def api_environment():
+    """API endpoint to get GUI environment information"""
+    from app.gui.manager import GUIEnvironmentDetector
+    
+    try:
+        env_info = GUIEnvironmentDetector.detect_environment()
+        
+        return jsonify({
+            'success': True,
+            'environment': {
+                'display_method': env_info['display_method'],
+                'is_wsl': env_info['is_wsl'],
+                'has_wslg': env_info['has_wslg'],
+                'is_linux_native': env_info['is_linux_native'],
+                'wayland_display': env_info['wayland_display'],
+                'x11_display': env_info['x11_display'],
+                'connection_type': 'native' if env_info['has_wslg'] else 'vnc',
+                'features': {
+                    'native_integration': env_info['has_wslg'],
+                    'vnc_required': not env_info['has_wslg'],
+                    'clipboard_sharing': env_info['has_wslg'],
+                    'audio_support': env_info['has_wslg'],
+                    'file_integration': env_info['has_wslg'],
+                    'window_management': env_info['has_wslg'],
+                    'drag_and_drop': env_info['has_wslg']
+                },
+                'recommendations': {
+                    'optimal_for_wslg': env_info['has_wslg'],
+                    'message': 'Using WSLg for optimal GUI experience!' if env_info['has_wslg'] else 'Traditional VNC mode - consider upgrading to WSLg for better performance'
+                }
+            }
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Error getting environment info: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+        
+    except Exception as e:
+        current_app.logger.error(f"Error getting environment info: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @gui_bp.route('/session/<session_id>')
 @login_required
 def session_detail(session_id):
-    """Show session details"""
+    """Show session details with WSLg-aware information"""
+    from app.gui.manager import GUIEnvironmentDetector
+    
     session = GUISession.query.filter_by(
         session_id=session_id,
         user_id=current_user.id
@@ -141,23 +215,37 @@ def session_detail(session_id):
         GUISessionLog.timestamp.desc()
     ).limit(50).all()
     
+    # Detect environment
+    env_info = GUIEnvironmentDetector.detect_environment()
+    
     return render_template(
         'gui/session_detail.html',
         title=f'Session: {session.name}',
         session=session,
         status=status,
-        logs=logs
+        logs=logs,
+        # Environment info
+        gui_environment=env_info['display_method'],
+        gui_uses_wslg=env_info['has_wslg'],
+        gui_has_wayland=bool(env_info['wayland_display']),
+        gui_has_x11=bool(env_info['x11_display']),
+        gui_is_wsl=env_info['is_wsl']
     )
 
 @gui_bp.route('/launch/<int:app_id>', methods=['GET', 'POST'])
 @login_required
 def launch_application(app_id):
-    """Launch a GUI application"""
+    """Launch a GUI application with WSLg-aware handling"""
+    from app.gui.manager import GUIEnvironmentDetector
+    
     application = GUIApplication.query.get_or_404(app_id)
     
     if not application.enabled:
         flash('This application is currently disabled.', 'warning')
         return redirect(url_for('gui.application_detail', app_id=app_id))
+    
+    # Detect environment for UI customization
+    env_info = GUIEnvironmentDetector.detect_environment()
     
     if request.method == 'POST':
         try:
@@ -170,17 +258,19 @@ def launch_application(app_id):
             if not session_name:
                 session_name = f"{application.display_name} - {datetime.now().strftime('%H:%M:%S')}"
             
-            # Validate resolution
-            if not resolution or 'x' not in resolution:
+            # For WSLg, resolution is not as relevant but keep for compatibility
+            if env_info['has_wslg']:
+                resolution = "native"  # WSLg handles this automatically
+            elif not resolution or 'x' not in resolution:
                 resolution = '1024x768'
             
             # Validate color depth
             if color_depth not in [16, 24, 32]:
                 color_depth = 24
             
-            current_app.logger.info(f"User {current_user.username} launching {application.name}")
+            current_app.logger.info(f"User {current_user.username} launching {application.name} in {env_info['display_method']} mode")
             
-            # Create session
+            # Create session using adaptive manager
             success, result = GUISessionManager.create_session(
                 application_id=app_id,
                 user_id=current_user.id,
@@ -191,23 +281,61 @@ def launch_application(app_id):
             
             if success:
                 session = result
-                flash(f'Application "{application.display_name}" launched successfully!', 'success')
+                
+                if env_info['has_wslg']:
+                    # WSLg success messages - more specific and helpful
+                    flash(f'🚀 {application.display_name} launched successfully with WSLg!', 'success')
+                    flash('🎯 Your application is now running natively in Windows.', 'info')
+                    flash('💡 Check your Windows taskbar or use Alt+Tab to find the application.', 'info')
+                    flash('✨ Full clipboard, audio, and file integration is active!', 'info')
+                else:
+                    # VNC success messages
+                    flash(f'🚀 {application.display_name} launched successfully!', 'success')
+                    flash(f'🔗 VNC server ready on display :{session.display_number}, port {session.vnc_port}', 'info')
+                    flash('📱 Use a VNC client to connect, or try the web interface.', 'info')
+                
                 return redirect(url_for('gui.session_detail', session_id=session.session_id))
             else:
                 error_msg = result
-                flash(f'Failed to launch application: {error_msg}', 'danger')
+                
+                if env_info['has_wslg']:
+                    flash(f'❌ Failed to launch WSLg application: {error_msg}', 'danger')
+                    flash('💡 Try checking if the application is installed and accessible.', 'warning')
+                else:
+                    flash(f'❌ Failed to launch VNC session: {error_msg}', 'danger')
+                    flash('💡 Check system requirements: Xvfb, x11vnc must be installed.', 'warning')
+                    
                 current_app.logger.error(f"Failed to launch {application.name}: {error_msg}")
                 
         except Exception as e:
             current_app.logger.error(f"Error launching application: {e}")
             current_app.logger.error(traceback.format_exc())
-            flash(f'An unexpected error occurred: {str(e)}', 'danger')
+            
+            if env_info['has_wslg']:
+                flash(f'❌ WSLg launch error: {str(e)}', 'danger')
+            else:
+                flash(f'❌ VNC launch error: {str(e)}', 'danger')
     
-    # GET request - show launch form
+    # GET request - show launch form with environment-specific information
+    # Get user's recent sessions for this app
+    user_sessions = GUISession.query.filter_by(
+        application_id=app_id,
+        user_id=current_user.id
+    ).order_by(GUISession.start_time.desc()).limit(5).all()
+    
     return render_template(
         'gui/launch_application.html',
         title=f'Launch: {application.display_name}',
-        application=application
+        application=application,
+        user_sessions=user_sessions,
+        # Environment info
+        gui_environment=env_info['display_method'],
+        gui_uses_wslg=env_info['has_wslg'],
+        gui_has_wayland=bool(env_info['wayland_display']),
+        gui_has_x11=bool(env_info['x11_display']),
+        gui_is_wsl=env_info['is_wsl'],
+        # Additional context - current time for form
+        current_time=datetime.now().strftime('%H:%M:%S')
     )
 
 @gui_bp.route('/session/<session_id>/close', methods=['POST'])
@@ -310,17 +438,27 @@ def api_delete_session(session_id):
 @gui_bp.route('/session/<session_id>/connect')
 @login_required
 def connect_session(session_id):
-    """Connect to a GUI session via noVNC"""
+    """Connect to a GUI session with WSLg awareness"""
+    from app.gui.manager import GUIEnvironmentDetector
+    
     session = GUISession.query.filter_by(
         session_id=session_id,
         user_id=current_user.id
     ).first_or_404()
     
+    env_info = GUIEnvironmentDetector.detect_environment()
+    
     if not session.active:
         flash('Cannot connect to inactive session.', 'warning')
         return redirect(url_for('gui.session_detail', session_id=session_id))
     
-    # Check session status
+    # For WSLg, redirect to session details with specific message
+    if env_info['has_wslg']:
+        flash('🎯 WSLg applications run natively in Windows - check your taskbar!', 'info')
+        flash('💡 No VNC connection needed. The application should be visible as a regular Windows app.', 'info')
+        return redirect(url_for('gui.session_detail', session_id=session_id))
+    
+    # For traditional VNC, check session status
     status = GUISessionManager.get_session_status(session_id)
     if not status.get('exists') or not status.get('active'):
         flash('Session is not available for connection.', 'warning')
@@ -333,8 +471,14 @@ def connect_session(session_id):
         'gui/connect_session.html',
         title=f'Connect: {session.name}',
         session=session,
-        status=status
+        status=status,
+        gui_environment=env_info['display_method'],
+        gui_uses_wslg=env_info['has_wslg'],
+        gui_has_wayland=bool(env_info['wayland_display']),
+        gui_has_x11=bool(env_info['x11_display']),
+        gui_is_wsl=env_info['is_wsl']
     )
+
 
 # API Routes
 
@@ -406,7 +550,9 @@ def api_applications():
 @gui_bp.route('/api/application/<int:app_id>/launch', methods=['POST'])
 @login_required
 def api_launch_application(app_id):
-    """API endpoint to launch an application"""
+    """API endpoint to launch an application with WSLg awareness"""
+    from app.gui.manager import GUIEnvironmentDetector
+    
     try:
         application = GUIApplication.query.get(app_id)
         if not application:
@@ -414,6 +560,9 @@ def api_launch_application(app_id):
         
         if not application.enabled:
             return jsonify({'success': False, 'error': 'Application is disabled'}), 400
+        
+        # Detect environment
+        env_info = GUIEnvironmentDetector.detect_environment()
         
         # Get JSON data
         data = request.get_json() or {}
@@ -424,6 +573,10 @@ def api_launch_application(app_id):
         # Set default session name
         if not session_name:
             session_name = f"{application.display_name} - {datetime.now().strftime('%H:%M:%S')}"
+        
+        # Adjust for WSLg
+        if env_info['has_wslg']:
+            resolution = "native"
         
         # Create session
         success, result = GUISessionManager.create_session(
@@ -436,24 +589,94 @@ def api_launch_application(app_id):
         
         if success:
             session = result
+            session_data = session.to_dict()
+            
+            # Add environment-specific information
+            session_data['environment'] = env_info['display_method']
+            session_data['connection_type'] = 'native' if env_info['has_wslg'] else 'vnc'
+            
+            # Customize instructions based on environment
+            if env_info['has_wslg']:
+                instructions = {
+                    'primary': '🚀 Application launched natively in Windows!',
+                    'secondary': '🎯 Look for the application in your Windows taskbar or desktop.',
+                    'tips': [
+                        '✨ The application runs as a native Windows application',
+                        '📋 Full clipboard, audio, and file integration available',
+                        '🖱️ No VNC client needed - interact directly with the app',
+                        '🪟 Window management works just like regular Windows apps',
+                        '🔍 Use Alt+Tab to switch between applications',
+                        '📁 Drag files from Windows Explorer directly into the app'
+                    ],
+                    'next_steps': [
+                        'Check your Windows taskbar for the application icon',
+                        'Use Alt+Tab to cycle through open applications',
+                        'Right-click the taskbar icon for context menu options'
+                    ]
+                }
+            else:
+                instructions = {
+                    'primary': f'🖥️ VNC session created on display :{session.display_number}',
+                    'secondary': f'🔗 Connect using VNC client to localhost:{session.vnc_port}',
+                    'tips': [
+                        '🔌 Use any VNC client (TigerVNC, RealVNC, etc.)',
+                        f'📡 Connect to localhost:{session.vnc_port}',
+                        '🌐 Use the web interface for browser-based access',
+                        '⏰ Session will remain active until manually closed',
+                        '🎨 Adjust color depth for better performance',
+                        '📏 Change resolution if display appears too small/large'
+                    ],
+                    'next_steps': [
+                        'Download and install a VNC client if needed',
+                        f'Connect to localhost:{session.vnc_port}',
+                        'Use the session details page for connection help'
+                    ]
+                }
+            
+            session_data['instructions'] = instructions
+            
             return jsonify({
                 'success': True,
-                'session': session.to_dict(),
-                'message': 'Application launched successfully'
+                'session': session_data,
+                'message': f'Application launched successfully using {env_info["display_method"]}',
+                'environment': env_info
             })
         else:
+            error_msg = result
             return jsonify({
                 'success': False,
-                'error': result
+                'error': error_msg,
+                'environment': env_info,
+                'troubleshooting': {
+                    'wslg': env_info['has_wslg'],
+                    'suggestions': [
+                        'Check if the application is installed and accessible',
+                        'Verify system requirements are met',
+                        'Try launching with different settings'
+                    ] if env_info['has_wslg'] else [
+                        'Ensure Xvfb and x11vnc are installed',
+                        'Check for port conflicts',
+                        'Verify X11 display availability',
+                        'Try different resolution settings'
+                    ]
+                }
             }), 500
             
     except Exception as e:
         current_app.logger.error(f"API error launching application: {e}")
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': str(e),
+            'troubleshooting': {
+                'general': 'An unexpected error occurred',
+                'suggestions': [
+                    'Check server logs for more details',
+                    'Try refreshing the page and launching again',
+                    'Contact administrator if problem persists'
+                ]
+            }
         }), 500
-
+        
 @gui_bp.route('/api/cleanup', methods=['POST'])
 @login_required
 def api_cleanup_sessions():

@@ -1,0 +1,700 @@
+<!-- app/templates/gui/connect_session.html - WSLg Enhanced -->
+{% extends "gui/base_gui.html" %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h2 fw-bold mb-1">
+                    <i class="bi bi-{% if gui_uses_wslg %}windows{% else %}display{% endif %} me-2"></i>
+                    {% if gui_uses_wslg %}Access Application{% else %}Connect to Session{% endif %}
+                </h1>
+                <p class="text-muted mb-0">{{ session.name }} - {{ session.application.display_name }}</p>
+            </div>
+            <div class="btn-group" role="group">
+                <a href="{{ url_for('gui.session_detail', session_id=session.session_id) }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Session Details
+                </a>
+                <a href="{{ url_for('gui.sessions') }}" class="btn btn-secondary">
+                    <i class="bi bi-layers me-1"></i>My Sessions
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if gui_uses_wslg %}
+<!-- WSLg Native Application Access -->
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-lg" style="background: linear-gradient(135deg, #d1e7dd 0%, #a3cfbb 100%);">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-windows text-success mb-4" style="font-size: 5rem;"></i>
+                <h2 class="fw-bold text-success mb-3">Application Running Natively!</h2>
+                <p class="lead mb-4">Your application is running as a native Windows application with full integration.</p>
+                
+                <div class="row g-4 mb-5">
+                    <div class="col-md-3">
+                        <div class="p-3">
+                            <i class="bi bi-window-stack text-success mb-2" style="font-size: 2rem;"></i>
+                            <h6>Check Taskbar</h6>
+                            <p class="small text-muted mb-0">Look for the app icon in your Windows taskbar</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-3">
+                            <i class="bi bi-keyboard text-success mb-2" style="font-size: 2rem;"></i>
+                            <h6>Alt + Tab</h6>
+                            <p class="small text-muted mb-0">Use Alt+Tab to switch between applications</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-3">
+                            <i class="bi bi-mouse text-success mb-2" style="font-size: 2rem;"></i>
+                            <h6>Click & Interact</h6>
+                            <p class="small text-muted mb-0">Use mouse and keyboard normally</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-3">
+                            <i class="bi bi-clipboard-check text-success mb-2" style="font-size: 2rem;"></i>
+                            <h6>Full Integration</h6>
+                            <p class="small text-muted mb-0">Clipboard, files, and audio work seamlessly</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-success border-0 mb-4" style="background: rgba(255,255,255,0.3);">
+                    <h6 class="fw-bold mb-2">
+                        <i class="bi bi-lightbulb me-2"></i>Pro Tips for WSLg Applications
+                    </h6>
+                    <div class="row text-start">
+                        <div class="col-md-6">
+                            <ul class="list-unstyled mb-0">
+                                <li class="mb-1"><i class="bi bi-check-circle me-2"></i>Right-click taskbar icon for options</li>
+                                <li class="mb-1"><i class="bi bi-check-circle me-2"></i>Drag files from Windows Explorer</li>
+                                <li class="mb-1"><i class="bi bi-check-circle me-2"></i>Copy/paste works everywhere</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-unstyled mb-0">
+                                <li class="mb-1"><i class="bi bi-check-circle me-2"></i>Audio output through Windows</li>
+                                <li class="mb-1"><i class="bi bi-check-circle me-2"></i>Windows key shortcuts work</li>
+                                <li class="mb-1"><i class="bi bi-check-circle me-2"></i>Notifications integrate with Windows</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-center gap-3">
+                    <button class="btn btn-success btn-lg" onclick="focusApplication()">
+                        <i class="bi bi-search me-2"></i>Find My Application
+                    </button>
+                    <button class="btn btn-outline-success btn-lg" onclick="showWSLgHelp()">
+                        <i class="bi bi-question-circle me-2"></i>Need Help?
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Application Status -->
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0 fw-semibold">
+                    <i class="bi bi-info-circle me-2"></i>Application Status
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-2">Session Information</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>Application:</strong></td>
+                                <td>{{ session.application.display_name }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Process ID:</strong></td>
+                                <td><code>{{ session.app_pid or 'N/A' }}</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Running Time:</strong></td>
+                                <td>{{ session.get_duration() }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Integration:</strong></td>
+                                <td><span class="badge bg-success">WSLg Native</span></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-2">Features Available</h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="badge bg-success">Native Windows Integration</span>
+                            <span class="badge bg-success">Clipboard Sharing</span>
+                            <span class="badge bg-success">Audio Support</span>
+                            <span class="badge bg-success">File System Access</span>
+                            <span class="badge bg-success">Multi-monitor Support</span>
+                            <span class="badge bg-success">DPI Scaling</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<!-- Traditional VNC Connection -->
+<div class="row">
+    <div class="col-lg-8 mb-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0 fw-semibold">
+                    <i class="bi bi-display me-2"></i>VNC Connection
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if session.active and status.active %}
+                <div class="alert alert-success">
+                    <h6><i class="bi bi-check-circle me-1"></i>VNC Session Ready</h6>
+                    <p class="mb-0">Your remote desktop session is running and ready for connection.</p>
+                </div>
+
+                <!-- Connection Details -->
+                <div class="mb-4">
+                    <h6 class="text-muted mb-3">Connection Information</h6>
+                    <div class="bg-light p-4 rounded">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">VNC Server Address:</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" value="localhost:{{ session.vnc_port }}" readonly id="vncAddress">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('vncAddress')">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Display Number:</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" value=":{{ session.display_number }}" readonly id="displayNumber">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('displayNumber')">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Resolution:</label>
+                                <input type="text" class="form-control" value="{{ session.screen_resolution }}" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Color Depth:</label>
+                                <input type="text" class="form-control" value="{{ session.color_depth }}-bit" readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Connect Options -->
+                <div class="mb-4">
+                    <h6 class="text-muted mb-3">Quick Connect</h6>
+                    <div class="d-grid gap-2">
+                        {% if session.get_novnc_url() %}
+                        <a href="{{ session.get_novnc_url() }}" target="_blank" class="btn btn-success btn-lg">
+                            <i class="bi bi-globe me-2"></i>Open in Browser (Web VNC)
+                        </a>
+                        {% endif %}
+                        <button class="btn btn-primary btn-lg" onclick="launchVNCClient()">
+                            <i class="bi bi-box-arrow-up-right me-2"></i>Launch VNC Client
+                        </button>
+                        <button class="btn btn-outline-primary" onclick="copyConnectionString()">
+                            <i class="bi bi-clipboard me-2"></i>Copy Connection Details
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Connection Instructions -->
+                <div class="accordion" id="connectionInstructions">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#windowsInstructions">
+                                <i class="bi bi-windows me-2"></i>Windows VNC Clients
+                            </button>
+                        </h2>
+                        <div id="windowsInstructions" class="accordion-collapse collapse show" data-bs-parent="#connectionInstructions">
+                            <div class="accordion-body">
+                                <h6>Recommended Clients:</h6>
+                                <ul>
+                                    <li><strong>TigerVNC Viewer</strong> (Free, open-source)</li>
+                                    <li><strong>RealVNC Viewer</strong> (Free for personal use)</li>
+                                    <li><strong>TightVNC</strong> (Free, lightweight)</li>
+                                </ul>
+                                <h6>Connection Steps:</h6>
+                                <ol>
+                                    <li>Download and install a VNC client</li>
+                                    <li>Open the VNC client</li>
+                                    <li>Enter server address: <code>localhost:{{ session.vnc_port }}</code></li>
+                                    <li>Click Connect (no password required)</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#linuxInstructions">
+                                <i class="bi bi-ubuntu me-2"></i>Linux VNC Clients
+                            </button>
+                        </h2>
+                        <div id="linuxInstructions" class="accordion-collapse collapse" data-bs-parent="#connectionInstructions">
+                            <div class="accordion-body">
+                                <h6>Command Line:</h6>
+                                <pre><code>vncviewer localhost:{{ session.vnc_port }}</code></pre>
+                                <h6>GUI Applications:</h6>
+                                <ul>
+                                    <li><strong>Remmina</strong> - Full-featured remote desktop client</li>
+                                    <li><strong>TigerVNC</strong> - Reliable VNC client</li>
+                                    <li><strong>Vinagre</strong> - GNOME remote desktop viewer</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#macosInstructions">
+                                <i class="bi bi-apple me-2"></i>macOS VNC Clients
+                            </button>
+                        </h2>
+                        <div id="macosInstructions" class="accordion-collapse collapse" data-bs-parent="#connectionInstructions">
+                            <div class="accordion-body">
+                                <h6>Built-in Screen Sharing:</h6>
+                                <ol>
+                                    <li>Open Finder</li>
+                                    <li>Press Cmd+K (Go → Connect to Server)</li>
+                                    <li>Enter: <code>vnc://localhost:{{ session.vnc_port }}</code></li>
+                                    <li>Click Connect</li>
+                                </ol>
+                                <h6>Third-party Options:</h6>
+                                <ul>
+                                    <li><strong>RealVNC Viewer</strong></li>
+                                    <li><strong>TigerVNC</strong></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {% else %}
+                <div class="alert alert-warning">
+                    <h6><i class="bi bi-exclamation-triangle me-1"></i>Session Not Available</h6>
+                    <p class="mb-0">This VNC session is not currently active or ready for connections.</p>
+                </div>
+                
+                <div class="text-center py-4">
+                    <i class="bi bi-x-circle text-muted" style="font-size: 3rem;"></i>
+                    <h5 class="mt-3">Connection Not Available</h5>
+                    <p class="text-muted">The session may have been closed or is experiencing issues.</p>
+                    <a href="{{ url_for('gui.session_detail', session_id=session.session_id) }}" class="btn btn-primary">
+                    <i class="bi bi-info-circle me-1"></i>Session Details
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+{% if gui_uses_wslg %}
+// WSLg-specific functions
+function focusApplication() {
+    // Show instructions for finding the application
+    showNotification(
+        '🔍 Finding Your Application:\n' +
+        '1. Check your Windows taskbar for a new icon\n' +
+        '2. Use Alt+Tab to cycle through applications\n' +
+        '3. Look for minimized windows or system tray icons',
+        'info'
+    );
+    
+    // Try to simulate Alt+Tab hint (this won't actually work from browser, but shows intent)
+    setTimeout(() => {
+        showNotification(
+            '💡 Pro Tip: Press Alt+Tab now to see all open applications!\n' +
+            'Your {{ session.application.display_name }} should be visible in the list.',
+            'success'
+        );
+    }, 3000);
+}
+
+function showWSLgHelp() {
+    const modal = new bootstrap.Modal(document.getElementById('helpModal'));
+    modal.show();
+}
+
+// WSLg-specific initialization
+document.addEventListener('DOMContentLoaded', function() {
+    // Show welcome message for WSLg
+    setTimeout(() => {
+        showNotification(
+            '🎉 WSLg Application Ready!\n' +
+            '{{ session.application.display_name }} is running natively in Windows.\n' +
+            'Check your taskbar or use Alt+Tab to find it.',
+            'success'
+        );
+    }, 1000);
+    
+    // Auto-check application status
+    checkApplicationStatus();
+    
+    // Set up periodic status checks
+    setInterval(checkApplicationStatus, 15000);
+});
+
+function checkApplicationStatus() {
+    fetch(`/gui/api/session/{{ session.session_id }}/status`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.status.exists) {
+                if (!data.status.active) {
+                    showNotification(
+                        '⚠️ Application Closed\n' +
+                        'The WSLg application has been terminated.',
+                        'warning'
+                    );
+                    
+                    setTimeout(() => {
+                        window.location.href = '{{ url_for("gui.session_detail", session_id=session.session_id) }}';
+                    }, 3000);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error checking application status:', error);
+        });
+}
+
+{% else %}
+// VNC-specific functions
+function copyToClipboard(elementId) {
+    const element = document.getElementById(elementId);
+    element.select();
+    element.setSelectionRange(0, 99999);
+    
+    navigator.clipboard.writeText(element.value).then(() => {
+        showNotification('📋 Connection details copied to clipboard!', 'success');
+    }).catch(err => {
+        console.error('Failed to copy: ', err);
+        // Fallback for older browsers
+        document.execCommand('copy');
+        showNotification('📋 Connection details copied!', 'success');
+    });
+}
+
+function copyConnectionString() {
+    const connectionString = `Host: localhost:{{ session.vnc_port }}\nDisplay: :{{ session.display_number }}\nResolution: {{ session.screen_resolution }}`;
+    
+    navigator.clipboard.writeText(connectionString).then(() => {
+        showNotification('📋 Full connection details copied to clipboard!', 'success');
+    }).catch(err => {
+        console.error('Failed to copy: ', err);
+    });
+}
+
+function launchVNCClient() {
+    // Try to launch VNC protocol handler
+    const vncUrl = `vnc://localhost:{{ session.vnc_port }}`;
+    
+    try {
+        const link = document.createElement('a');
+        link.href = vncUrl;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showNotification(
+            '🚀 Launching VNC Client...\n' +
+            'If no client opens, please install a VNC viewer and connect manually.',
+            'info'
+        );
+    } catch (error) {
+        showNotification(
+            '⚠️ Could not auto-launch VNC client.\n' +
+            'Please install a VNC viewer and connect to: localhost:{{ session.vnc_port }}',
+            'warning'
+        );
+    }
+}
+
+function testConnection() {
+    showNotification('🔍 Testing VNC connection...', 'info');
+    
+    fetch(`/gui/api/session/{{ session.session_id }}/status`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.status.exists && data.status.active) {
+                showNotification(
+                    '✅ Connection Test Successful!\n' +
+                    'VNC server is running and accepting connections.\n' +
+                    'Port: {{ session.vnc_port }} | Display: :{{ session.display_number }}',
+                    'success'
+                );
+            } else {
+                showNotification(
+                    '❌ Connection Test Failed\n' +
+                    'VNC session may not be active or accessible.',
+                    'danger'
+                );
+            }
+        })
+        .catch(error => {
+            showNotification(
+                '❌ Connection Test Error\n' +
+                'Could not verify VNC session status.',
+                'danger'
+            );
+        });
+}
+
+// VNC-specific initialization
+document.addEventListener('DOMContentLoaded', function() {
+    // Show VNC connection ready message
+    setTimeout(() => {
+        showNotification(
+            '🖥️ VNC Session Ready!\n' +
+            'Connect using: localhost:{{ session.vnc_port }}\n' +
+            'Choose your preferred connection method below.',
+            'info'
+        );
+    }, 1000);
+    
+    // Auto-test connection status
+    setTimeout(testConnection, 2000);
+    
+    // Set up periodic status checks
+    setInterval(() => {
+        fetch(`/gui/api/session/{{ session.session_id }}/status`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.status.exists) {
+                    if (!data.status.active) {
+                        showNotification(
+                            '⚠️ VNC Session Closed\n' +
+                            'The remote desktop session has been terminated.',
+                            'warning'
+                        );
+                        
+                        setTimeout(() => {
+                            window.location.href = '{{ url_for("gui.session_detail", session_id=session.session_id) }}';
+                        }, 3000);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error checking session status:', error);
+            });
+    }, 30000);
+});
+{% endif %}
+
+// Common functions for both WSLg and VNC
+document.addEventListener('DOMContentLoaded', function() {
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        // F1 for help
+        if (e.key === 'F1') {
+            e.preventDefault();
+            {% if gui_uses_wslg %}
+            showWSLgHelp();
+            {% else %}
+            const modal = new bootstrap.Modal(document.getElementById('helpModal'));
+            modal.show();
+            {% endif %}
+        }
+        
+        // Escape to go back
+        if (e.key === 'Escape' && !document.querySelector('.modal.show')) {
+            window.location.href = '{{ url_for("gui.session_detail", session_id=session.session_id) }}';
+        }
+        
+        {% if not gui_uses_wslg %}
+        // Ctrl+C to copy connection string
+        if (e.ctrlKey && e.key === 'c' && !e.target.matches('input, textarea')) {
+            e.preventDefault();
+            copyConnectionString();
+        }
+        {% endif %}
+    });
+    
+    // Update last activity
+    updateLastActivity();
+});
+
+function updateLastActivity() {
+    fetch(`/gui/api/session/{{ session.session_id }}/status`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    }).catch(error => {
+        console.error('Error updating activity:', error);
+    });
+}
+
+// Environment-specific tips
+{% if gui_uses_wslg %}
+// Show periodic WSLg tips
+let tipCount = 0;
+const wslgTips = [
+    '💡 Right-click the taskbar icon for context menu options',
+    '📁 Drag files from Windows Explorer directly into the application',
+    '🔊 Audio from the Linux application plays through Windows speakers',
+    '📋 Clipboard content is shared between Windows and Linux automatically',
+    '🖥️ The application respects Windows display scaling and multi-monitor setup'
+];
+
+setInterval(() => {
+    if (tipCount < wslgTips.length) {
+        setTimeout(() => {
+            showNotification(wslgTips[tipCount], 'info');
+            tipCount++;
+        }, 5000 + (tipCount * 15000));
+    }
+}, 30000);
+
+{% else %}
+// Show periodic VNC tips
+let vncTipCount = 0;
+const vncTips = [
+    '🖱️ Right-click in the VNC window to access clipboard options',
+    '⌨️ Some key combinations may not work - use the VNC client menus',
+    '📶 Poor connection? Try reducing color depth or resolution',
+    '🔄 Screen not updating? Try refreshing the VNC connection'
+];
+
+setInterval(() => {
+    if (vncTipCount < vncTips.length) {
+        setTimeout(() => {
+            showNotification(vncTips[vncTipCount], 'info');
+            vncTipCount++;
+        }, 10000 + (vncTipCount * 20000));
+    }
+}, 45000);
+{% endif %}
+</script>
+{% endblock %}">
+                        <i class="bi bi-info-circle me-1"></i>Check Session Status
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- VNC Tips and Troubleshooting -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm sticky-top" style="top: 1rem;">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0 fw-semibold">
+                    <i class="bi bi-lightbulb me-2"></i>VNC Tips
+                </h5>
+            </div>
+            <div class="card-body">
+                <h6 class="text-muted mb-2">Performance Tips:</h6>
+                <ul class="list-unstyled">
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Use wired internet for best performance</li>
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Close other applications to free bandwidth</li>
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Lower color depth for faster response</li>
+                </ul>
+                
+                <hr>
+                
+                <h6 class="text-muted mb-2">Troubleshooting:</h6>
+                <ul class="list-unstyled">
+                    <li class="mb-2"><i class="bi bi-tools text-warning me-2"></i><strong>Can't connect?</strong> Check if VNC client is installed</li>
+                    <li class="mb-2"><i class="bi bi-tools text-warning me-2"></i><strong>Slow response?</strong> Try a different VNC client</li>
+                    <li class="mb-2"><i class="bi bi-tools text-warning me-2"></i><strong>Display issues?</strong> Restart the session</li>
+                </ul>
+                
+                <hr>
+                
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-info btn-sm" onclick="testConnection()">
+                        <i class="bi bi-speedometer me-1"></i>Test Connection
+                    </button>
+                    <a href="{{ url_for('gui.session_detail', session_id=session.session_id) }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-info-circle me-1"></i>Session Details
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Help Modal -->
+<div class="modal fade" id="helpModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-{% if gui_uses_wslg %}windows{% else %}question-circle{% endif %} me-2"></i>
+                    {% if gui_uses_wslg %}WSLg Help{% else %}VNC Connection Help{% endif %}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% if gui_uses_wslg %}
+                <h6>Finding Your WSLg Application</h6>
+                <p>Your application is running as a native Windows application. Here's how to find it:</p>
+                <ol>
+                    <li><strong>Check the Taskbar:</strong> Look for a new icon in your Windows taskbar</li>
+                    <li><strong>Use Alt+Tab:</strong> Press Alt+Tab to cycle through open applications</li>
+                    <li><strong>Check Notification Area:</strong> Some apps may appear in the system tray</li>
+                    <li><strong>Look for Windows:</strong> The app window might be minimized or behind other windows</li>
+                </ol>
+                
+                <h6>WSLg Features</h6>
+                <ul>
+                    <li><strong>Clipboard:</strong> Copy/paste works between Windows and Linux applications</li>
+                    <li><strong>Files:</strong> Drag and drop files from Windows Explorer</li>
+                    <li><strong>Audio:</strong> Sound plays through your Windows audio system</li>
+                    <li><strong>Network:</strong> Applications can access your Windows network</li>
+                </ul>
+                
+                <h6>Still Can't Find It?</h6>
+                <p>If you can't locate your application:</p>
+                <ul>
+                    <li>Check the session details page for process status</li>
+                    <li>Try closing and relaunching the application</li>
+                    <li>Some applications may take time to fully load</li>
+                </ul>
+                {% else %}
+                <h6>VNC Connection Problems?</h6>
+                <p>If you're having trouble connecting to your VNC session:</p>
+                
+                <h6>Common Issues:</h6>
+                <ul>
+                    <li><strong>No VNC Client:</strong> Download TigerVNC or RealVNC Viewer</li>
+                    <li><strong>Connection Refused:</strong> Check if the session is still active</li>
+                    <li><strong>Slow Performance:</strong> Try lowering the resolution or color depth</li>
+                    <li><strong>Black Screen:</strong> The application might still be loading</li>
+                </ul>
+                
+                <h6>Best VNC Clients:</h6>
+                <ul>
+                    <li><strong>TigerVNC:</strong> Free, fast, and reliable</li>
+                    <li><strong>RealVNC:</strong> Professional-grade client</li>
+                    <li><strong>Web Browser:</strong> Use the built-in web VNC option</li>
+                </ul>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <a href="{{ url_for('gui.session_detail', session_id=session.session_id) }}" class="btn btn-primary

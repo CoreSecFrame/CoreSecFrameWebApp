@@ -1,4 +1,4 @@
-<!-- app/templates/gui/index.html -->
+<!-- app/templates/gui/index.html - WSLg Enhanced -->
 {% extends "gui/base_gui.html" %}
 
 {% block content %}
@@ -19,6 +19,36 @@
                 <a href="{{ url_for('gui.applications') }}" class="btn btn-primary">
                     <i class="bi bi-grid-3x3-gap me-1"></i>All Applications
                 </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Environment Information -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header {% if gui_uses_wslg %}bg-success{% else %}bg-info{% endif %} text-white">
+                <h6 class="mb-0 fw-semibold">
+                    <i class="bi bi-{% if gui_uses_wslg %}windows{% else %}display{% endif %} me-2"></i>
+                    GUI Environment: {{ gui_environment|title }}
+                </h6>
+            </div>
+            <div class="card-body py-2">
+                {% if gui_uses_wslg %}
+                <div class="alert alert-success alert-sm mb-0">
+                    <i class="bi bi-check-circle me-2"></i>
+                    <strong>WSLg Detected:</strong> GUI applications will open natively in Windows. 
+                    No VNC client needed - apps appear as regular Windows applications with full clipboard, audio, and file integration.
+                </div>
+                {% else %}
+                <div class="alert alert-info alert-sm mb-0">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>VNC Mode:</strong> GUI applications run in virtual displays. 
+                    Use a VNC client or the built-in web viewer to connect.
+                    {% if gui_is_wsl %}<br><small>💡 Consider upgrading to WSLg for native Windows integration!</small>{% endif %}
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -64,7 +94,7 @@
     </div>
 </div>
 
-<!-- Active Sessions -->
+<!-- Active Sessions with environment-specific information -->
 {% if active_sessions %}
 <div class="row mb-4">
     <div class="col-12">
@@ -72,6 +102,7 @@
             <div class="card-header bg-success text-white">
                 <h5 class="mb-0 fw-semibold">
                     <i class="bi bi-play-circle me-2"></i>Your Active Sessions
+                    <span class="badge bg-light text-success ms-2">{{ gui_environment|upper }}</span>
                 </h5>
             </div>
             <div class="card-body">
@@ -91,6 +122,11 @@
                                     <div>
                                         <h6 class="mb-1">{{ session.name }}</h6>
                                         <p class="text-muted small mb-0">{{ session.application.display_name }}</p>
+                                        {% if gui_uses_wslg %}
+                                        <span class="badge bg-success badge-sm">WSLg Native</span>
+                                        {% else %}
+                                        <span class="badge bg-info badge-sm">VNC Session</span>
+                                        {% endif %}
                                     </div>
                                 </div>
                                 <div class="dropdown">
@@ -98,14 +134,24 @@
                                         <i class="bi bi-three-dots"></i>
                                     </button>
                                     <ul class="dropdown-menu">
+                                        {% if gui_uses_wslg %}
+                                        <li>
+                                            <span class="dropdown-item-text">
+                                                <i class="bi bi-info-circle me-2"></i>
+                                                <small>App running natively in Windows</small>
+                                            </span>
+                                        </li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        {% else %}
                                         <li>
                                             <a class="dropdown-item" href="{{ url_for('gui.connect_session', session_id=session.session_id) }}">
-                                                <i class="bi bi-display me-2"></i>Connect
+                                                <i class="bi bi-display me-2"></i>Connect via VNC
                                             </a>
                                         </li>
+                                        {% endif %}
                                         <li>
                                             <a class="dropdown-item" href="{{ url_for('gui.session_detail', session_id=session.session_id) }}">
-                                                <i class="bi bi-info-circle me-2"></i>Details
+                                                <i class="bi bi-info-circle me-2"></i>Session Details
                                             </a>
                                         </li>
                                         <li><hr class="dropdown-divider"></li>
@@ -118,6 +164,8 @@
                                 </div>
                             </div>
                             
+                            {% if not gui_uses_wslg %}
+                            <!-- Solo mostrar detalles VNC si no es WSLg -->
                             <div class="row text-center mb-3">
                                 <div class="col-4">
                                     <small class="text-muted d-block">Display</small>
@@ -132,20 +180,65 @@
                                     <strong>{{ session.screen_resolution }}</strong>
                                 </div>
                             </div>
+                            {% else %}
+                            <!-- Información WSLg -->
+                            <div class="text-center mb-3">
+                                <div class="d-flex justify-content-center align-items-center">
+                                    <i class="bi bi-windows text-success me-2"></i>
+                                    <small class="text-muted">Running as native Windows application</small>
+                                </div>
+                            </div>
+                            {% endif %}
                             
                             <div class="d-flex align-items-center justify-content-between">
                                 <div class="d-flex align-items-center">
                                     <span class="session-status-indicator session-status-active"></span>
                                     <small class="text-success">Active {{ session.get_duration() }}</small>
                                 </div>
+                                {% if gui_uses_wslg %}
+                                <a href="{{ url_for('gui.session_detail', session_id=session.session_id) }}" 
+                                   class="btn btn-sm btn-success">
+                                    <i class="bi bi-info-circle me-1"></i>Details
+                                </a>
+                                {% else %}
                                 <a href="{{ url_for('gui.connect_session', session_id=session.session_id) }}" 
                                    class="btn btn-sm btn-success">
                                     <i class="bi bi-display me-1"></i>Connect
                                 </a>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
                     {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- WSLg Feature Highlight (only show if WSLg is available) -->
+{% if gui_uses_wslg %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm bg-gradient" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="card-body text-white">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h5 class="fw-bold mb-2">
+                            <i class="bi bi-stars me-2"></i>WSLg Native Integration Active!
+                        </h5>
+                        <p class="mb-2">Your GUI applications run natively in Windows with full integration:</p>
+                        <ul class="list-unstyled mb-0">
+                            <li><i class="bi bi-check-circle me-2"></i>Native Windows taskbar integration</li>
+                            <li><i class="bi bi-check-circle me-2"></i>Seamless clipboard sharing</li>
+                            <li><i class="bi bi-check-circle me-2"></i>Audio and file system access</li>
+                            <li><i class="bi bi-check-circle me-2"></i>No VNC client required</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <i class="bi bi-windows" style="font-size: 4rem; opacity: 0.8;"></i>
+                    </div>
                 </div>
             </div>
         </div>
@@ -160,6 +253,9 @@
             <div class="card-header bg-primary text-white">
                 <h5 class="mb-0 fw-semibold">
                     <i class="bi bi-grid-3x3-gap me-2"></i>Available Applications
+                    {% if gui_uses_wslg %}
+                    <span class="badge bg-light text-primary ms-2">WSLg Ready</span>
+                    {% endif %}
                 </h5>
             </div>
             <div class="card-body">
@@ -200,13 +296,21 @@
                                             <div class="flex-grow-1">
                                                 <h6 class="mb-1">{{ app.display_name }}</h6>
                                                 <p class="text-muted small mb-2">{{ app.description|truncate(60) }}</p>
-                                                <span class="badge bg-light text-dark">{{ app.category or 'Uncategorized' }}</span>
+                                                <div class="d-flex flex-wrap gap-1">
+                                                    <span class="badge bg-light text-dark">{{ app.category or 'Uncategorized' }}</span>
+                                                    {% if gui_uses_wslg %}
+                                                    <span class="badge bg-success">WSLg Native</span>
+                                                    {% else %}
+                                                    <span class="badge bg-info">VNC</span>
+                                                    {% endif %}
+                                                </div>
                                             </div>
                                         </div>
                                         <div class="d-grid gap-2">
                                             <a href="{{ url_for('gui.launch_application', app_id=app.id) }}" 
                                                class="btn btn-primary btn-sm">
-                                                <i class="bi bi-play-fill me-1"></i>Launch
+                                                <i class="bi bi-{% if gui_uses_wslg %}windows{% else %}play-fill{% endif %} me-1"></i>
+                                                {% if gui_uses_wslg %}Launch Native{% else %}Launch{% endif %}
                                             </a>
                                             <a href="{{ url_for('gui.application_detail', app_id=app.id) }}" 
                                                class="btn btn-outline-secondary btn-sm">
@@ -238,13 +342,19 @@
                                             {% endif %}
                                             <div class="flex-grow-1">
                                                 <h6 class="mb-1">{{ app.display_name }}</h6>
-                                                <p class="text-muted small mb-0">{{ app.description|truncate(60) }}</p>
+                                                <p class="text-muted small mb-2">{{ app.description|truncate(60) }}</p>
+                                                {% if gui_uses_wslg %}
+                                                <span class="badge bg-success badge-sm">WSLg Native</span>
+                                                {% else %}
+                                                <span class="badge bg-info badge-sm">VNC</span>
+                                                {% endif %}
                                             </div>
                                         </div>
                                         <div class="d-grid gap-2">
                                             <a href="{{ url_for('gui.launch_application', app_id=app.id) }}" 
                                                class="btn btn-primary btn-sm">
-                                                <i class="bi bi-play-fill me-1"></i>Launch
+                                                <i class="bi bi-{% if gui_uses_wslg %}windows{% else %}play-fill{% endif %} me-1"></i>
+                                                {% if gui_uses_wslg %}Launch Native{% else %}Launch{% endif %}
                                             </a>
                                             <a href="{{ url_for('gui.application_detail', app_id=app.id) }}" 
                                                class="btn btn-outline-secondary btn-sm">
@@ -278,6 +388,9 @@
                         <h6><i class="bi bi-info-circle me-1"></i>Administrator Note</h6>
                         <p class="mb-2">You can initialize default applications using the CLI command:</p>
                         <code>flask gui-init</code>
+                        {% if gui_uses_wslg %}
+                        <br><small class="text-muted mt-2">WSLg-optimized applications will be created automatically!</small>
+                        {% endif %}
                     </div>
                     {% endif %}
                 </div>
@@ -299,7 +412,11 @@
                 <p>Are you sure you want to close the session <strong id="sessionNameToClose"></strong>?</p>
                 <div class="alert alert-warning">
                     <i class="bi bi-exclamation-triangle me-2"></i>
+                    {% if gui_uses_wslg %}
+                    This will terminate the GUI application running in Windows.
+                    {% else %}
                     This will terminate the GUI application and close the VNC connection.
+                    {% endif %}
                 </div>
             </div>
             <div class="modal-footer">
@@ -339,13 +456,11 @@ document.getElementById('confirmCloseSession').addEventListener('click', functio
                 bootstrap.Modal.getInstance(document.getElementById('closeSessionModal')).hide();
                 
                 // Show success message
-                const alert = document.createElement('div');
-                alert.className = 'alert alert-success alert-dismissible fade show';
-                alert.innerHTML = `
-                    <i class="bi bi-check-circle me-2"></i>Session closed successfully
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                `;
-                document.querySelector('.container-fluid').insertBefore(alert, document.querySelector('.row'));
+                {% if gui_uses_wslg %}
+                showNotification('✅ WSLg session closed successfully!\n💡 The Windows application should now be closed.', 'success');
+                {% else %}
+                showNotification('✅ VNC session closed successfully!', 'success');
+                {% endif %}
                 
                 // Remove session card from DOM
                 const sessionCard = document.querySelector(`[data-session-id="${sessionToClose}"]`);
@@ -359,7 +474,7 @@ document.getElementById('confirmCloseSession').addEventListener('click', functio
                 }, 2000);
                 
             } else {
-                alert('Error closing session: ' + (data.message || 'Unknown error'));
+                showNotification('❌ Error closing session: ' + (data.message || 'Unknown error'), 'danger');
             }
             
             // Reset button
@@ -374,5 +489,19 @@ document.getElementById('confirmCloseSession').addEventListener('click', functio
 setInterval(function() {
     GUI.updateSessionIndicators();
 }, 30000);
+
+// WSLg-specific environment detection and notifications
+{% if gui_uses_wslg %}
+// Show WSLg tips on first visit
+document.addEventListener('DOMContentLoaded', function() {
+    const hasShownWSLgTips = localStorage.getItem('wslg_tips_shown');
+    if (!hasShownWSLgTips) {
+        setTimeout(() => {
+            showNotification('🎉 WSLg detected! Your GUI apps will run natively in Windows.\n💡 Look for launched apps in your Windows taskbar!', 'info');
+            localStorage.setItem('wslg_tips_shown', 'true');
+        }, 2000);
+    }
+});
+{% endif %}
 </script>
 {% endblock %}

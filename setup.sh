@@ -60,6 +60,7 @@ EOF
 }
 
 # Function to check system requirements
+# Function to check system requirements
 check_requirements() {
     print_header "=== Checking System Requirements ==="
     
@@ -94,37 +95,161 @@ check_requirements() {
         print_status "git is available"
     fi
 
-    print_status "Checking noVNC requirements..."
+    # ========== NUEVA SECCIÓN: GUI DEPENDENCIES ==========
+    print_status "Checking GUI module requirements..."
+    
+    # Check Xvfb (Virtual X11 server)
+    if ! command -v Xvfb &> /dev/null; then
+        gui_missing+=("xvfb")
+    else
+        print_status "Xvfb is available"
+    fi
+    
+    # Check x11vnc (VNC server for X11)
+    if ! command -v x11vnc &> /dev/null; then
+        gui_missing+=("x11vnc")
+    else
+        print_status "x11vnc is available"
+    fi
+    
+    # Check X11 utilities
+    if ! command -v xdpyinfo &> /dev/null; then
+        gui_missing+=("x11-utils")
+    else
+        print_status "X11 utilities are available"
+    fi
+    
+    # Check Fluxbox window manager
+    if ! command -v fluxbox &> /dev/null; then
+        gui_missing+=("fluxbox")
+    else
+        print_status "Fluxbox window manager is available"
+    fi
+    
+    # Check websockify for noVNC
     if ! command -v websockify &> /dev/null; then
         gui_missing+=("websockify")
+    else
+        print_status "websockify is available"
     fi
 
     # Check if noVNC is available or can be installed
     if [ ! -d "/usr/share/novnc" ] && [ ! -d "./novnc" ]; then
         print_status "noVNC not found, will be installed automatically"
+    else
+        print_status "noVNC is available"
     fi
     
+    # Install GUI dependencies if missing
     if [ ${#gui_missing[@]} -ne 0 ]; then
         print_warning "Missing GUI dependencies: ${gui_missing[*]}"
         print_status "Installing GUI dependencies..."
         
         if command -v apt-get &> /dev/null; then
+            # Debian/Ubuntu/Kali Linux
+            print_status "Using apt-get package manager..."
             sudo apt-get update
-            sudo apt-get install -y "${gui_missing[@]}" python3-websockify novnc
+            
+            # Map generic names to specific packages
+            local apt_packages=()
+            for dep in "${gui_missing[@]}"; do
+                case $dep in
+                    "xvfb")
+                        apt_packages+=("xvfb")
+                        ;;
+                    "x11vnc")
+                        apt_packages+=("x11vnc")
+                        ;;
+                    "x11-utils")
+                        apt_packages+=("x11-utils" "x11-xserver-utils")
+                        ;;
+                    "fluxbox")
+                        apt_packages+=("fluxbox")
+                        ;;
+                    "websockify")
+                        apt_packages+=("websockify" "python3-websockify")
+                        ;;
+                esac
+            done
+            
+            # Add noVNC if available in repos
+            apt_packages+=("novnc")
+            
+            # Install packages
+            if sudo apt-get install -y "${apt_packages[@]}"; then
+                print_success "GUI dependencies installed successfully"
+            else
+                print_warning "Some GUI packages may not have been installed correctly"
+            fi
+            
         elif command -v yum &> /dev/null; then
-            sudo yum install -y "${gui_missing[@]}" python3-websockify
-            # Install noVNC manually for RHEL/CentOS
-            install_novnc_manual
+            # RHEL/CentOS
+            print_status "Using yum package manager..."
+            
+            local yum_packages=()
+            for dep in "${gui_missing[@]}"; do
+                case $dep in
+                    "xvfb")
+                        yum_packages+=("xorg-x11-server-Xvfb")
+                        ;;
+                    "x11vnc")
+                        yum_packages+=("x11vnc")
+                        ;;
+                    "x11-utils")
+                        yum_packages+=("xorg-x11-utils")
+                        ;;
+                    "fluxbox")
+                        yum_packages+=("fluxbox")
+                        ;;
+                    "websockify")
+                        yum_packages+=("python3-websockify")
+                        ;;
+                esac
+            done
+            
+            sudo yum install -y "${yum_packages[@]}"
+            install_novnc_manual  # noVNC not in RHEL repos
+            
         elif command -v dnf &> /dev/null; then
-            sudo dnf install -y "${gui_missing[@]}" python3-websockify
-            # Install noVNC manually for Fedora
-            install_novnc_manual
+            # Fedora
+            print_status "Using dnf package manager..."
+            
+            local dnf_packages=()
+            for dep in "${gui_missing[@]}"; do
+                case $dep in
+                    "xvfb")
+                        dnf_packages+=("xorg-x11-server-Xvfb")
+                        ;;
+                    "x11vnc")
+                        dnf_packages+=("x11vnc")
+                        ;;
+                    "x11-utils")
+                        dnf_packages+=("xorg-x11-utils")
+                        ;;
+                    "fluxbox")
+                        dnf_packages+=("fluxbox")
+                        ;;
+                    "websockify")
+                        dnf_packages+=("python3-websockify")
+                        ;;
+                esac
+            done
+            
+            sudo dnf install -y "${dnf_packages[@]}"
+            install_novnc_manual  # Install noVNC manually
+            
         else
-            print_error "Cannot install GUI dependencies automatically. Please install: ${gui_missing[*]}"
+            print_error "Cannot install GUI dependencies automatically."
+            print_error "Please install manually:"
+            echo "  - Xvfb (virtual X11 server)"
+            echo "  - x11vnc (VNC server)"
+            echo "  - x11-utils (X11 utilities)"
+            echo "  - fluxbox (window manager)"
+            echo "  - websockify (noVNC proxy)"
             print_warning "GUI module will be disabled without these dependencies"
         fi
     else
-        print_success "GUI requirements satisfied"
+        print_success "All GUI requirements satisfied"
     fi
 
     # Install noVNC if not available
@@ -132,9 +257,9 @@ check_requirements() {
         install_novnc_manual
     fi
 
-    # Install missing dependencies
+    # Install missing basic dependencies
     if [ ${#missing_deps[@]} -ne 0 ]; then
-        print_warning "Missing dependencies: ${missing_deps[*]}"
+        print_warning "Missing basic dependencies: ${missing_deps[*]}"
         print_status "Installing missing dependencies..."
         
         if command -v apt-get &> /dev/null; then
@@ -147,6 +272,21 @@ check_requirements() {
         else
             print_error "Cannot install dependencies automatically. Please install: ${missing_deps[*]}"
             exit 1
+        fi
+    fi
+    
+    # ========== NUEVA SECCIÓN: INSTALL COMMON GUI APPS ==========
+    print_status "Installing common GUI applications for testing..."
+    
+    if command -v apt-get &> /dev/null; then
+        # Install common applications that work well with the GUI module
+        local gui_apps=("firefox-esr" "gedit" "gnome-calculator" "xterm")
+        
+        print_status "Installing GUI applications: ${gui_apps[*]}"
+        if sudo apt-get install -y "${gui_apps[@]}" 2>/dev/null; then
+            print_success "GUI applications installed successfully"
+        else
+            print_warning "Some GUI applications may not be available"
         fi
     fi
     
@@ -378,9 +518,29 @@ install_novnc_manual() {
             # Make sure it's accessible
             chmod -R 755 "$SCRIPT_DIR/novnc"
             
+            # Create a symbolic link for easier access
+            if [ -w "/usr/local/bin" ]; then
+                sudo ln -sf "$SCRIPT_DIR/novnc/utils/novnc_proxy" /usr/local/bin/novnc_proxy 2>/dev/null || true
+            fi
+            
             print_status "noVNC installed to $SCRIPT_DIR/novnc"
+            
+            # Test noVNC installation
+            if [ -f "$SCRIPT_DIR/novnc/utils/novnc_proxy" ]; then
+                print_success "noVNC proxy script is available"
+            else
+                print_warning "noVNC proxy script not found, checking for websockify..."
+                if command -v websockify &> /dev/null; then
+                    print_status "websockify is available as fallback"
+                else
+                    print_error "Neither noVNC proxy nor websockify found"
+                fi
+            fi
         else
             print_warning "Failed to download noVNC. GUI module may have limited functionality."
+            print_status "You can install it manually later with:"
+            echo "  cd $SCRIPT_DIR"
+            echo "  git clone https://github.com/novnc/noVNC.git novnc"
             return 1
         fi
     else
@@ -388,6 +548,103 @@ install_novnc_manual() {
     fi
     
     return 0
+}
+
+# Function to verify GUI installation
+verify_gui_installation() {
+    print_header "=== GUI Installation Verification ==="
+    
+    local all_good=true
+    
+    print_status "Verifying GUI components..."
+    
+    # Check Xvfb
+    if command -v Xvfb &> /dev/null; then
+        print_success "✓ Xvfb is installed"
+    else
+        print_error "✗ Xvfb is NOT installed"
+        all_good=false
+    fi
+    
+    # Check x11vnc
+    if command -v x11vnc &> /dev/null; then
+        print_success "✓ x11vnc is installed"
+    else
+        print_error "✗ x11vnc is NOT installed"
+        all_good=false
+    fi
+    
+    # Check X11 utils
+    if command -v xdpyinfo &> /dev/null; then
+        print_success "✓ X11 utilities are installed"
+    else
+        print_error "✗ X11 utilities are NOT installed"
+        all_good=false
+    fi
+    
+    # Check Fluxbox
+    if command -v fluxbox &> /dev/null; then
+        print_success "✓ Fluxbox window manager is installed"
+    else
+        print_warning "⚠ Fluxbox is not installed (optional but recommended)"
+    fi
+    
+    # Check websockify
+    if command -v websockify &> /dev/null; then
+        print_success "✓ websockify is installed"
+    else
+        print_error "✗ websockify is NOT installed"
+        all_good=false
+    fi
+    
+    # Check noVNC
+    if [ -d "/usr/share/novnc" ] || [ -d "$SCRIPT_DIR/novnc" ]; then
+        print_success "✓ noVNC is available"
+    else
+        print_error "✗ noVNC is NOT available"
+        all_good=false
+    fi
+    
+    # Test GUI applications
+    print_status "Checking GUI applications..."
+    if command -v firefox-esr &> /dev/null || command -v firefox &> /dev/null; then
+        print_success "✓ Firefox browser is available"
+    else
+        print_warning "⚠ Firefox browser not found"
+    fi
+    
+    if command -v gedit &> /dev/null; then
+        print_success "✓ Text editor (gedit) is available"
+    else
+        print_warning "⚠ Text editor not found"
+    fi
+    
+    if command -v xterm &> /dev/null; then
+        print_success "✓ Terminal emulator (xterm) is available"
+    else
+        print_warning "⚠ Terminal emulator not found"
+    fi
+    
+    echo
+    if [ "$all_good" = true ]; then
+        print_success "🎉 GUI module installation verification PASSED!"
+        print_status "You can now use the GUI module to run applications in virtual displays"
+        echo
+        print_status "Quick test commands after starting the application:"
+        echo "  1. Start CoreSecFrame: python run.py"
+        echo "  2. Initialize GUI apps: flask gui-init"
+        echo "  3. Access web interface: http://localhost:5000/gui"
+    else  
+        print_error "❌ GUI module installation verification FAILED!"
+        print_status "Some required components are missing. Please install them manually."
+        echo
+        print_status "For Kali Linux/Debian/Ubuntu:"
+        echo "  sudo apt update"
+        echo "  sudo apt install -y xvfb x11vnc x11-utils fluxbox websockify novnc"
+        echo "  sudo apt install -y firefox-esr gedit xterm gnome-calculator"
+    fi
+    
+    echo
 }
 
 # Function to setup noVNC service
@@ -511,6 +768,9 @@ install_local() {
     # Initialize database
     init_database
     
+    # Verify GUI installation
+    verify_gui_installation
+    
     # Set up systemd service (optional)
     setup_systemd_service
     setup_novnc_service
@@ -529,7 +789,11 @@ install_local() {
     echo "  source venv/bin/activate"
     echo "  python run.py"
     echo
+    echo -e "${CYAN}To initialize GUI applications:${NC}"
+    echo "  flask gui-init"
+    echo
     echo -e "${CYAN}Application will be available at:${NC} http://localhost:5000"
+    echo -e "${CYAN}GUI module will be available at:${NC} http://localhost:5000/gui"
     echo
 }
 

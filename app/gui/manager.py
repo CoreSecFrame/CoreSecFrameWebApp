@@ -1,11 +1,9 @@
-# app/gui/manager.py
+# app/gui/manager.py - Versión con inicialización lazy
 import os
 import signal
 import subprocess
 import psutil
 import time
-import random
-import tempfile
 import shutil
 from datetime import datetime
 from flask import current_app
@@ -13,688 +11,233 @@ from app import db
 from app.gui.models import GUISession, GUIApplication, GUISessionLog
 import traceback
 
-class GUISessionManager:
-    """Manager for GUI sessions with Xvfb + Fluxbox + x11vnc + noVNC"""
+class GUIEnvironmentDetector:
+    """Detector del entorno de ejecución para GUI"""
     
-    # Configuration
-    DISPLAY_START = 99  # Start display numbers from :99
-    DISPLAY_END = 199   # End display numbers at :199
-    VNC_PORT_START = 5900  # Standard VNC port range
-    VNC_PORT_END = 6000
-    NOVNC_PORT_START = 6080  # noVNC web interface ports
-    NOVNC_PORT_END = 6200
-    
-    # Default settings
-    DEFAULT_RESOLUTION = "1024x768"
-    DEFAULT_COLOR_DEPTH = 24
-    XVFB_TIMEOUT = 10
-    X11VNC_TIMEOUT = 10
-    NOVNC_PATH = None  # Will be detected
-    
-    @classmethod
-    def create_session(cls, application_id, user_id, session_name=None, 
-                      resolution=None, color_depth=None):
-        """Create a new GUI session with full stack"""
+    @staticmethod
+    def detect_environment():
+        """Detecta si estamos en WSL, WSLg, o Linux nativo"""
+        env_info = {
+            'is_wsl': False,
+            'has_wslg': False,
+            'is_linux_native': False,
+            'display_method': 'unknown',
+            'wayland_display': None,
+            'x11_display': None
+        }
+        
         try:
-            # Get application
-            application = GUIApplication.query.get(application_id)
-            if not application:
-                return False, "Application not found"
+            # Detectar WSL
+            if os.path.exists('/proc/version'):
+                with open('/proc/version', 'r') as f:
+                    proc_version = f.read().lower()
+                    if 'microsoft' in proc_version or 'wsl' in proc_version:
+                        env_info['is_wsl'] = True
+                        # Solo usar logger si hay contexto de app
+                        if current_app:
+                            current_app.logger.info("Detected WSL environment")
             
-            if not application.enabled:
-                return False, "Application is disabled"
+            # Detectar WSLg
+            wayland_display = os.environ.get('WAYLAND_DISPLAY')
+            if wayland_display:
+                env_info['has_wslg'] = True
+                env_info['wayland_display'] = wayland_display
+                env_info['display_method'] = 'wslg'
+                if current_app:
+                    current_app.logger.info(f"Detected WSLg with Wayland display: {wayland_display}")
             
-            # Set defaults
-            if not session_name:
-                session_name = f"{application.display_name} - {datetime.now().strftime('%H:%M:%S')}"
+            # Detectar X11 display
+            x11_display = os.environ.get('DISPLAY')
+            if x11_display and not env_info['has_wslg']:
+                env_info['x11_display'] = x11_display
+                if env_info['is_wsl']:
+                    env_info['display_method'] = 'wsl_x11'
+                else:
+                    env_info['display_method'] = 'native_x11'
+                if current_app:
+                    current_app.logger.info(f"Detected X11 display: {x11_display}")
             
-            resolution = resolution or cls.DEFAULT_RESOLUTION
-            color_depth = color_depth or cls.DEFAULT_COLOR_DEPTH
+            # Si no es WSL, es Linux nativo
+            if not env_info['is_wsl']:
+                env_info['is_linux_native'] = True
+                env_info['display_method'] = 'native_x11' if x11_display else 'headless'
+                if current_app:
+                    current_app.logger.info("Detected native Linux environment")
             
-            # Find available ports
-            display_number = cls._find_available_display()
-            if display_number is None:
-                return False, "No available X11 displays"
+            return env_info
             
-            vnc_port = cls._find_available_vnc_port()
-            if vnc_port is None:
-                return False, "No available VNC ports"
-                
-            novnc_port = cls._find_available_novnc_port()
-            if novnc_port is None:
-                return False, "No available noVNC ports"
+        except Exception as e:
+            # Solo usar logger si hay contexto de app, sino imprimir
+            if current_app:
+                current_app.logger.error(f"Error detecting environment: {e}")
+            else:
+                print(f"Error detecting GUI environment: {e}")
+            return env_info
+
+class WSLgGUIManager:
+    """Manager para WSLg - apps GUI nativas en Windows"""
+    
+    @staticmethod
+    def create_session(application, user_id, session_name, **kwargs):
+        """Crear sesión GUI directa en WSLg"""
+        try:
+            current_app.logger.info(f"Creating WSLg GUI session for {application.name}")
             
-            # Create session record
+            # Crear registro de sesión
             session = GUISession(
                 name=session_name,
-                application_id=application_id,
+                application_id=application.id,
                 user_id=user_id,
-                display_number=display_number,
-                vnc_port=vnc_port,
-                screen_resolution=resolution,
-                color_depth=color_depth
+                display_number=0,  # WSLg maneja esto automáticamente
+                vnc_port=None,     # No necesitamos VNC
+                screen_resolution="native",
+                color_depth=32
             )
-            
-            # Add noVNC port to session (we'll need to add this field)
-            if not hasattr(session, 'novnc_port'):
-                # For now, we'll store it in a way that works
-                session.novnc_port = novnc_port
             
             db.session.add(session)
             db.session.commit()
             
-            current_app.logger.info(f"Creating GUI session {session.session_id} for application {application.name}")
+            # Preparar entorno
+            env = os.environ.copy()
             
-            try:
-                # 1. Start Xvfb
-                xvfb_pid = cls._start_xvfb(display_number, resolution, color_depth)
-                if not xvfb_pid:
-                    raise Exception("Failed to start Xvfb")
-                
-                session.xvfb_pid = xvfb_pid
+            # Agregar variables específicas para WSLg
+            env.update({
+                'LIBGL_ALWAYS_INDIRECT': '1',
+                'PULSE_SERVER': 'unix:/mnt/wslg/PulseServer',
+                'WAYLAND_DISPLAY': env.get('WAYLAND_DISPLAY', 'wayland-0'),
+                'XDG_RUNTIME_DIR': '/mnt/wslg/runtime-dir',
+                'GTK_THEME': 'Default',
+                'QT_X11_NO_MITSHM': '1'
+            })
+            
+            # Añadir variables específicas de la aplicación
+            app_env = application.get_environment_dict()
+            env.update(app_env)
+            
+            # Preparar comando
+            cmd = application.command.split()
+            cwd = application.working_directory if application.working_directory else None
+            
+            current_app.logger.info(f"Starting WSLg application: {' '.join(cmd)}")
+            
+            # Iniciar aplicación directamente
+            process = subprocess.Popen(
+                cmd, 
+                env=env, 
+                cwd=cwd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                preexec_fn=os.setsid
+            )
+            
+            # Esperar un momento y verificar que inició
+            time.sleep(2)
+            
+            if process.poll() is None:
+                session.app_pid = process.pid
+                session.xvfb_pid = None
+                session.x11vnc_pid = None
                 db.session.commit()
                 
-                # 2. Start Fluxbox window manager
-                fluxbox_pid = cls._start_fluxbox(display_number)
-                if not fluxbox_pid:
-                    current_app.logger.warning("Failed to start Fluxbox, continuing without window manager")
+                current_app.logger.info(f"WSLg application started successfully (PID: {process.pid})")
                 
-                # 3. Start x11vnc
-                x11vnc_pid = cls._start_x11vnc(display_number, vnc_port)
-                if not x11vnc_pid:
-                    raise Exception("Failed to start x11vnc")
-                
-                session.x11vnc_pid = x11vnc_pid
-                db.session.commit()
-                
-                # 4. Start noVNC proxy
-                novnc_pid = cls._start_novnc_proxy(vnc_port, novnc_port)
-                if not novnc_pid:
-                    current_app.logger.warning("Failed to start noVNC proxy")
-                
-                # 5. Start application
-                app_pid = cls._start_application(application, display_number)
-                if not app_pid:
-                    raise Exception("Failed to start application")
-                
-                session.app_pid = app_pid
-                db.session.commit()
-                
-                # Log session start
-                cls._log_session_event(session, 'session_start', 
-                                     f'GUI session started successfully',
-                                     {
-                                         'display': display_number,
-                                         'vnc_port': vnc_port,
-                                         'novnc_port': novnc_port,
-                                         'resolution': resolution,
-                                         'xvfb_pid': xvfb_pid,
-                                         'fluxbox_pid': fluxbox_pid,
-                                         'x11vnc_pid': x11vnc_pid,
-                                         'novnc_pid': novnc_pid,
-                                         'app_pid': app_pid
-                                     })
-                
-                # Update application last used
-                application.last_used = datetime.utcnow()
-                db.session.commit()
-                
-                current_app.logger.info(f"GUI session {session.session_id} created successfully")
-                current_app.logger.info(f"noVNC URL: http://localhost:{novnc_port}/vnc.html")
+                WSLgGUIManager._log_session_event(
+                    session, 'session_start', 
+                    f'WSLg GUI session started for {application.name}',
+                    {'display_method': 'wslg', 'pid': process.pid}
+                )
                 
                 return True, session
+            else:
+                stdout, stderr = process.communicate()
+                error_msg = f"Application failed to start."
+                if stderr:
+                    error_msg += f" Error: {stderr.decode()}"
                 
-            except Exception as e:
-                current_app.logger.error(f"Error starting processes for session {session.session_id}: {e}")
+                current_app.logger.error(error_msg)
                 
-                # Clean up any started processes
-                cls._cleanup_session_processes(session)
-                
-                # Mark session as inactive
                 session.active = False
                 session.end_time = datetime.utcnow()
                 db.session.commit()
                 
-                cls._log_session_event(session, 'error', 
-                                     f'Failed to start session: {str(e)}')
-                
-                return False, f"Failed to start session: {str(e)}"
+                return False, error_msg
                 
         except Exception as e:
-            current_app.logger.error(f"Error creating GUI session: {e}")
-            current_app.logger.error(traceback.format_exc())
-            return False, f"Error creating session: {str(e)}"
+            current_app.logger.error(f"Error creating WSLg session: {e}")
+            return False, f"Error creating WSLg session: {str(e)}"
     
-    @classmethod
-    def close_session(cls, session_id, user_id=None):
-        """
-        Close a GUI session
-        
-        Args:
-            session_id: Session ID to close
-            user_id: Optional user ID for permission check
-            
-        Returns:
-            tuple: (success, message)
-        """
+    @staticmethod
+    def close_session(session):
+        """Cerrar sesión WSLg"""
         try:
-            # Get session
-            query = GUISession.query.filter_by(session_id=session_id)
-            if user_id:
-                query = query.filter_by(user_id=user_id)
-            
-            session = query.first()
-            if not session:
-                return False, "Session not found"
-            
-            if not session.active:
-                return True, "Session already closed"
-            
-            current_app.logger.info(f"Closing GUI session {session_id}")
-            
-            # Clean up processes
-            cls._cleanup_session_processes(session)
-            
-            # Update session
-            session.active = False
-            session.end_time = datetime.utcnow()
-            db.session.commit()
-            
-            # Log session end
-            cls._log_session_event(session, 'session_end', 
-                                 'GUI session closed successfully')
-            
-            current_app.logger.info(f"GUI session {session_id} closed successfully")
-            return True, "Session closed successfully"
+            if session.app_pid:
+                current_app.logger.info(f"Closing WSLg session {session.session_id}")
+                
+                try:
+                    os.killpg(os.getpgid(session.app_pid), signal.SIGTERM)
+                    time.sleep(2)
+                    
+                    if WSLgGUIManager._check_process(session.app_pid)['running']:
+                        os.killpg(os.getpgid(session.app_pid), signal.SIGKILL)
+                        
+                except (ProcessLookupError, OSError):
+                    pass
+                
+                session.active = False
+                session.end_time = datetime.utcnow()
+                db.session.commit()
+                
+                WSLgGUIManager._log_session_event(
+                    session, 'session_end',
+                    'WSLg GUI session closed successfully'
+                )
+                
+                return True, "Session closed successfully"
             
         except Exception as e:
-            current_app.logger.error(f"Error closing GUI session {session_id}: {e}")
-            current_app.logger.error(traceback.format_exc())
+            current_app.logger.error(f"Error closing WSLg session: {e}")
             return False, f"Error closing session: {str(e)}"
     
-    @classmethod
-    def get_session_status(cls, session_id):
-        """
-        Get detailed status of a GUI session
-        
-        Args:
-            session_id: Session ID to check
-            
-        Returns:
-            dict: Session status information
-        """
+    @staticmethod
+    def get_session_status(session):
+        """Obtener estado de sesión WSLg"""
         try:
-            session = GUISession.query.filter_by(session_id=session_id).first()
-            if not session:
-                return {'exists': False}
-            
             status = {
                 'exists': True,
                 'active': session.active,
                 'session_data': session.to_dict(),
+                'display_method': 'wslg',
                 'processes': {}
             }
             
-            if session.active:
-                # Check process status
-                status['processes'] = {
-                    'xvfb': cls._check_process(session.xvfb_pid),
-                    'x11vnc': cls._check_process(session.x11vnc_pid),
-                    'application': cls._check_process(session.app_pid)
-                }
+            if session.active and session.app_pid:
+                process_status = WSLgGUIManager._check_process(session.app_pid)
+                status['processes']['application'] = process_status
                 
-                # Update CPU/Memory usage
-                try:
-                    cpu_total = 0
-                    memory_total = 0
-                    process_count = 0
-                    
-                    for pid in [session.xvfb_pid, session.x11vnc_pid, session.app_pid]:
-                        if pid and cls._check_process(pid)['running']:
-                            try:
-                                process = psutil.Process(pid)
-                                cpu_total += process.cpu_percent()
-                                memory_total += process.memory_percent()
-                                process_count += 1
-                            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                                pass
-                    
-                    if process_count > 0:
-                        session.cpu_usage = cpu_total / process_count
-                        session.memory_usage = memory_total / process_count
+                if process_status['running']:
+                    try:
+                        process = psutil.Process(session.app_pid)
+                        session.cpu_usage = process.cpu_percent()
+                        session.memory_usage = process.memory_percent()
                         session.update_activity()
                         
                         status['session_data']['cpu_usage'] = session.cpu_usage
                         status['session_data']['memory_usage'] = session.memory_usage
-                        
-                except Exception as e:
-                    current_app.logger.warning(f"Error updating session stats: {e}")
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        session.active = False
+                        session.end_time = datetime.utcnow()
+                        db.session.commit()
+                        status['active'] = False
             
             return status
             
         except Exception as e:
-            current_app.logger.error(f"Error getting session status: {e}")
+            current_app.logger.error(f"Error getting WSLg session status: {e}")
             return {'exists': False, 'error': str(e)}
     
-    @classmethod
-    def cleanup_inactive_sessions(cls):
-        """Clean up sessions with dead processes"""
-        try:
-            active_sessions = GUISession.query.filter_by(active=True).all()
-            cleaned_count = 0
-            
-            for session in active_sessions:
-                # Check if any critical process is dead
-                xvfb_alive = cls._check_process(session.xvfb_pid)['running']
-                x11vnc_alive = cls._check_process(session.x11vnc_pid)['running']
-                app_alive = cls._check_process(session.app_pid)['running']
-                
-                if not xvfb_alive or not x11vnc_alive:
-                    current_app.logger.info(f"Cleaning up dead session {session.session_id}")
-                    
-                    cls._cleanup_session_processes(session)
-                    session.active = False
-                    session.end_time = datetime.utcnow()
-                    
-                    cls._log_session_event(session, 'session_end', 
-                                         'Session cleaned up due to dead processes')
-                    
-                    cleaned_count += 1
-            
-            if cleaned_count > 0:
-                db.session.commit()
-                current_app.logger.info(f"Cleaned up {cleaned_count} inactive sessions")
-            
-            return cleaned_count
-            
-        except Exception as e:
-            current_app.logger.error(f"Error cleaning up sessions: {e}")
-            return 0
-    
-    # Private helper methods
-    
-    @classmethod
-    def _find_available_display(cls):
-        """Find an available X11 display number"""
-        used_displays = set()
-        
-        # Get displays from active sessions
-        active_sessions = GUISession.query.filter_by(active=True).all()
-        for session in active_sessions:
-            if session.display_number:
-                used_displays.add(session.display_number)
-        
-        # Check for available display
-        for display_num in range(cls.DISPLAY_START, cls.DISPLAY_END + 1):
-            if display_num not in used_displays:
-                # Double-check by trying to connect
-                if not cls._is_display_in_use(display_num):
-                    return display_num
-        
-        return None
-    
-    @classmethod
-    def _find_available_vnc_port(cls):
-        """Find an available VNC port"""
-        used_ports = set()
-        
-        # Get ports from active sessions
-        active_sessions = GUISession.query.filter_by(active=True).all()
-        for session in active_sessions:
-            if session.vnc_port:
-                used_ports.add(session.vnc_port)
-        
-        # Check for available port
-        for port in range(cls.VNC_PORT_START, cls.VNC_PORT_END + 1):
-            if port not in used_ports and cls._is_port_available(port):
-                return port
-        
-        return None
-    
-    @classmethod
-    def _is_display_in_use(cls, display_number):
-        """Check if an X11 display is in use"""
-        try:
-            # Try to connect to the display
-            result = subprocess.run(['xdpyinfo', '-display', f':{display_number}'], 
-                                  capture_output=True, timeout=2)
-            return result.returncode == 0
-        except:
-            return False
-    
-    @classmethod
-    def _is_port_available(cls, port):
-        """Check if a port is available"""
-        try:
-            import socket
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(1)
-            result = sock.connect_ex(('localhost', port))
-            sock.close()
-            return result != 0
-        except:
-            return False
-    
-    @classmethod
-    def _start_x11vnc(cls, display_number, vnc_port):
-        """Start x11vnc server with proper input handling"""
-        try:
-            # Wait more time for Xvfb to be fully ready
-            time.sleep(5)
-                        
-            cmd = [
-                'x11vnc',
-                '-display', f':{display_number}',
-                '-rfbport', str(vnc_port),
-                '-forever',
-                '-shared',
-                '-nopw',
-                '-noxdamage',
-                '-quiet',
-                '-o', '/dev/null'
-            ]
-
-            
-            current_app.logger.info(f"Starting x11vnc: {' '.join(cmd)}")
-            
-            # Start x11vnc
-            process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, 
-                                    stderr=subprocess.PIPE)
-            
-            # Wait for x11vnc to start
-            time.sleep(4)
-            
-            # Check if process is still running
-            if process.poll() is None:
-                # Verify port is actually open
-                if not cls._is_port_available(vnc_port):
-                    current_app.logger.info(f"x11vnc started successfully on port {vnc_port} (PID: {process.pid})")
-                    return process.pid
-                else:
-                    current_app.logger.error(f"x11vnc process running but port {vnc_port} not accessible")
-                    process.terminate()
-                    return None
-            else:
-                # Process died, check stderr
-                try:
-                    stderr_output = process.stderr.read().decode('utf-8', errors='replace')
-                    current_app.logger.error(f"x11vnc process died. Error: {stderr_output}")
-                except:
-                    current_app.logger.error("x11vnc process died without readable error output")
-                return None
-                
-        except Exception as e:
-            current_app.logger.error(f"Error starting x11vnc: {e}")
-            return None
-            
-    @classmethod
-    def _start_xvfb(cls, display_number, resolution, color_depth):
-        """Start Xvfb server with input device support"""
-        try:
-            cmd = [
-                'Xvfb',
-                f':{display_number}',
-                '-screen', '0', f'{resolution}x{color_depth}',
-                '-ac',  # Disable access control
-                '-nolisten', 'tcp',  # Don't listen on TCP
-                '-dpi', '96',  # Set DPI
-                # EXTENSIONES PARA INPUT
-                '+extension', 'GLX',
-                '+extension', 'RANDR',
-                '+extension', 'RENDER',
-                '+extension', 'XFIXES',  # Habilitar XFIXES para cursor
-                '+extension', 'DAMAGE',  # Habilitar DAMAGE para actualizaciones
-                '+extension', 'COMPOSITE', # Habilitar compositing
-                # CONFIGURACIÓN DE INPUT
-                '-retro',  # Enable old-style cursor
-                # DESHABILITAR PROBLEMÁTICAS
-                '-extension', 'DPMS',
-                '-extension', 'SCREENSAVER'
-            ]
-            
-            current_app.logger.info(f"Starting Xvfb: {' '.join(cmd)}")
-            
-            process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, 
-                                    stderr=subprocess.DEVNULL)
-            
-            # Wait for Xvfb to start
-            time.sleep(4)
-            
-            # Check if process is still running
-            if process.poll() is None:
-                # Verify display is working
-                time.sleep(2)
-                if cls._is_display_in_use(display_number):
-                    current_app.logger.info(f"Xvfb started successfully on :{display_number} (PID: {process.pid})")
-                    
-                    # Test input capabilities
-                    cls._test_display_input(display_number)
-                    
-                    return process.pid
-                else:
-                    current_app.logger.error(f"Xvfb process started but display :{display_number} not accessible")
-                    process.terminate()
-                    return None
-            else:
-                current_app.logger.error(f"Xvfb process died immediately")
-                return None
-                
-        except Exception as e:
-            current_app.logger.error(f"Error starting Xvfb: {e}")
-            return None
-
-    @classmethod
-    def _test_display_input(cls, display_number):
-        """Test if display supports input events"""
-        try:
-            env = os.environ.copy()
-            env['DISPLAY'] = f':{display_number}'
-            
-            # Test if we can send a simple input event
-            result = subprocess.run(['xset', '-display', f':{display_number}', 'q'], 
-                                capture_output=True, timeout=5, env=env)
-            
-            if result.returncode == 0:
-                current_app.logger.info(f"Display :{display_number} input test passed")
-            else:
-                current_app.logger.warning(f"Display :{display_number} input test failed")
-                
-        except Exception as e:
-            current_app.logger.warning(f"Could not test display input: {e}")
-    
-    @classmethod
-    def _start_application(cls, application, display_number):
-        """Start the GUI application with optimized settings"""
-        try:
-            # Prepare environment
-            env = os.environ.copy()
-            env['DISPLAY'] = f':{display_number}'
-            
-            # CONFIGURACIÓN PARA MEJOR INTERACCIÓN
-            env['XLIB_SKIP_ARGB_VISUALS'] = '1'  # Evitar problemas visuales
-            env['QT_X11_NO_MITSHM'] = '1'       # Fix para Qt apps
-            env['GTK_THEME'] = 'Default'         # Tema GTK básico
-            env['GDK_SYNCHRONIZE'] = '1'         # Sincronización X11
-            
-            # Add application-specific environment variables
-            app_env = application.get_environment_dict()
-            env.update(app_env)
-            
-            # Prepare command
-            cmd = application.command.split()
-            
-            # Set working directory
-            cwd = application.working_directory if application.working_directory else None
-            
-            current_app.logger.info(f"Starting application: {' '.join(cmd)} on display :{display_number}")
-            
-            process = subprocess.Popen(cmd, env=env, cwd=cwd,
-                                    stdout=subprocess.DEVNULL, 
-                                    stderr=subprocess.DEVNULL)
-            
-            # Wait a moment and check if process is still running
-            time.sleep(2)
-            
-            if process.poll() is None:
-                current_app.logger.info(f"Application started successfully (PID: {process.pid})")
-                return process.pid
-            else:
-                current_app.logger.error(f"Application process died immediately")
-                return None
-                
-        except Exception as e:
-            current_app.logger.error(f"Error starting application: {e}")
-            return None
-
-    @classmethod
-    def _find_available_novnc_port(cls):
-        """Find an available noVNC port"""
-        used_ports = set()
-        
-        # Get ports from active sessions (this would need to be stored)
-        # For now, check system ports
-        for port in range(cls.NOVNC_PORT_START, cls.NOVNC_PORT_END + 1):
-            if cls._is_port_available(port):
-                return port
-        
-        return None
-
-    @classmethod
-    def _start_fluxbox(cls, display_number):
-        """Start Fluxbox window manager"""
-        try:
-            # Check if fluxbox is available
-            if not shutil.which('fluxbox'):
-                current_app.logger.warning("Fluxbox not found, sessions will run without window manager")
-                return None
-            
-            env = os.environ.copy()
-            env['DISPLAY'] = f':{display_number}'
-            
-            current_app.logger.info(f"Starting Fluxbox on display :{display_number}")
-            
-            process = subprocess.Popen(['fluxbox'], env=env,
-                                     stdout=subprocess.DEVNULL, 
-                                     stderr=subprocess.DEVNULL)
-            
-            # Wait a moment for fluxbox to start
-            time.sleep(2)
-            
-            if process.poll() is None:
-                current_app.logger.info(f"Fluxbox started successfully (PID: {process.pid})")
-                return process.pid
-            else:
-                current_app.logger.warning("Fluxbox process died immediately")
-                return None
-                
-        except Exception as e:
-            current_app.logger.error(f"Error starting Fluxbox: {e}")
-            return None
-
-    @classmethod
-    def _detect_novnc_path(cls):
-        """Detect noVNC installation path"""
-        if cls.NOVNC_PATH:
-            return cls.NOVNC_PATH
-            
-        possible_paths = [
-            '/usr/share/novnc',
-            './novnc',
-            '/opt/novnc',
-            os.path.expanduser('~/novnc')
-        ]
-        
-        for path in possible_paths:
-            if os.path.exists(os.path.join(path, 'utils', 'novnc_proxy')):
-                cls.NOVNC_PATH = path
-                return path
-                
-        return None
-
-    @classmethod
-    def _start_novnc_proxy(cls, vnc_port, novnc_port):
-        """Start noVNC proxy with optimized settings"""
-        try:
-            novnc_path = cls._detect_novnc_path()
-            if not novnc_path:
-                current_app.logger.error("noVNC not found")
-                return None
-            
-            proxy_script = os.path.join(novnc_path, 'utils', 'novnc_proxy')
-            if not os.path.exists(proxy_script):
-                current_app.logger.error(f"noVNC proxy script not found: {proxy_script}")
-                return None
-            
-            cmd = [
-                proxy_script,
-                '--vnc', f'localhost:{vnc_port}',
-                '--listen', str(novnc_port),
-                '--web', novnc_path,  # Serve noVNC files
-                # '--cert', 'cert.pem',  # Uncomment for HTTPS
-                # '--key', 'key.pem'     # Uncomment for HTTPS
-            ]
-            
-            current_app.logger.info(f"Starting noVNC proxy: {' '.join(cmd)}")
-            
-            process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, 
-                                    stderr=subprocess.DEVNULL,
-                                    cwd=novnc_path)
-            
-            # Wait for noVNC to start
-            time.sleep(3)
-            
-            if process.poll() is None and not cls._is_port_available(novnc_port):
-                current_app.logger.info(f"noVNC proxy started successfully on port {novnc_port} (PID: {process.pid})")
-                return process.pid
-            else:
-                current_app.logger.error("noVNC proxy failed to start properly")
-                if process.poll() is None:
-                    process.terminate()
-                return None
-                
-        except Exception as e:
-            current_app.logger.error(f"Error starting noVNC proxy: {e}")
-            return None
-
-    @classmethod
-    def _cleanup_session_processes(cls, session):
-        """Clean up all processes for a session including noVNC"""
-        processes_to_kill = []
-        
-        # Add all process types
-        if session.app_pid:
-            processes_to_kill.append(('Application', session.app_pid))
-        if hasattr(session, 'novnc_pid') and session.novnc_pid:
-            processes_to_kill.append(('noVNC', session.novnc_pid))
-        if hasattr(session, 'fluxbox_pid') and session.fluxbox_pid:
-            processes_to_kill.append(('Fluxbox', session.fluxbox_pid))
-        if session.x11vnc_pid:
-            processes_to_kill.append(('x11vnc', session.x11vnc_pid))
-        if session.xvfb_pid:
-            processes_to_kill.append(('Xvfb', session.xvfb_pid))
-        
-        for process_name, pid in processes_to_kill:
-            try:
-                if cls._check_process(pid)['running']:
-                    current_app.logger.info(f"Terminating {process_name} process (PID: {pid})")
-                    os.kill(pid, signal.SIGTERM)
-                    
-                    # Wait a moment for graceful shutdown
-                    time.sleep(1)
-                    
-                    # Force kill if still running
-                    if cls._check_process(pid)['running']:
-                        current_app.logger.info(f"Force killing {process_name} process (PID: {pid})")
-                        os.kill(pid, signal.SIGKILL)
-                        
-            except (ProcessLookupError, OSError) as e:
-                current_app.logger.debug(f"Process {pid} ({process_name}) already dead: {e}")
-            except Exception as e:
-                current_app.logger.error(f"Error killing {process_name} process {pid}: {e}")
-    
-    @classmethod
-    def _check_process(cls, pid):
-        """Check if a process is running"""
+    @staticmethod
+    def _check_process(pid):
+        """Verificar estado de proceso"""
         if not pid:
             return {'running': False, 'pid': None}
         
@@ -711,12 +254,13 @@ class GUISessionManager:
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             return {'running': False, 'pid': pid}
         except Exception as e:
-            current_app.logger.error(f"Error checking process {pid}: {e}")
+            if current_app:
+                current_app.logger.error(f"Error checking process {pid}: {e}")
             return {'running': False, 'pid': pid, 'error': str(e)}
     
-    @classmethod
-    def _log_session_event(cls, session, event_type, message, details=None):
-        """Log a session event"""
+    @staticmethod
+    def _log_session_event(session, event_type, message, details=None):
+        """Log de evento de sesión"""
         try:
             log_entry = GUISessionLog(
                 session_id=session.session_id,
@@ -731,4 +275,527 @@ class GUISessionManager:
             db.session.commit()
             
         except Exception as e:
-            current_app.logger.error(f"Error logging session event: {e}")
+            if current_app:
+                current_app.logger.error(f"Error logging session event: {e}")
+
+class VNCGUIManager:
+    """Manager para VNC tradicional"""
+    
+    @staticmethod
+    def create_session(application, user_id, session_name, resolution=None, color_depth=None):
+        """Crear sesión VNC tradicional simplificada"""
+        try:
+            current_app.logger.info(f"Creating VNC GUI session for {application.name}")
+            
+            resolution = resolution or "1024x768"
+            color_depth = color_depth or 24
+            
+            # Encontrar puertos disponibles
+            display_number = VNCGUIManager._find_available_display()
+            if display_number is None:
+                return False, "No available X11 displays"
+            
+            vnc_port = VNCGUIManager._find_available_vnc_port()
+            if vnc_port is None:
+                return False, "No available VNC ports"
+            
+            # Crear registro de sesión
+            session = GUISession(
+                name=session_name,
+                application_id=application.id,
+                user_id=user_id,
+                display_number=display_number,
+                vnc_port=vnc_port,
+                screen_resolution=resolution,
+                color_depth=color_depth
+            )
+            
+            db.session.add(session)
+            db.session.commit()
+            
+            try:
+                # 1. Iniciar Xvfb
+                xvfb_pid = VNCGUIManager._start_xvfb(display_number, resolution, color_depth)
+                if not xvfb_pid:
+                    raise Exception("Failed to start Xvfb")
+                
+                session.xvfb_pid = xvfb_pid
+                db.session.commit()
+                
+                # 2. Iniciar x11vnc
+                x11vnc_pid = VNCGUIManager._start_x11vnc(display_number, vnc_port)
+                if not x11vnc_pid:
+                    raise Exception("Failed to start x11vnc")
+                
+                session.x11vnc_pid = x11vnc_pid
+                db.session.commit()
+                
+                # 3. Iniciar aplicación
+                app_pid = VNCGUIManager._start_application(application, display_number)
+                if not app_pid:
+                    raise Exception("Failed to start application")
+                
+                session.app_pid = app_pid
+                db.session.commit()
+                
+                VNCGUIManager._log_session_event(
+                    session, 'session_start',
+                    f'VNC GUI session started for {application.name}',
+                    {
+                        'display': display_number,
+                        'vnc_port': vnc_port,
+                        'resolution': resolution,
+                        'xvfb_pid': xvfb_pid,
+                        'x11vnc_pid': x11vnc_pid,
+                        'app_pid': app_pid
+                    }
+                )
+                
+                current_app.logger.info(f"VNC session {session.session_id} created successfully")
+                return True, session
+                
+            except Exception as e:
+                current_app.logger.error(f"Error starting VNC processes: {e}")
+                VNCGUIManager._cleanup_session_processes(session)
+                session.active = False
+                session.end_time = datetime.utcnow()
+                db.session.commit()
+                return False, f"Failed to start VNC session: {str(e)}"
+                
+        except Exception as e:
+            current_app.logger.error(f"Error creating VNC session: {e}")
+            return False, f"Error creating VNC session: {str(e)}"
+    
+    @staticmethod
+    def close_session(session):
+        """Cerrar sesión VNC"""
+        try:
+            if not session.active:
+                return True, "Session already closed"
+            
+            current_app.logger.info(f"Closing VNC session {session.session_id}")
+            
+            VNCGUIManager._cleanup_session_processes(session)
+            
+            session.active = False
+            session.end_time = datetime.utcnow()
+            db.session.commit()
+            
+            VNCGUIManager._log_session_event(session, 'session_end', 'VNC session closed successfully')
+            
+            return True, "Session closed successfully"
+            
+        except Exception as e:
+            current_app.logger.error(f"Error closing VNC session: {e}")
+            return False, f"Error closing session: {str(e)}"
+    
+    @staticmethod
+    def get_session_status(session):
+        """Obtener estado de sesión VNC"""
+        try:
+            status = {
+                'exists': True,
+                'active': session.active,
+                'session_data': session.to_dict(),
+                'display_method': 'vnc',
+                'processes': {}
+            }
+            
+            if session.active:
+                status['processes'] = {
+                    'xvfb': VNCGUIManager._check_process(session.xvfb_pid),
+                    'x11vnc': VNCGUIManager._check_process(session.x11vnc_pid),
+                    'application': VNCGUIManager._check_process(session.app_pid)
+                }
+                
+                try:
+                    if session.app_pid and VNCGUIManager._check_process(session.app_pid)['running']:
+                        process = psutil.Process(session.app_pid)
+                        session.cpu_usage = process.cpu_percent()
+                        session.memory_usage = process.memory_percent()
+                        session.update_activity()
+                        
+                        status['session_data']['cpu_usage'] = session.cpu_usage
+                        status['session_data']['memory_usage'] = session.memory_usage
+                except:
+                    pass
+            
+            return status
+            
+        except Exception as e:
+            current_app.logger.error(f"Error getting VNC session status: {e}")
+            return {'exists': False, 'error': str(e)}
+    
+    # Métodos helper para VNC
+    @staticmethod
+    def _start_xvfb(display_number, resolution, color_depth):
+        """Iniciar Xvfb simplificado"""
+        try:
+            cmd = [
+                'Xvfb',
+                f':{display_number}',
+                '-screen', '0', f'{resolution}x{color_depth}',
+                '-ac',
+                '-nolisten', 'tcp',
+                '-dpi', '96'
+            ]
+            
+            current_app.logger.info(f"Starting Xvfb: {' '.join(cmd)}")
+            
+            process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            time.sleep(3)
+            
+            if process.poll() is None:
+                if VNCGUIManager._test_display(display_number):
+                    current_app.logger.info(f"Xvfb started successfully on :{display_number} (PID: {process.pid})")
+                    return process.pid
+                else:
+                    process.terminate()
+                    return None
+            else:
+                current_app.logger.error("Xvfb process died immediately")
+                return None
+                
+        except Exception as e:
+            current_app.logger.error(f"Error starting Xvfb: {e}")
+            return None
+    
+    @staticmethod
+    def _start_x11vnc(display_number, vnc_port):
+        """Iniciar x11vnc simplificado para WSL"""
+        try:
+            time.sleep(2)
+            
+            cmd = [
+                'x11vnc',
+                '-display', f':{display_number}',
+                '-rfbport', str(vnc_port),
+                '-forever',
+                '-shared',
+                '-nopw',
+                '-noshm',      # Crítico para WSL
+                '-noxdamage',
+                '-quiet',
+                '-bg'
+            ]
+            
+            current_app.logger.info(f"Starting x11vnc: {' '.join(cmd)}")
+            
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            time.sleep(4)
+            
+            # x11vnc en modo -bg se hace daemon, buscar el PID real
+            try:
+                result = subprocess.run(['pgrep', '-f', f'x11vnc.*:{display_number}.*{vnc_port}'], 
+                                      capture_output=True, text=True, timeout=5)
+                if result.returncode == 0 and result.stdout.strip():
+                    real_pid = int(result.stdout.strip().split('\n')[0])
+                    current_app.logger.info(f"x11vnc started successfully (PID: {real_pid})")
+                    return real_pid
+            except:
+                pass
+            
+            # Verificar por puerto
+            if not VNCGUIManager._is_port_available(vnc_port):
+                current_app.logger.info(f"x11vnc started on port {vnc_port}")
+                return 99999  # PID ficticio pero funcional
+            
+            current_app.logger.error("x11vnc failed to start")
+            return None
+            
+        except Exception as e:
+            current_app.logger.error(f"Error starting x11vnc: {e}")
+            return None
+    
+    @staticmethod
+    def _start_application(application, display_number):
+        """Iniciar aplicación GUI"""
+        try:
+            env = os.environ.copy()
+            env['DISPLAY'] = f':{display_number}'
+            
+            env.update({
+                'XLIB_SKIP_ARGB_VISUALS': '1',
+                'QT_X11_NO_MITSHM': '1',
+                'GTK_THEME': 'Default'
+            })
+            
+            app_env = application.get_environment_dict()
+            env.update(app_env)
+            
+            cmd = application.command.split()
+            cwd = application.working_directory if application.working_directory else None
+            
+            current_app.logger.info(f"Starting application: {' '.join(cmd)}")
+            
+            process = subprocess.Popen(cmd, env=env, cwd=cwd,
+                                     stdout=subprocess.DEVNULL, 
+                                     stderr=subprocess.DEVNULL)
+            
+            time.sleep(2)
+            
+            if process.poll() is None:
+                current_app.logger.info(f"Application started successfully (PID: {process.pid})")
+                return process.pid
+            else:
+                current_app.logger.error("Application process died immediately")
+                return None
+                
+        except Exception as e:
+            current_app.logger.error(f"Error starting application: {e}")
+            return None
+    
+    @staticmethod
+    def _find_available_display():
+        """Encontrar display X11 disponible"""
+        used_displays = set()
+        
+        active_sessions = GUISession.query.filter_by(active=True).all()
+        for session in active_sessions:
+            if session.display_number:
+                used_displays.add(session.display_number)
+        
+        for display_num in range(99, 150):
+            if display_num not in used_displays:
+                try:
+                    result = subprocess.run(['xdpyinfo', '-display', f':{display_num}'], 
+                                          capture_output=True, timeout=2)
+                    if result.returncode != 0:
+                        return display_num
+                except:
+                    return display_num
+        
+        return None
+    
+    @staticmethod
+    def _find_available_vnc_port():
+        """Encontrar puerto VNC disponible"""
+        used_ports = set()
+        
+        active_sessions = GUISession.query.filter_by(active=True).all()
+        for session in active_sessions:
+            if session.vnc_port:
+                used_ports.add(session.vnc_port)
+        
+        for port in range(5900, 6000):
+            if port not in used_ports and VNCGUIManager._is_port_available(port):
+                return port
+        
+        return None
+    
+    @staticmethod
+    def _is_port_available(port):
+        """Verificar si un puerto está disponible"""
+        try:
+            import socket
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(1)
+            result = sock.connect_ex(('localhost', port))
+            sock.close()
+            return result != 0
+        except:
+            return False
+    
+    @staticmethod
+    def _test_display(display_number):
+        """Probar que el display X11 funciona"""
+        try:
+            result = subprocess.run(['xdpyinfo', '-display', f':{display_number}'], 
+                                  capture_output=True, timeout=5)
+            return result.returncode == 0
+        except:
+            return False
+    
+    @staticmethod
+    def _cleanup_session_processes(session):
+        """Limpiar procesos VNC"""
+        processes_to_kill = []
+        
+        if session.app_pid:
+            processes_to_kill.append(('Application', session.app_pid))
+        if session.x11vnc_pid:
+            processes_to_kill.append(('x11vnc', session.x11vnc_pid))
+        if session.xvfb_pid:
+            processes_to_kill.append(('Xvfb', session.xvfb_pid))
+        
+        for process_name, pid in processes_to_kill:
+            try:
+                if pid and pid != 99999:
+                    if VNCGUIManager._check_process(pid)['running']:
+                        current_app.logger.info(f"Terminating {process_name} (PID: {pid})")
+                        os.kill(pid, signal.SIGTERM)
+                        time.sleep(1)
+                        
+                        if VNCGUIManager._check_process(pid)['running']:
+                            os.kill(pid, signal.SIGKILL)
+            except (ProcessLookupError, OSError):
+                pass
+            except Exception as e:
+                current_app.logger.error(f"Error killing {process_name} {pid}: {e}")
+    
+    @staticmethod
+    def _check_process(pid):
+        """Verificar proceso"""
+        return WSLgGUIManager._check_process(pid)
+    
+    @staticmethod
+    def _log_session_event(session, event_type, message, details=None):
+        """Log de evento de sesión"""
+        return WSLgGUIManager._log_session_event(session, event_type, message, details)
+
+class AdaptiveGUISessionManager:
+    """Manager adaptativo que usa WSLg o VNC según el entorno"""
+    
+    def __init__(self):
+        self.env_info = None
+        self.use_wslg = None
+        self._initialized = False
+    
+    def _ensure_initialized(self):
+        """Inicialización perezosa - solo cuando Flask esté listo"""
+        if not self._initialized:
+            try:
+                self.env_info = GUIEnvironmentDetector.detect_environment()
+                self.use_wslg = self.env_info['has_wslg']
+                
+                if current_app:
+                    current_app.logger.info(f"GUI Manager initialized - Display method: {self.env_info['display_method']}")
+                    
+                    if self.use_wslg:
+                        current_app.logger.info("Using WSLg for native GUI integration")
+                    else:
+                        current_app.logger.info("Using traditional VNC approach")
+                
+                self._initialized = True
+            except Exception as e:
+                # Si no hay contexto de Flask, usar detección silenciosa
+                self.env_info = GUIEnvironmentDetector.detect_environment()
+                self.use_wslg = self.env_info['has_wslg']
+                self._initialized = True
+                print(f"GUI Manager initialized outside Flask context - Display method: {self.env_info['display_method']}")
+    
+    def create_session(self, application_id, user_id, session_name=None, 
+                      resolution=None, color_depth=None):
+        """Crear sesión GUI usando el método apropiado"""
+        self._ensure_initialized()
+        
+        try:
+            application = GUIApplication.query.get(application_id)
+            if not application:
+                return False, "Application not found"
+            
+            if not application.enabled:
+                return False, "Application is disabled"
+            
+            if not session_name:
+                session_name = f"{application.display_name} - {datetime.now().strftime('%H:%M:%S')}"
+            
+            if self.use_wslg:
+                return WSLgGUIManager.create_session(
+                    application, user_id, session_name,
+                    resolution=resolution, color_depth=color_depth
+                )
+            else:
+                return VNCGUIManager.create_session(
+                    application, user_id, session_name, resolution, color_depth
+                )
+                
+        except Exception as e:
+            if current_app:
+                current_app.logger.error(f"Error in adaptive session creation: {e}")
+            return False, f"Error creating session: {str(e)}"
+    
+    def close_session(self, session_id, user_id=None):
+        """Cerrar sesión usando el método apropiado"""
+        self._ensure_initialized()
+        
+        try:
+            query = GUISession.query.filter_by(session_id=session_id)
+            if user_id:
+                query = query.filter_by(user_id=user_id)
+            
+            session = query.first()
+            if not session:
+                return False, "Session not found"
+            
+            if not session.active:
+                return True, "Session already closed"
+            
+            if self.use_wslg:
+                return WSLgGUIManager.close_session(session)
+            else:
+                return VNCGUIManager.close_session(session)
+                
+        except Exception as e:
+            if current_app:
+                current_app.logger.error(f"Error closing session: {e}")
+            return False, f"Error closing session: {str(e)}"
+    
+    def get_session_status(self, session_id):
+        """Obtener estado de sesión"""
+        self._ensure_initialized()
+        
+        try:
+            session = GUISession.query.filter_by(session_id=session_id).first()
+            if not session:
+                return {'exists': False}
+            
+            if self.use_wslg:
+                return WSLgGUIManager.get_session_status(session)
+            else:
+                return VNCGUIManager.get_session_status(session)
+                
+        except Exception as e:
+            if current_app:
+                current_app.logger.error(f"Error getting session status: {e}")
+            return {'exists': False, 'error': str(e)}
+    
+    def cleanup_inactive_sessions(self):
+        """Limpiar sesiones inactivas"""
+        self._ensure_initialized()
+        
+        try:
+            active_sessions = GUISession.query.filter_by(active=True).all()
+            cleaned_count = 0
+            
+            for session in active_sessions:
+                if self.use_wslg:
+                    if session.app_pid:
+                        if not WSLgGUIManager._check_process(session.app_pid)['running']:
+                            if current_app:
+                                current_app.logger.info(f"Cleaning up dead WSLg session {session.session_id}")
+                            session.active = False
+                            session.end_time = datetime.utcnow()
+                            cleaned_count += 1
+                else:
+                    xvfb_alive = VNCGUIManager._check_process(session.xvfb_pid)['running'] if session.xvfb_pid else False
+                    x11vnc_alive = VNCGUIManager._check_process(session.x11vnc_pid)['running'] if session.x11vnc_pid else False
+                    
+                    if not xvfb_alive or not x11vnc_alive:
+                        if current_app:
+                            current_app.logger.info(f"Cleaning up dead VNC session {session.session_id}")
+                        VNCGUIManager._cleanup_session_processes(session)
+                        session.active = False
+                        session.end_time = datetime.utcnow()
+                        cleaned_count += 1
+            
+            if cleaned_count > 0:
+                db.session.commit()
+                if current_app:
+                    current_app.logger.info(f"Cleaned up {cleaned_count} inactive sessions")
+            
+            return cleaned_count
+            
+        except Exception as e:
+            if current_app:
+                current_app.logger.error(f"Error cleaning up sessions: {e}")
+            return 0
+    
+    def get_environment_info(self):
+        """Obtener información del entorno (sin inicializar si no es necesario)"""
+        if not hasattr(self, 'env_info') or self.env_info is None:
+            self.env_info = GUIEnvironmentDetector.detect_environment()
+        return self.env_info
+
+# Crear instancia global con inicialización lazy
+GUISessionManager = AdaptiveGUISessionManager()

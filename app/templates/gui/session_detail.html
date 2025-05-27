@@ -1,4 +1,4 @@
-<!-- app/templates/gui/session_detail.html -->
+<!-- app/templates/gui/session_detail.html - WSLg Enhanced -->
 {% extends "gui/base_gui.html" %}
 
 {% block content %}
@@ -8,9 +8,14 @@
         <div class="d-flex justify-content-between align-items-center">
             <div>
                 <h1 class="h2 fw-bold mb-1">
-                    <i class="bi bi-display me-2"></i>{{ session.name }}
+                    <i class="bi bi-{% if gui_uses_wslg %}windows{% else %}display{% endif %} me-2"></i>{{ session.name }}
                     {% if not session.active %}
                     <span class="badge bg-danger ms-2">Inactive</span>
+                    {% endif %}
+                    {% if gui_uses_wslg %}
+                    <span class="badge bg-success ms-2">WSLg Native</span>
+                    {% else %}
+                    <span class="badge bg-info ms-2">VNC Session</span>
                     {% endif %}
                 </h1>
                 <p class="text-muted mb-0">
@@ -37,6 +42,40 @@
     </div>
 </div>
 
+<!-- WSLg vs VNC Information Banner -->
+<div class="row mb-4">
+    <div class="col-12">
+        {% if gui_uses_wslg %}
+        <div class="alert alert-success border-0" style="background: linear-gradient(135deg, #d1e7dd 0%, #a3cfbb 100%);">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h6 class="fw-bold mb-2">
+                        <i class="bi bi-check-circle me-2"></i>WSLg Native Integration Active
+                    </h6>
+                    <p class="mb-2">This application is running natively in Windows with full integration:</p>
+                    <div class="d-flex flex-wrap gap-3">
+                        <small><i class="bi bi-check me-1"></i>Native Windows taskbar</small>
+                        <small><i class="bi bi-check me-1"></i>Seamless clipboard</small>
+                        <small><i class="bi bi-check me-1"></i>Audio integration</small>
+                        <small><i class="bi bi-check me-1"></i>File system access</small>
+                    </div>
+                </div>
+                <div class="col-md-4 text-center">
+                    <i class="bi bi-windows text-success" style="font-size: 3rem; opacity: 0.8;"></i>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info border-0">
+            <h6 class="fw-bold mb-2">
+                <i class="bi bi-info-circle me-2"></i>VNC Remote Desktop Session
+            </h6>
+            <p class="mb-0">This application runs in a virtual display. Use a VNC client to connect and interact with it.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
 <!-- Session Status Cards -->
 <div class="row g-3 mb-4">
     <div class="col-md-3">
@@ -53,24 +92,39 @@
             </div>
         </div>
     </div>
+    
     <div class="col-md-3">
         <div class="card gui-stats-card h-100">
             <div class="card-body text-center">
+                {% if gui_uses_wslg %}
+                <i class="bi bi-cpu text-primary mb-2" style="font-size: 2rem;"></i>
+                <h5 class="mb-1">PID {{ session.app_pid or 'N/A' }}</h5>
+                <p class="text-muted small mb-0">Process ID</p>
+                {% else %}
                 <i class="bi bi-display text-primary mb-2" style="font-size: 2rem;"></i>
                 <h5 class="mb-1">:{{ session.display_number }}</h5>
                 <p class="text-muted small mb-0">X11 Display</p>
+                {% endif %}
             </div>
         </div>
     </div>
+    
     <div class="col-md-3">
         <div class="card gui-stats-card h-100">
             <div class="card-body text-center">
+                {% if gui_uses_wslg %}
+                <i class="bi bi-windows text-info mb-2" style="font-size: 2rem;"></i>
+                <h5 class="mb-1">Native</h5>
+                <p class="text-muted small mb-0">Windows App</p>
+                {% else %}
                 <i class="bi bi-ethernet text-info mb-2" style="font-size: 2rem;"></i>
                 <h5 class="mb-1">{{ session.vnc_port }}</h5>
                 <p class="text-muted small mb-0">VNC Port</p>
+                {% endif %}
             </div>
         </div>
     </div>
+    
     <div class="col-md-3">
         <div class="card gui-stats-card h-100">
             <div class="card-body text-center">
@@ -83,143 +137,229 @@
 </div>
 
 <div class="row">
-    <!-- Connection Information -->
+    <!-- Connection/Usage Information -->
     <div class="col-lg-6 mb-4">
         <div class="card border-0 shadow-sm h-100">
-            <div class="card-header bg-primary text-white">
+            <div class="card-header {% if gui_uses_wslg %}bg-success{% else %}bg-primary{% endif %} text-white">
                 <h5 class="mb-0 fw-semibold">
-                    <i class="bi bi-plug me-2"></i>VNC Connection
+                    <i class="bi bi-{% if gui_uses_wslg %}windows{% else %}plug{% endif %} me-2"></i>
+                    {% if gui_uses_wslg %}Windows Integration{% else %}VNC Connection{% endif %}
                 </h5>
             </div>
             <div class="card-body">
                 {% if session.active %}
-                <div class="alert alert-success">
-                    <h6><i class="bi bi-check-circle me-1"></i>Session Ready for Connection</h6>
-                    <p class="mb-0">Use any VNC client to connect to this session.</p>
-                </div>
+                    {% if gui_uses_wslg %}
+                    <!-- WSLg Instructions -->
+                    <div class="alert alert-success">
+                        <h6><i class="bi bi-check-circle me-1"></i>Application Running Natively</h6>
+                        <p class="mb-0">The application is running as a native Windows application. Look for it in your Windows taskbar or desktop.</p>
+                    </div>
 
-                <!-- Connection Details -->
-                <div class="mb-4">
-                    <h6 class="text-muted mb-3">Connection Information</h6>
-                    <div class="bg-light p-3 rounded">
+                    <div class="mb-4">
+                        <h6 class="text-muted mb-3">How to Access Your Application</h6>
                         <div class="row">
-                            <div class="col-sm-4"><strong>Host:</strong></div>
-                            <div class="col-sm-8">
-                                <code id="vnc-host">localhost</code>
-                                <button class="btn btn-sm btn-outline-secondary ms-2"
-                                    onclick="copyToClipboard('vnc-host', this)">
-                                    <i class="bi bi-clipboard"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="row mt-2">
-                            <div class="col-sm-4"><strong>Port:</strong></div>
-                            <div class="col-sm-8">
-                                <code id="vnc-port">{{ session.vnc_port }}</code>
-                                <button class="btn btn-sm btn-outline-secondary ms-2"
-                                    onclick="copyToClipboard('vnc-port', this)">
-                                    <i class="bi bi-clipboard"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="row mt-2">
-                            <div class="col-sm-4"><strong>Full Address:</strong></div>
-                            <div class="col-sm-8">
-                                <code id="vnc-full">localhost:{{ session.vnc_port }}</code>
-                                <button class="btn btn-sm btn-outline-secondary ms-2"
-                                    onclick="copyToClipboard('vnc-full', this)">
-                                    <i class="bi bi-clipboard"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="row mt-2">
-                            <div class="col-sm-4"><strong>Display:</strong></div>
-                            <div class="col-sm-8">
-                                <code id="vnc-display">:{{ session.display_number }}</code>
-                                <button class="btn btn-sm btn-outline-secondary ms-2"
-                                    onclick="copyToClipboard('vnc-display', this)">
-                                    <i class="bi bi-clipboard"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- VNC Client Instructions -->
-                <div class="mb-4">
-                    <h6 class="text-muted mb-3">VNC Client Instructions</h6>
-                    <div class="accordion" id="vncInstructions">
-                        <div class="accordion-item">
-                            <h2 class="accordion-header">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                    data-bs-target="#windows-vnc">
-                                    <i class="bi bi-windows me-2"></i>Windows
-                                </button>
-                            </h2>
-                            <div id="windows-vnc" class="accordion-collapse collapse" data-bs-parent="#vncInstructions">
-                                <div class="accordion-body">
-                                    <p><strong>Recommended:</strong> TigerVNC Viewer, RealVNC Viewer</p>
-                                    <ol>
-                                        <li>Download and install a VNC client</li>
-                                        <li>Open the VNC client</li>
-                                        <li>Enter server: <code>localhost:{{ session.vnc_port }}</code></li>
-                                        <li>Click Connect</li>
-                                    </ol>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="accordion-item">
-                            <h2 class="accordion-header">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                    data-bs-target="#linux-vnc">
-                                    <i class="bi bi-ubuntu me-2"></i>Linux
-                                </button>
-                            </h2>
-                            <div id="linux-vnc" class="accordion-collapse collapse" data-bs-parent="#vncInstructions">
-                                <div class="accordion-body">
-                                    <p><strong>Command line:</strong></p>
-                                    <pre><code>vncviewer localhost:{{ session.vnc_port }}</code></pre>
-                                    <p><strong>GUI options:</strong> Remmina, TigerVNC, Vinagre</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="accordion-item">
-                            <h2 class="accordion-header">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                    data-bs-target="#macos-vnc">
-                                    <i class="bi bi-apple me-2"></i>macOS
-                                </button>
-                            </h2>
-                            <div id="macos-vnc" class="accordion-collapse collapse" data-bs-parent="#vncInstructions">
-                                <div class="accordion-body">
-                                    <p><strong>Built-in Screen Sharing:</strong></p>
-                                    <ol>
-                                        <li>Press Cmd+K in Finder</li>
-                                        <li>Enter: <code>vnc://localhost:{{ session.vnc_port }}</code></li>
-                                        <li>Click Connect</li>
-                                    </ol>
-                                    <p><strong>Alternative:</strong> TigerVNC, RealVNC</p>
+                            <div class="col-12">
+                                <div class="p-3 bg-light rounded">
+                                    <div class="d-flex align-items-center mb-3">
+                                        <i class="bi bi-1-circle text-primary me-3" style="font-size: 1.5rem;"></i>
+                                        <div>
+                                            <strong>Check Windows Taskbar</strong>
+                                            <div class="small text-muted">The application should appear as a regular Windows app in your taskbar</div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center mb-3">
+                                        <i class="bi bi-2-circle text-primary me-3" style="font-size: 1.5rem;"></i>
+                                        <div>
+                                            <strong>Alt+Tab to Switch</strong>
+                                            <div class="small text-muted">Use Alt+Tab to cycle through your open applications</div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-3-circle text-primary me-3" style="font-size: 1.5rem;"></i>
+                                        <div>
+                                            <strong>Interact Normally</strong>
+                                            <div class="small text-muted">Click, type, copy/paste - everything works like a native Windows app</div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Quick Connect Buttons -->
-                <div class="d-grid gap-2">
-                    {% if session.get_novnc_url() %}
-                    <a href="{{ session.get_novnc_url() }}" target="_blank" class="btn btn-success">
-                        <i class="bi bi-globe me-2"></i>Open in Browser (noVNC)
-                    </a>
+                    <div class="mb-4">
+                        <h6 class="text-muted mb-3">WSLg Features Available</h6>
+                        <div class="row text-center">
+                            <div class="col-6 col-md-3 mb-3">
+                                <div class="p-2 bg-light rounded">
+                                    <i class="bi bi-clipboard-check text-success mb-2" style="font-size: 1.5rem;"></i>
+                                    <div class="small"><strong>Clipboard</strong></div>
+                                    <div class="text-muted" style="font-size: 0.75rem;">Full sharing</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3 mb-3">
+                                <div class="p-2 bg-light rounded">
+                                    <i class="bi bi-volume-up text-success mb-2" style="font-size: 1.5rem;"></i>
+                                    <div class="small"><strong>Audio</strong></div>
+                                    <div class="text-muted" style="font-size: 0.75rem;">Native support</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3 mb-3">
+                                <div class="p-2 bg-light rounded">
+                                    <i class="bi bi-folder text-success mb-2" style="font-size: 1.5rem;"></i>
+                                    <div class="small"><strong>Files</strong></div>
+                                    <div class="text-muted" style="font-size: 0.75rem;">Windows access</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3 mb-3">
+                                <div class="p-2 bg-light rounded">
+                                    <i class="bi bi-window text-success mb-2" style="font-size: 1.5rem;"></i>
+                                    <div class="small"><strong>Windows</strong></div>
+                                    <div class="text-muted" style="font-size: 0.75rem;">Native behavior</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <h6><i class="bi bi-lightbulb me-1"></i>Pro Tips</h6>
+                        <ul class="mb-0 small">
+                            <li>Right-click the application icon in the taskbar for context menu options</li>
+                            <li>You can drag files from Windows Explorer directly into the application</li>
+                            <li>Use Windows key + number to switch to specific taskbar positions</li>
+                            <li>The application integrates with Windows notifications and system tray</li>
+                        </ul>
+                    </div>
+
+                    {% else %}
+                    <!-- VNC Instructions -->
+                    <div class="alert alert-success">
+                        <h6><i class="bi bi-check-circle me-1"></i>Session Ready for Connection</h6>
+                        <p class="mb-0">Use any VNC client to connect to this session.</p>
+                    </div>
+
+                    <!-- Connection Details -->
+                    <div class="mb-4">
+                        <h6 class="text-muted mb-3">Connection Information</h6>
+                        <div class="bg-light p-3 rounded">
+                            <div class="row">
+                                <div class="col-sm-4"><strong>Host:</strong></div>
+                                <div class="col-sm-8">
+                                    <code id="vnc-host">localhost</code>
+                                    <button class="btn btn-sm btn-outline-secondary ms-2"
+                                        onclick="copyToClipboard('vnc-host', this)">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-sm-4"><strong>Port:</strong></div>
+                                <div class="col-sm-8">
+                                    <code id="vnc-port">{{ session.vnc_port }}</code>
+                                    <button class="btn btn-sm btn-outline-secondary ms-2"
+                                        onclick="copyToClipboard('vnc-port', this)">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-sm-4"><strong>Full Address:</strong></div>
+                                <div class="col-sm-8">
+                                    <code id="vnc-full">localhost:{{ session.vnc_port }}</code>
+                                    <button class="btn btn-sm btn-outline-secondary ms-2"
+                                        onclick="copyToClipboard('vnc-full', this)">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-sm-4"><strong>Display:</strong></div>
+                                <div class="col-sm-8">
+                                    <code id="vnc-display">:{{ session.display_number }}</code>
+                                    <button class="btn btn-sm btn-outline-secondary ms-2"
+                                        onclick="copyToClipboard('vnc-display', this)">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VNC Client Instructions -->
+                    <div class="mb-4">
+                        <h6 class="text-muted mb-3">VNC Client Instructions</h6>
+                        <div class="accordion" id="vncInstructions">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                        data-bs-target="#windows-vnc">
+                                        <i class="bi bi-windows me-2"></i>Windows
+                                    </button>
+                                </h2>
+                                <div id="windows-vnc" class="accordion-collapse collapse" data-bs-parent="#vncInstructions">
+                                    <div class="accordion-body">
+                                        <p><strong>Recommended:</strong> TigerVNC Viewer, RealVNC Viewer</p>
+                                        <ol>
+                                            <li>Download and install a VNC client</li>
+                                            <li>Open the VNC client</li>
+                                            <li>Enter server: <code>localhost:{{ session.vnc_port }}</code></li>
+                                            <li>Click Connect</li>
+                                        </ol>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                        data-bs-target="#linux-vnc">
+                                        <i class="bi bi-ubuntu me-2"></i>Linux
+                                    </button>
+                                </h2>
+                                <div id="linux-vnc" class="accordion-collapse collapse" data-bs-parent="#vncInstructions">
+                                    <div class="accordion-body">
+                                        <p><strong>Command line:</strong></p>
+                                        <pre><code>vncviewer localhost:{{ session.vnc_port }}</code></pre>
+                                        <p><strong>GUI options:</strong> Remmina, TigerVNC, Vinagre</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                        data-bs-target="#macos-vnc">
+                                        <i class="bi bi-apple me-2"></i>macOS
+                                    </button>
+                                </h2>
+                                <div id="macos-vnc" class="accordion-collapse collapse" data-bs-parent="#vncInstructions">
+                                    <div class="accordion-body">
+                                        <p><strong>Built-in Screen Sharing:</strong></p>
+                                        <ol>
+                                            <li>Press Cmd+K in Finder</li>
+                                            <li>Enter: <code>vnc://localhost:{{ session.vnc_port }}</code></li>
+                                            <li>Click Connect</li>
+                                        </ol>
+                                        <p><strong>Alternative:</strong> TigerVNC, RealVNC</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Connect Buttons -->
+                    <div class="d-grid gap-2">
+                        {% if session.get_novnc_url() %}
+                        <a href="{{ session.get_novnc_url() }}" target="_blank" class="btn btn-success">
+                            <i class="bi bi-globe me-2"></i>Open in Browser (noVNC)
+                        </a>
+                        {% endif %}
+                        <button class="btn btn-outline-primary" onclick="copyConnectionString()">
+                            <i class="bi bi-clipboard me-2"></i>Copy VNC Connection
+                        </button>
+                    </div>
                     {% endif %}
-                    <button class="btn btn-outline-primary" onclick="copyConnectionString()">
-                        <i class="bi bi-clipboard me-2"></i>Copy VNC Connection
-                    </button>
-                </div>
                 {% else %}
                 <div class="alert alert-warning">
                     <h6><i class="bi bi-exclamation-triangle me-1"></i>Session Inactive</h6>
-                    <p class="mb-0">This session has been closed and is no longer accepting connections.</p>
+                    <p class="mb-0">This session has been closed and is no longer {% if gui_uses_wslg %}running{% else %}accepting connections{% endif %}.</p>
                 </div>
 
                 <div class="text-center py-4">
@@ -258,8 +398,14 @@
                     <div>
                         <h6 class="mb-1">{{ session.application.display_name }}</h6>
                         <p class="text-muted small mb-0">{{ session.application.description }}</p>
-                        <span class="badge bg-light text-dark">{{ session.application.category or 'Uncategorized'
-                            }}</span>
+                        <div class="d-flex gap-1 mt-1">
+                            <span class="badge bg-light text-dark">{{ session.application.category or 'Uncategorized' }}</span>
+                            {% if gui_uses_wslg %}
+                            <span class="badge bg-success">WSLg Native</span>
+                            {% else %}
+                            <span class="badge bg-info">VNC Session</span>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
 
@@ -271,6 +417,16 @@
                             <tr>
                                 <td><strong>Session Name:</strong></td>
                                 <td>{{ session.name }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Environment:</strong></td>
+                                <td>
+                                    {% if gui_uses_wslg %}
+                                    <span class="badge bg-success">WSLg (Windows Native)</span>
+                                    {% else %}
+                                    <span class="badge bg-info">VNC (Virtual Display)</span>
+                                    {% endif %}
+                                </td>
                             </tr>
                             <tr>
                                 <td><strong>Started:</strong></td>
@@ -306,10 +462,30 @@
                 {% if session.active and status.processes %}
                 <div class="mt-4">
                     <h6 class="text-muted mb-3">Process Status</h6>
+                    {% if gui_uses_wslg %}
+                    <!-- WSLg Process Status -->
+                    <div class="row text-center">
+                        <div class="col-12">
+                            <div class="p-3 bg-light rounded">
+                                {% if status.processes.application and status.processes.application.running %}
+                                <i class="bi bi-check-circle text-success mb-2" style="font-size: 2rem;"></i>
+                                <div><strong>Application Running</strong></div>
+                                <div class="small text-muted">PID: {{ session.app_pid }}</div>
+                                <div class="small text-success">Native WSLg Process</div>
+                                {% else %}
+                                <i class="bi bi-x-circle text-danger mb-2" style="font-size: 2rem;"></i>
+                                <div><strong>Application Stopped</strong></div>
+                                <div class="small text-danger">Process not running</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <!-- VNC Process Status -->
                     <div class="row text-center">
                         <div class="col-4">
                             <div class="p-2 bg-light rounded">
-                                {% if status.processes.xvfb.running %}
+                                {% if status.processes.xvfb and status.processes.xvfb.running %}
                                 <i class="bi bi-check-circle text-success"></i>
                                 <div class="small mt-1">Xvfb</div>
                                 <div class="small text-muted">PID: {{ session.xvfb_pid }}</div>
@@ -322,7 +498,7 @@
                         </div>
                         <div class="col-4">
                             <div class="p-2 bg-light rounded">
-                                {% if status.processes.x11vnc.running %}
+                                {% if status.processes.x11vnc and status.processes.x11vnc.running %}
                                 <i class="bi bi-check-circle text-success"></i>
                                 <div class="small mt-1">x11vnc</div>
                                 <div class="small text-muted">PID: {{ session.x11vnc_pid }}</div>
@@ -335,7 +511,7 @@
                         </div>
                         <div class="col-4">
                             <div class="p-2 bg-light rounded">
-                                {% if status.processes.application.running %}
+                                {% if status.processes.application and status.processes.application.running %}
                                 <i class="bi bi-check-circle text-success"></i>
                                 <div class="small mt-1">App</div>
                                 <div class="small text-muted">PID: {{ session.app_pid }}</div>
@@ -347,6 +523,7 @@
                             </div>
                         </div>
                     </div>
+                    {% endif %}
                 </div>
                 {% endif %}
             </div>
@@ -418,7 +595,11 @@
                 <p>Are you sure you want to close the session <strong>"{{ session.name }}"</strong>?</p>
                 <div class="alert alert-warning">
                     <i class="bi bi-exclamation-triangle me-2"></i>
-                    This will terminate the GUI application and all associated processes.
+                    {% if gui_uses_wslg %}
+                    This will terminate the GUI application running in Windows.
+                    {% else %}
+                    This will terminate the GUI application and close the VNC connection.
+                    {% endif %}
                 </div>
             </div>
             <div class="modal-footer">
@@ -435,6 +616,7 @@
     </div>
 </div>
 {% endif %}
+
 <!-- Delete Session Modal (para sesiones inactivas) -->
 {% if not session.active %}
 <div class="modal fade" id="deleteSessionModal" tabindex="-1">
@@ -467,30 +649,21 @@
 {{ super() }}
 <script>
     function deleteSessionConfirm(sessionId, sessionName) {
-        // Set the session name in the modal
         document.getElementById('sessionNameToDelete').textContent = sessionName;
-        
-        // Show the modal
         const modal = new bootstrap.Modal(document.getElementById('deleteSessionModal'));
         modal.show();
         
-        // Set up the confirm button click handler
         const confirmBtn = document.getElementById('confirmDeleteSession');
-        
-        // Remove any existing event listeners
         const newConfirmBtn = confirmBtn.cloneNode(true);
         confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
         
-        // Add the event listener
         newConfirmBtn.addEventListener('click', function() {
             const button = this;
             const originalText = button.innerHTML;
             
-            // Show loading state
             button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Deleting...';
             button.disabled = true;
             
-            // Delete the session
             fetch(`/gui/api/session/${sessionId}/delete`, {
                 method: 'POST',
                 headers: {
@@ -501,10 +674,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Hide modal
                     modal.hide();
-                    
-                    // Redirect to sessions list
                     window.location.href = '/gui/sessions';
                 } else {
                     alert('Error deleting session: ' + (data.error || 'Unknown error'));
@@ -515,7 +685,6 @@
                 alert('Error deleting session: ' + error.message);
             })
             .finally(() => {
-                // Reset button
                 button.innerHTML = originalText;
                 button.disabled = false;
             });
@@ -559,29 +728,6 @@
         });
     }
 
-    function launchVNCClient() {
-        const vncUrl = `vnc://localhost:{{ session.vnc_port }}`;
-
-        const link = document.createElement('a');
-        link.href = vncUrl;
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        setTimeout(() => {
-            const alert = document.createElement('div');
-            alert.className = 'alert alert-info alert-dismissible fade show mt-3';
-            alert.innerHTML = `
-            <h6><i class="bi bi-info-circle me-1"></i>VNC Client Launch</h6>
-            <p class="mb-2">If your VNC client didn't open automatically, manually connect using:</p>
-            <p class="mb-0"><strong>Host:</strong> <code>localhost:{{ session.vnc_port }}</code></p>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
-            document.querySelector('.container-fluid').appendChild(alert);
-        }, 2000);
-    }
-
     {% if session.active %}
     // Auto-refresh session status every 30 seconds for active sessions
     setInterval(() => {
@@ -594,6 +740,16 @@
             })
             .catch(error => console.error('Error checking session status:', error));
     }, 30000);
+    {% endif %}
+
+    // WSLg-specific notifications
+    {% if gui_uses_wslg and session.active %}
+    document.addEventListener('DOMContentLoaded', function() {
+        // Show WSLg-specific tip on first load
+        setTimeout(() => {
+            showNotification('🎯 WSLg Application Active!\nCheck your Windows taskbar for the running application.', 'info');
+        }, 2000);
+    });
     {% endif %}
 </script>
 {% endblock %}

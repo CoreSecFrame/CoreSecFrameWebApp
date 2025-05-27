@@ -1,4 +1,4 @@
-<!-- app/templates/gui/launch_application.html -->
+<!-- app/templates/gui/launch_application.html - WSLg Enhanced -->
 {% extends "gui/base_gui.html" %}
 
 {% block content %}
@@ -8,9 +8,15 @@
         <div class="d-flex justify-content-between align-items-center">
             <div>
                 <h1 class="h2 fw-bold mb-1">
-                    <i class="bi bi-play-fill me-2"></i>Launch Application
+                    <i class="bi bi-{% if gui_uses_wslg %}windows{% else %}play-fill{% endif %} me-2"></i>Launch Application
                 </h1>
-                <p class="text-muted mb-0">Configure and launch {{ application.display_name }}</p>
+                <p class="text-muted mb-0">Configure and launch {{ application.display_name }}
+                    {% if gui_uses_wslg %}
+                    <span class="badge bg-success ms-2">WSLg Native</span>
+                    {% else %}
+                    <span class="badge bg-info ms-2">VNC Mode</span>
+                    {% endif %}
+                </p>
             </div>
             <div class="btn-group" role="group">
                 <a href="{{ url_for('gui.application_detail', app_id=application.id) }}" class="btn btn-outline-secondary">
@@ -24,11 +30,45 @@
     </div>
 </div>
 
+<!-- Environment Information Banner -->
+<div class="row mb-4">
+    <div class="col-12">
+        {% if gui_uses_wslg %}
+        <div class="alert alert-success border-0" style="background: linear-gradient(135deg, #d1e7dd 0%, #a3cfbb 100%);">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h6 class="fw-bold mb-2">
+                        <i class="bi bi-rocket me-2"></i>WSLg Launch - Native Windows Integration
+                    </h6>
+                    <p class="mb-1">Your application will launch natively in Windows with full integration:</p>
+                    <div class="d-flex flex-wrap gap-3">
+                        <small><i class="bi bi-check me-1 text-success"></i>Windows taskbar integration</small>
+                        <small><i class="bi bi-check me-1 text-success"></i>Native clipboard sharing</small>
+                        <small><i class="bi bi-check me-1 text-success"></i>Audio and file access</small>
+                        <small><i class="bi bi-check me-1 text-success"></i>No VNC client needed</small>
+                    </div>
+                </div>
+                <div class="col-md-4 text-center">
+                    <i class="bi bi-windows text-success" style="font-size: 3rem; opacity: 0.8;"></i>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info border-0">
+            <h6 class="fw-bold mb-2">
+                <i class="bi bi-info-circle me-2"></i>VNC Launch - Remote Desktop Mode
+            </h6>
+            <p class="mb-0">Your application will run in a virtual display. You'll need a VNC client to connect and interact with it.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
 <div class="row">
     <!-- Application Info -->
     <div class="col-lg-4 mb-4">
         <div class="card border-0 shadow-sm sticky-top" style="top: 1rem;">
-            <div class="card-header bg-primary text-white">
+            <div class="card-header {% if gui_uses_wslg %}bg-success{% else %}bg-primary{% endif %} text-white">
                 <h5 class="mb-0 fw-semibold">
                     <i class="bi bi-info-circle me-2"></i>Application Info
                 </h5>
@@ -44,6 +84,11 @@
                     {% endif %}
                     <h5>{{ application.display_name }}</h5>
                     <p class="text-muted">{{ application.description }}</p>
+                    {% if gui_uses_wslg %}
+                    <span class="badge bg-success">WSLg Native</span>
+                    {% else %}
+                    <span class="badge bg-info">VNC Session</span>
+                    {% endif %}
                 </div>
                 
                 <div class="mb-3">
@@ -56,6 +101,16 @@
                         <tr>
                             <td><strong>Category:</strong></td>
                             <td><span class="badge bg-light text-dark">{{ application.category or 'Uncategorized' }}</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Environment:</strong></td>
+                            <td>
+                                {% if gui_uses_wslg %}
+                                <span class="badge bg-success">WSLg</span>
+                                {% else %}
+                                <span class="badge bg-info">VNC</span>
+                                {% endif %}
+                            </td>
                         </tr>
                         {% if application.version %}
                         <tr>
@@ -82,6 +137,28 @@
                     </div>
                 </div>
                 {% endif %}
+
+                <!-- WSLg vs VNC Expected Behavior -->
+                <div class="mt-4">
+                    <h6 class="text-muted mb-2">Expected Behavior</h6>
+                    <div class="{% if gui_uses_wslg %}bg-success{% else %}bg-info{% endif %} bg-opacity-10 p-3 rounded">
+                        {% if gui_uses_wslg %}
+                        <div class="small">
+                            <div class="mb-2"><i class="bi bi-1-circle text-success me-2"></i>Application launches natively</div>
+                            <div class="mb-2"><i class="bi bi-2-circle text-success me-2"></i>Appears in Windows taskbar</div>
+                            <div class="mb-2"><i class="bi bi-3-circle text-success me-2"></i>Full Windows integration</div>
+                            <div><i class="bi bi-4-circle text-success me-2"></i>No additional software needed</div>
+                        </div>
+                        {% else %}
+                        <div class="small">
+                            <div class="mb-2"><i class="bi bi-1-circle text-info me-2"></i>Creates virtual display</div>
+                            <div class="mb-2"><i class="bi bi-2-circle text-info me-2"></i>Starts VNC server</div>
+                            <div class="mb-2"><i class="bi bi-3-circle text-info me-2"></i>Requires VNC client</div>
+                            <div><i class="bi bi-4-circle text-info me-2"></i>Connection details provided</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -89,9 +166,14 @@
     <!-- Launch Form -->
     <div class="col-lg-8">
         <div class="card border-0 shadow-sm">
-            <div class="card-header bg-success text-white">
+            <div class="card-header {% if gui_uses_wslg %}bg-success{% else %}bg-primary{% endif %} text-white">
                 <h5 class="mb-0 fw-semibold">
                     <i class="bi bi-gear me-2"></i>Launch Configuration
+                    {% if gui_uses_wslg %}
+                    <span class="badge bg-light text-success ms-2">WSLg Mode</span>
+                    {% else %}
+                    <span class="badge bg-light text-primary ms-2">VNC Mode</span>
+                    {% endif %}
                 </h5>
             </div>
             <div class="card-body">
@@ -105,11 +187,12 @@
                         </label>
                         <input type="text" class="form-control" id="session_name" name="session_name" 
                                placeholder="Enter a name for this session"
-                               value="{{ application.display_name }} - {{ moment().format('HH:mm:ss') if moment else (application.display_name + ' - New Session') }}">
+                               value="{{ application.display_name }} - {{ current_time if current_time else (application.display_name + ' - New Session') }}">
                         <div class="form-text">Choose a descriptive name to identify this session later.</div>
                     </div>
                     
-                    <!-- Display Configuration -->
+                    {% if not gui_uses_wslg %}
+                    <!-- Display Configuration - Only for VNC -->
                     <div class="row mb-4">
                         <div class="col-md-8">
                             <label for="resolution" class="form-label">
@@ -141,10 +224,42 @@
                             <div class="form-text">Higher depth = better colors, slower performance.</div>
                         </div>
                     </div>
+                    {% else %}
+                    <!-- WSLg Information -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="alert alert-success">
+                                <h6><i class="bi bi-info-circle me-1"></i>WSLg Configuration</h6>
+                                <p class="mb-2">WSLg applications use native Windows display settings:</p>
+                                <ul class="mb-0">
+                                    <li>Resolution: Adapts to your Windows desktop automatically</li>
+                                    <li>Color depth: Uses Windows native color depth (32-bit)</li>
+                                    <li>Multi-monitor: Supports multiple displays if configured</li>
+                                    <li>DPI scaling: Inherits Windows DPI settings</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
                     
-                    <!-- VNC Connection Info -->
-                    <div class="alert alert-info">
-                        <h6><i class="bi bi-info-circle me-1"></i>VNC Connection Instructions</h6>
+                    <!-- Hidden fields for WSLg -->
+                    <input type="hidden" name="resolution" value="native">
+                    <input type="hidden" name="color_depth" value="32">
+                    {% endif %}
+                    
+                    <!-- Connection Instructions -->
+                    <div class="alert {% if gui_uses_wslg %}alert-success{% else %}alert-info{% endif %}">
+                        <h6><i class="bi bi-{% if gui_uses_wslg %}rocket{% else %}info-circle{% endif %} me-1"></i>
+                            {% if gui_uses_wslg %}WSLg Launch Instructions{% else %}VNC Connection Instructions{% endif %}
+                        </h6>
+                        {% if gui_uses_wslg %}
+                        <p class="mb-2">Once launched, your application will run natively in Windows:</p>
+                        <ol class="mb-0">
+                            <li>The application will appear in your Windows taskbar</li>
+                            <li>Click the taskbar icon or use Alt+Tab to switch to it</li>
+                            <li>Interact with it like any native Windows application</li>
+                            <li>Full clipboard, audio, and file integration is available</li>
+                        </ol>
+                        {% else %}
                         <p class="mb-2">Once launched, you'll connect using a VNC client:</p>
                         <ol class="mb-2">
                             <li>The session will start on a virtual display (e.g., :99)</li>
@@ -152,6 +267,7 @@
                             <li>Use any VNC client to connect to <code>localhost:PORT</code></li>
                         </ol>
                         <p class="mb-0"><strong>Recommended VNC clients:</strong> TigerVNC, RealVNC, TightVNC</p>
+                        {% endif %}
                     </div>
                     
                     <!-- Launch Options -->
@@ -160,7 +276,11 @@
                         <div class="form-check mb-2">
                             <input class="form-check-input" type="checkbox" id="auto_connect" checked>
                             <label class="form-check-label" for="auto_connect">
+                                {% if gui_uses_wslg %}
+                                Show session details immediately after launch
+                                {% else %}
                                 Show connection details immediately after launch
+                                {% endif %}
                             </label>
                         </div>
                         <div class="form-check">
@@ -175,6 +295,35 @@
                     <div class="mb-4">
                         <h6 class="text-muted mb-3">System Status</h6>
                         <div class="row text-center">
+                            {% if gui_uses_wslg %}
+                            <div class="col-md-4">
+                                <div class="p-3 bg-light rounded">
+                                    <i class="bi bi-windows text-success" style="font-size: 1.5rem;"></i>
+                                    <div class="mt-2">
+                                        <strong>WSLg</strong>
+                                        <div class="small text-success">Active</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="p-3 bg-light rounded">
+                                    <i class="bi bi-clipboard-check text-success" style="font-size: 1.5rem;"></i>
+                                    <div class="mt-2">
+                                        <strong>Integration</strong>
+                                        <div class="small text-success">Full Support</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="p-3 bg-light rounded">
+                                    <i class="bi bi-speedometer text-success" style="font-size: 1.5rem;"></i>
+                                    <div class="mt-2">
+                                        <strong>Performance</strong>
+                                        <div class="small text-success">Native Speed</div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% else %}
                             <div class="col-md-4">
                                 <div class="p-3 bg-light rounded">
                                     <i class="bi bi-display text-primary" style="font-size: 1.5rem;"></i>
@@ -202,17 +351,23 @@
                                     </div>
                                 </div>
                             </div>
+                            {% endif %}
                         </div>
                     </div>
                     
                     <!-- Launch Button -->
                     <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-success btn-lg" id="launchBtn">
-                            <i class="bi bi-play-fill me-2"></i>Launch {{ application.display_name }}
+                        <button type="submit" class="btn {% if gui_uses_wslg %}btn-success{% else %}btn-primary{% endif %} btn-lg" id="launchBtn">
+                            <i class="bi bi-{% if gui_uses_wslg %}windows{% else %}play-fill{% endif %} me-2"></i>
+                            {% if gui_uses_wslg %}Launch Native in Windows{% else %}Launch VNC Session{% endif %}
                         </button>
                         <div class="text-center mt-2">
                             <small class="text-muted">
+                                {% if gui_uses_wslg %}
+                                Application will appear in your Windows taskbar
+                                {% else %}
                                 Launching may take 10-15 seconds to complete
+                                {% endif %}
                             </small>
                         </div>
                     </div>
@@ -234,6 +389,7 @@
                         <thead>
                             <tr>
                                 <th>Session Name</th>
+                                <th>Type</th>
                                 <th>Status</th>
                                 <th>Started</th>
                                 <th>Duration</th>
@@ -244,6 +400,13 @@
                             {% for session in user_sessions[:5] %}
                             <tr>
                                 <td>{{ session.name }}</td>
+                                <td>
+                                    {% if gui_uses_wslg %}
+                                    <span class="badge bg-success badge-sm">WSLg</span>
+                                    {% else %}
+                                    <span class="badge bg-info badge-sm">VNC</span>
+                                    {% endif %}
+                                </td>
                                 <td>
                                     {% if session.active %}
                                     <span class="badge bg-success">Active</span>
@@ -258,7 +421,9 @@
                                 <td>
                                     {% if session.active %}
                                     <a href="{{ url_for('gui.session_detail', session_id=session.session_id) }}" 
-                                       class="btn btn-sm btn-outline-primary">Connect</a>
+                                       class="btn btn-sm btn-outline-{% if gui_uses_wslg %}success{% else %}primary{% endif %}">
+                                       {% if gui_uses_wslg %}Details{% else %}Connect{% endif %}
+                                    </a>
                                     {% else %}
                                     <a href="{{ url_for('gui.session_detail', session_id=session.session_id) }}" 
                                        class="btn btn-sm btn-outline-secondary">View</a>
@@ -286,23 +451,6 @@
 {% block scripts %}
 {{ super() }}
 <script>
-// Auto-generate session name with current time
-document.addEventListener('DOMContentLoaded', function() {
-    updateSessionName();
-    
-    // Update session name when resolution changes
-    document.getElementById('resolution').addEventListener('change', updateSessionName);
-});
-
-function updateSessionName() {
-    const nameField = document.getElementById('session_name');
-    const resolution = document.getElementById('resolution').value;
-    const now = new Date();
-    const timeStr = now.toTimeString().substr(0, 8);
-    
-    nameField.value = `{{ application.display_name }} ${resolution} - ${timeStr}`;
-}
-
 document.addEventListener('DOMContentLoaded', function() {
     // Check system status
     checkSystemStatus();
@@ -316,27 +464,40 @@ document.addEventListener('DOMContentLoaded', function() {
         launchApplication();
     });
     
-    // Update session name when resolution changes
+    {% if not gui_uses_wslg %}
+    // Update session name when resolution changes (only for VNC)
     document.getElementById('resolution').addEventListener('change', updateSessionName);
+    {% endif %}
 });
 
 function updateSessionName() {
     const nameField = document.getElementById('session_name');
-    const resolution = document.getElementById('resolution').value;
     const now = new Date();
     const timeStr = now.toTimeString().substr(0, 8);
     
+    {% if gui_uses_wslg %}
+    // For WSLg, use simpler naming
+    nameField.value = `{{ application.display_name }} - ${timeStr}`;
+    {% else %}
+    // For VNC, include resolution
+    const resolution = document.getElementById('resolution').value;
     nameField.value = `{{ application.display_name }} ${resolution} - ${timeStr}`;
+    {% endif %}
 }
 
 function checkSystemStatus() {
+    {% if gui_uses_wslg %}
+    // WSLg is already detected and working, no additional checks needed
+    console.log('WSLg environment confirmed - ready to launch');
+    {% else %}
     // This would typically make an API call to check system status
-    // For now, we'll simulate the check
+    // For now, we'll simulate the check for VNC
     setTimeout(() => {
         document.getElementById('available-displays').innerHTML = '<span class="text-success">12 Available</span>';
         document.getElementById('available-ports').innerHTML = '<span class="text-success">8 Available</span>';
         document.getElementById('system-load').innerHTML = '<span class="text-warning">Normal</span>';
     }, 1000);
+    {% endif %}
 }
 
 function launchApplication() {
@@ -344,8 +505,12 @@ function launchApplication() {
     const launchBtn = document.getElementById('launchBtn');
     const originalBtnText = launchBtn.innerHTML;
     
-    // Show loading state
-    launchBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Launching...';
+    // Show loading state with environment-specific text
+    {% if gui_uses_wslg %}
+    launchBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Launching Native App...';
+    {% else %}
+    launchBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating VNC Session...';
+    {% endif %}
     launchBtn.disabled = true;
     
     // Get form data
@@ -360,21 +525,66 @@ function launchApplication() {
     
     // Launch via API
     GUI.launchApplication({{ application.id }}, config, function(data) {
-        // En la función launchApplication, cambiar esta parte:
         if (data.success) {
-            // Show success message (CAMBIAR ESTA SECCIÓN)
-            const message = `Application Launched Successfully!\n${data.session.application_name} is starting up...`;
+            {% if gui_uses_wslg %}
+            // WSLg success message
+            const message = `🚀 Application Launched Successfully!\n` +
+                          `${data.session.application_name} is starting up...\n` +
+                          `💡 Look for the application in your Windows taskbar!`;
             showNotification(message, 'success');
+            
+            // Additional WSLg tips
+            setTimeout(() => {
+                showNotification(
+                    `🎯 WSLg Pro Tips:\n` +
+                    `• Use Alt+Tab to switch between applications\n` +
+                    `• Right-click taskbar icon for context menu\n` +
+                    `• Full clipboard and file integration available`, 
+                    'info'
+                );
+            }, 3000);
+            {% else %}
+            // VNC success message
+            const message = `🚀 VNC Session Created Successfully!\n` +
+                          `${data.session.application_name} is starting up...\n` +
+                          `🔗 VNC server available on port ${data.session.vnc_port}`;
+            showNotification(message, 'success');
+            
+            // Show VNC connection info
+            setTimeout(() => {
+                showNotification(
+                    `📡 VNC Connection Ready:\n` +
+                    `• Host: localhost\n` +
+                    `• Port: ${data.session.vnc_port}\n` +
+                    `• Display: :${data.session.display_number}`, 
+                    'info'
+                );
+            }, 3000);
+            {% endif %}
             
             // Auto-redirect if requested
             if (document.getElementById('auto_connect').checked) {
                 setTimeout(() => {
                     window.location.href = `/gui/session/${data.session.session_id}`;
-                }, 3000);
+                }, 4000);
             }
         } else {
-            // Show error message (CAMBIAR ESTA SECCIÓN)
-            showNotification(`Launch Failed: ${data.error || 'Unknown error occurred'}`, 'danger');
+            // Show error message
+            const errorMsg = `❌ Launch Failed: ${data.error || 'Unknown error occurred'}`;
+            showNotification(errorMsg, 'danger');
+            
+            {% if not gui_uses_wslg %}
+            // For VNC, might suggest troubleshooting
+            setTimeout(() => {
+                showNotification(
+                    `🔧 VNC Troubleshooting:\n` +
+                    `• Check if Xvfb and x11vnc are installed\n` +
+                    `• Verify no port conflicts exist\n` +
+                    `• Try a different resolution setting`, 
+                    'warning'
+                );
+            }, 2000);
+            {% endif %}
         }
         
         // Reset button
@@ -395,5 +605,74 @@ function copyVNCInfo(port) {
         }, 2000);
     });
 }
+
+// Environment-specific initialization
+{% if gui_uses_wslg %}
+// WSLg-specific initialization
+document.addEventListener('DOMContentLoaded', function() {
+    // Show WSLg info tip after a delay
+    setTimeout(() => {
+        const hasShownWSLgTip = sessionStorage.getItem('wslg_launch_tip_shown');
+        if (!hasShownWSLgTip) {
+            showNotification(
+                '🎉 WSLg Mode Active!\n' +
+                'Your application will launch natively in Windows with full integration.', 
+                'info'
+            );
+            sessionStorage.setItem('wslg_launch_tip_shown', 'true');
+        }
+    }, 1500);
+});
+{% else %}
+// VNC-specific initialization
+document.addEventListener('DOMContentLoaded', function() {
+    // Show VNC info tip
+    setTimeout(() => {
+        const hasShownVNCTip = sessionStorage.getItem('vnc_launch_tip_shown');
+        if (!hasShownVNCTip) {
+            showNotification(
+                '🖥️ VNC Mode Active!\n' +
+                'A virtual display will be created for your application.', 
+                'info'
+            );
+            sessionStorage.setItem('vnc_launch_tip_shown', 'true');
+        }
+    }, 1500);
+});
+{% endif %}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    // Ctrl+Enter to launch
+    if (e.ctrlKey && e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('launchBtn').click();
+    }
+    
+    // Escape to go back
+    if (e.key === 'Escape' && !document.querySelector('.modal.show')) {
+        window.location.href = '{{ url_for("gui.application_detail", app_id=application.id) }}';
+    }
+});
+
+// Form validation enhancement
+document.getElementById('session_name').addEventListener('input', function() {
+    const value = this.value.trim();
+    const launchBtn = document.getElementById('launchBtn');
+    
+    if (value.length < 3) {
+        this.classList.add('is-invalid');
+        launchBtn.disabled = true;
+    } else {
+        this.classList.remove('is-invalid');
+        launchBtn.disabled = false;
+    }
+});
+
+// Auto-focus on session name field
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('session_name').focus();
+    document.getElementById('session_name').select();
+});
 </script>
 {% endblock %}
