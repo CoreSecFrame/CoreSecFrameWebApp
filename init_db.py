@@ -5,26 +5,45 @@ from app.modules.models import Module, ModuleCategory
 from app.terminal.models import TerminalSession, TerminalLog, TerminalLogSummary
 from app.core.models import SystemLog, LogSearchQuery, SystemMetric
 from datetime import datetime
+import sys
+import traceback
 
 def initialize_database():
     """Initialize the CoreSecFrame database with clean structure"""
     
-    app = create_app()
+    try:
+        app = create_app()
+    except ImportError as e:
+        print(f"❌ Failed to import application modules: {e}")
+        print("Please ensure all dependencies are installed: pip install -r requirements.txt")
+        return False
+    except Exception as e:
+        print(f"❌ Failed to create application: {e}")
+        return False
     
     with app.app_context():
         print("🚀 CoreSecFrame Database Initialization")
         print("=" * 50)
         
-        # Drop all tables and recreate
-        print("🗑️  Dropping all existing tables...")
-        db.drop_all()
-        
-        print("🏗️  Creating all database tables...")
-        db.create_all()
+        try:
+            # Drop all tables and recreate
+            print("🗑️  Dropping all existing tables...")
+            db.drop_all()
+            
+            print("🏗️  Creating all database tables...")
+            db.create_all()
+        except Exception as e:
+            print(f"❌ Database structure creation failed: {e}")
+            print("Check database configuration and permissions")
+            return False
         
         # Verify all tables were created
-        inspector = db.inspect(db.engine)
-        tables = inspector.get_table_names()
+        try:
+            inspector = db.inspect(db.engine)
+            tables = inspector.get_table_names()
+        except Exception as e:
+            print(f"❌ Failed to inspect database tables: {e}")
+            return False
         
         expected_tables = [
             'user', 'module', 'module_category', 
@@ -42,27 +61,37 @@ def initialize_database():
         # Create essential users
         print("\n👥 Creating essential users...")
         
-        # Admin user
-        admin = User(
-            username='admin', 
-            email='admin@coresecframe.local', 
-            role='admin',
-            created_at=datetime.utcnow()
-        )
-        admin.set_password('admin')
-        db.session.add(admin)
-        print("  ✅ Admin user (admin/admin)")
+        try:
+            # Admin user
+            admin = User(
+                username='admin', 
+                email='admin@coresecframe.local', 
+                role='admin',
+                created_at=datetime.utcnow()
+            )
+            admin.set_password('admin')
+            db.session.add(admin)
+            print("  ✅ Admin user (admin/admin)")
+        except Exception as e:
+            print(f"  ❌ Failed to create admin user: {e}")
+            db.session.rollback()
+            return False
         
-        # Regular user
-        user = User(
-            username='user', 
-            email='user@coresecframe.local', 
-            role='user',
-            created_at=datetime.utcnow()
-        )
-        user.set_password('password')
-        db.session.add(user)
-        print("  ✅ Regular user (user/password)")
+        try:
+            # Regular user
+            user = User(
+                username='user', 
+                email='user@coresecframe.local', 
+                role='user',
+                created_at=datetime.utcnow()
+            )
+            user.set_password('password')
+            db.session.add(user)
+            print("  ✅ Regular user (user/password)")
+        except Exception as e:
+            print(f"  ❌ Failed to create regular user: {e}")
+            db.session.rollback()
+            return False
         
         # Create module categories
         print("\n📂 Creating module categories...")
@@ -94,16 +123,30 @@ def initialize_database():
         ]
         
         for category in categories:
-            db.session.add(category)
-            print(f"  ✅ {category.name}")
+            try:
+                db.session.add(category)
+                print(f"  ✅ {category.name}")
+            except Exception as e:
+                print(f"  ❌ Failed to create category '{category.name}': {e}")
+                db.session.rollback()
+                return False
         
         # Commit the changes
         print("\n💾 Committing changes to database...")
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception as e:
+            print(f"❌ Failed to commit database changes: {e}")
+            db.session.rollback()
+            return False
         
         # Verify data was created
-        user_count = User.query.count()
-        category_count = ModuleCategory.query.count()
+        try:
+            user_count = User.query.count()
+            category_count = ModuleCategory.query.count()
+        except Exception as e:
+            print(f"❌ Failed to verify database content: {e}")
+            return False
         
         print("\n📈 Database Statistics:")
         print(f"  • Users: {user_count}")
@@ -145,7 +188,11 @@ def initialize_database():
 def verify_database_health():
     """Verify database health and structure"""
     
-    app = create_app()
+    try:
+        app = create_app()
+    except Exception as e:
+        print(f"❌ Failed to create application for health check: {e}")
+        return False
     
     with app.app_context():
         print("\n🔍 Database Health Check:")
@@ -158,7 +205,11 @@ def verify_database_health():
             print(f"  ✅ Database connection: OK")
             print(f"  ✅ User table: {user_count} records")
             print(f"  ✅ Category table: {category_count} records")
+        except Exception as e:
+            print(f"  ❌ Database query failed: {e}")
+            return False
             
+        try:
             # Test relationships
             admin_user = User.query.filter_by(username='admin').first()
             if admin_user and admin_user.is_admin():
@@ -166,22 +217,32 @@ def verify_database_health():
             else:
                 print(f"  ❌ Admin user permissions: FAILED")
                 return False
+        except AttributeError as e:
+            print(f"  ❌ User model missing is_admin() method: {e}")
+            return False
+        except Exception as e:
+            print(f"  ❌ Failed to verify admin permissions: {e}")
+            return False
             
+        try:
             # Test system log table
             SystemLog.query.count()
             print(f"  ✅ System log table: OK")
+        except Exception as e:
+            print(f"  ❌ System log table check failed: {e}")
+            return False
             
+        try:
             # Test terminal tables
             TerminalSession.query.count()
             TerminalLog.query.count()
             print(f"  ✅ Terminal tables: OK")
-            
-            print(f"  ✅ Database health check: PASSED")
-            return True
-            
         except Exception as e:
-            print(f"  ❌ Database health check: FAILED - {e}")
+            print(f"  ❌ Terminal tables check failed: {e}")
             return False
+            
+        print(f"  ✅ Database health check: PASSED")
+        return True
 
 if __name__ == '__main__':
     try:
@@ -194,13 +255,15 @@ if __name__ == '__main__':
                 print("✅ Database is ready for use!")
             else:
                 print("❌ Database health check failed!")
-                exit(1)
+                sys.exit(1)
         else:
             print("❌ Database initialization failed!")
-            exit(1)
+            sys.exit(1)
             
+    except KeyboardInterrupt:
+        print("\n❌ Database initialization interrupted by user")
+        sys.exit(1)
     except Exception as e:
         print(f"❌ Fatal error during database initialization: {e}")
-        import traceback
         traceback.print_exc()
-        exit(1)
+        sys.exit(1)
