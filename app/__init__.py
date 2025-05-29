@@ -309,7 +309,7 @@ def register_terminal_handlers(socketio):
         # Check if session is active
         if session.active:
             # Create or get terminal session
-            terminal = TerminalManager.create_session(session_id, socketio)
+            terminal = TerminalManager.create_session(current_app._get_current_object(), session_id, socketio)
             
             # Send welcome message
             emit('terminal_output', '\r\nConnected to CoreSecFrame Terminal\r\n', room=session_id)
@@ -483,7 +483,13 @@ def register_error_handlers(app):
     
     @app.errorhandler(404)
     def not_found_error(error):
-        # Log 404 errors as they might indicate reconnaissance
+        if request.path == '/favicon.ico':
+            # Optionally, you can return a 204 No Content response for favicons
+            # or just return the standard 404 page without logging.
+            # For now, just return the 404 page without logging.
+            return render_template('errors/404.html'), 404
+
+        # Log other 404 errors as they might indicate reconnaissance
         app.logger.warning(
             f"404 Not Found: {request.path}",
             extra={

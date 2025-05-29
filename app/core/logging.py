@@ -37,8 +37,9 @@ class DatabaseLogHandler(logging.Handler):
             if hasattr(record, 'ip_address'):
                 log_entry.ip_address = record.ip_address
             
-            db.session.add(log_entry)
-            db.session.commit()
+            with current_app.app_context():
+                db.session.add(log_entry)
+                db.session.commit()
             
         except Exception as e:
             # Prevent logging errors from breaking the application
