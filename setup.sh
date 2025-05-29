@@ -19,6 +19,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_NAME="coresecframe"
 VENV_PATH="$SCRIPT_DIR/venv"
 SYSTEMD_DIR="$SCRIPT_DIR/systemd"
+TEMP_FILE=""
+
+# Cleanup function for temporary files
+cleanup() {
+    if [ -n "$TEMP_FILE" ] && [ -f "$TEMP_FILE" ]; then
+        rm -f "$TEMP_FILE"
+    fi
+}
+
+# Set trap to cleanup on exit
+trap cleanup EXIT INT TERM
 
 # Function to print colored output
 print_status() {
@@ -315,185 +326,21 @@ init_database() {
     
     print_status "Initializing CoreSecFrame database..."
     
-    # Create Python script for database initialization
-    cat > "$SCRIPT_DIR/temp_init_db.py" << 'EOF'
-#!/usr/bin/env python3
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from app import create_app, db
-from app.auth.models import User
-from app.modules.models import Module, ModuleCategory
-from app.terminal.models import TerminalSession, TerminalLog, TerminalLogSummary
-from app.core.models import SystemLog, LogSearchQuery, SystemMetric
-from app.gui.models import GUIApplication, GUISession, GUICategory, GUISessionLog
-from datetime import datetime
-
-def initialize_database():
-    """Initialize the CoreSecFrame database with clean structure"""
+    # Check if init_db.py exists
+    if [ -f "$SCRIPT_DIR/init_db.py" ]; then
+        # Use the existing init_db.py file
+        source "$VENV_PATH/bin/activate"
+        if python3 "$SCRIPT_DIR/init_db.py"; then
+            print_success "Database initialized successfully"
+        else
+            print_error "Database initialization failed"
+            return 1
+        fi
+    else
+        print_error "init_db.py not found in $SCRIPT_DIR"
+        return 1
+    fi
     
-    app = create_app()
-    
-    with app.app_context():
-        print("🚀 CoreSecFrame Database Initialization")
-        print("=" * 50)
-        
-        # Drop all tables and recreate
-        print("🗑️  Dropping all existing tables...")
-        db.drop_all()
-        
-        print("🏗️  Creating all database tables...")
-        db.create_all()
-        
-        # Create essential users
-        print("\n👥 Creating essential users...")
-        
-        # Admin user
-        admin = User(
-            username='admin', 
-            email='admin@coresecframe.local', 
-            role='admin',
-            created_at=datetime.utcnow()
-        )
-        admin.set_password('admin')
-        db.session.add(admin)
-        print("  ✅ Admin user (admin/admin)")
-        
-        # Regular user
-        user = User(
-            username='user', 
-            email='user@coresecframe.local', 
-            role='user',
-            created_at=datetime.utcnow()
-        )
-        user.set_password('password')
-        db.session.add(user)
-        print("  ✅ Regular user (user/password)")
-        
-        # Create module categories
-        print("\n📂 Creating module categories...")
-        categories = [
-            ModuleCategory(
-                name='Reconnaissance',
-                description='Information gathering and target discovery tools'
-            ),
-            ModuleCategory(
-                name='Vulnerability Analysis',
-                description='Security vulnerability scanning and analysis tools'
-            ),
-            ModuleCategory(
-                name='Exploitation',
-                description='Penetration testing and exploitation frameworks'
-            ),
-            ModuleCategory(
-                name='Post Exploitation',
-                description='Post-exploitation and persistence tools'
-            ),
-            ModuleCategory(
-                name='Reporting',
-                description='Report generation and documentation tools'
-            ),
-            ModuleCategory(
-                name='Utils',
-                description='Utility tools and helper scripts'
-            )
-        ]
-        
-        for category in categories:
-            db.session.add(category)
-            print(f"  ✅ {category.name}")
-        
-        # Create GUI categories (structure only, no example apps)
-        print("\n🖥️  Creating GUI application categories...")
-        gui_categories = [
-            GUICategory(
-                name='browsers',
-                display_name='Web Browsers',
-                description='Web browsing applications',
-                icon_class='bi-globe',
-                sort_order=1
-            ),
-            GUICategory(
-                name='editors',
-                display_name='Text Editors',
-                description='Text and code editors',
-                icon_class='bi-file-text',
-                sort_order=2
-            ),
-            GUICategory(
-                name='terminals',
-                display_name='Terminal Emulators',
-                description='Terminal applications',
-                icon_class='bi-terminal',
-                sort_order=3
-            ),
-            GUICategory(
-                name='utilities',
-                display_name='Utilities',
-                description='System utilities and tools',
-                icon_class='bi-tools',
-                sort_order=4
-            ),
-            GUICategory(
-                name='development',
-                display_name='Development',
-                description='Development tools and IDEs',
-                icon_class='bi-code-slash',
-                sort_order=5
-            ),
-            GUICategory(
-                name='multimedia',
-                display_name='Multimedia',
-                description='Audio and video applications',
-                icon_class='bi-play-btn',
-                sort_order=6
-            )
-        ]
-        
-        for category in gui_categories:
-            db.session.add(category)
-            print(f"  ✅ GUI: {category.display_name}")
-        
-        # Commit the changes
-        print("\n💾 Committing changes to database...")
-        db.session.commit()
-        
-        print("\n🎉 Database initialization completed successfully!")
-        print("\n📋 Summary:")
-        print(f"  • Users: 2 (admin, user)")
-        print(f"  • Module categories: {len(categories)}")
-        print(f"  • GUI categories: {len(gui_categories)}")
-        print(f"  • GUI applications: 0 (use 'flask gui-init' to add)")
-        
-        return True
-
-if __name__ == '__main__':
-    try:
-        if initialize_database():
-            print("✅ Database is ready for use!")
-            print("\n🔧 Next steps:")
-            print("  1. Start the application: python run.py")
-            print("  2. Add GUI applications: flask gui-init")
-            print("  3. Access web interface: http://localhost:5000")
-        else:
-            print("❌ Database initialization failed!")
-            sys.exit(1)
-    except Exception as e:
-        print(f"❌ Fatal error during database initialization: {e}")
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
-EOF
-
-    # Execute database initialization
-    source "$VENV_PATH/bin/activate"
-    python3 "$SCRIPT_DIR/temp_init_db.py"
-    
-    # Clean up temporary file
-    rm -f "$SCRIPT_DIR/temp_init_db.py"
-    
-    print_success "Database initialized successfully"
     echo
 }
 
@@ -513,12 +360,16 @@ reset_database() {
     
     print_status "Resetting database..."
     init_database
-    print_success "Database has been reset successfully!"
-    echo
-    echo -e "${YELLOW}Default credentials after reset:${NC}"
-    echo "  Admin: admin/admin"
-    echo "  User:  user/password"
-    echo
+    if [ $? -eq 0 ]; then
+        print_success "Database has been reset successfully!"
+        echo
+        echo -e "${YELLOW}Default credentials after reset:${NC}"
+        echo "  Admin: admin/admin"
+        echo "  User:  user/password"
+        echo
+    else
+        print_error "Database reset failed"
+    fi
 }
 
 # Function to install noVNC manually

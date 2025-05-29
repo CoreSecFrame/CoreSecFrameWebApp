@@ -1,4 +1,4 @@
-# app/gui/models.py
+# app/gui/models.py - Optimized version
 from app import db
 from datetime import datetime
 from flask_login import current_user
@@ -16,15 +16,13 @@ class GUIApplication(db.Model):
     category = db.Column(db.String(64), index=True)
     
     # Application execution details
-    command = db.Column(db.String(256), nullable=False)  # Command to execute
-    working_directory = db.Column(db.String(256))  # Optional working directory
-    environment_vars = db.Column(db.Text)  # JSON string of environment variables
-    
-    # Application requirements
-    required_packages = db.Column(db.Text)  # JSON array of required system packages
+    command = db.Column(db.String(256), nullable=False)
+    working_directory = db.Column(db.String(256))
+    environment_vars = db.Column(db.Text)  # JSON string
+    required_packages = db.Column(db.Text)  # JSON array
     
     # Metadata
-    icon_path = db.Column(db.String(256))  # Path to application icon
+    icon_path = db.Column(db.String(256))
     version = db.Column(db.String(32))
     installed = db.Column(db.Boolean, default=False)
     enabled = db.Column(db.Boolean, default=True)
@@ -35,11 +33,10 @@ class GUIApplication(db.Model):
     last_used = db.Column(db.DateTime, nullable=True)
     
     # Relationships
-    sessions = db.relationship('GUISession', backref='application', lazy='dynamic', 
-                              cascade='all, delete-orphan')
+    sessions = db.relationship('GUISession', backref='application', lazy='dynamic', cascade='all, delete-orphan')
     
     def __repr__(self):
-        return f'<GUISession {self.name} ({self.session_id})>'
+        return f'<GUIApplication {self.name}>'
     
     def to_dict(self):
         return {
@@ -50,8 +47,8 @@ class GUIApplication(db.Model):
             'category': self.category,
             'command': self.command,
             'working_directory': self.working_directory,
-            'environment_vars': json.loads(self.environment_vars) if self.environment_vars else {},
-            'required_packages': json.loads(self.required_packages) if self.required_packages else [],
+            'environment_vars': self._parse_json_field(self.environment_vars, {}),
+            'required_packages': self._parse_json_field(self.required_packages, []),
             'icon_path': self.icon_path,
             'version': self.version,
             'installed': self.installed,
@@ -64,37 +61,46 @@ class GUIApplication(db.Model):
     
     def get_environment_dict(self):
         """Get environment variables as dictionary"""
-        if self.environment_vars:
-            try:
-                return json.loads(self.environment_vars)
-            except json.JSONDecodeError:
-                return {}
-        return {}
+        return self._parse_json_field(self.environment_vars, {})
     
     def set_environment_dict(self, env_dict):
         """Set environment variables from dictionary"""
-        self.environment_vars = json.dumps(env_dict) if env_dict else None
+        self.environment_vars = self._serialize_json_field(env_dict)
     
     def get_required_packages_list(self):
         """Get required packages as list"""
-        if self.required_packages:
-            try:
-                return json.loads(self.required_packages)
-            except json.JSONDecodeError:
-                return []
-        return []
+        return self._parse_json_field(self.required_packages, [])
     
     def set_required_packages_list(self, packages_list):
         """Set required packages from list"""
-        self.required_packages = json.dumps(packages_list) if packages_list else None
+        self.required_packages = self._serialize_json_field(packages_list)
+    
+    @staticmethod
+    def _parse_json_field(field_value, default_value):
+        """Parse JSON field with error handling"""
+        if not field_value:
+            return default_value
+        try:
+            return json.loads(field_value)
+        except (json.JSONDecodeError, TypeError):
+            return default_value
+    
+    @staticmethod
+    def _serialize_json_field(value):
+        """Serialize value to JSON with error handling"""
+        if not value:
+            return None
+        try:
+            return json.dumps(value)
+        except (TypeError, ValueError):
+            return None
 
 class GUISession(db.Model):
     """Model for active GUI sessions"""
     __tablename__ = 'gui_session'
     
     id = db.Column(db.Integer, primary_key=True)
-    session_id = db.Column(db.String(36), unique=True, nullable=False, index=True, 
-                          default=lambda: str(uuid.uuid4()))
+    session_id = db.Column(db.String(36), unique=True, nullable=False, index=True, default=lambda: str(uuid.uuid4()))
     name = db.Column(db.String(128), nullable=False)
     
     # Foreign keys
@@ -105,18 +111,18 @@ class GUISession(db.Model):
     active = db.Column(db.Boolean, default=True, index=True)
     
     # X11 and VNC configuration
-    display_number = db.Column(db.Integer)  # X11 display number (e.g., 99 for :99)
-    vnc_port = db.Column(db.Integer)  # VNC port (e.g., 5999)
-    vnc_password = db.Column(db.String(16))  # Optional VNC password
+    display_number = db.Column(db.Integer)
+    vnc_port = db.Column(db.Integer)
+    vnc_password = db.Column(db.String(16))
     
     # Process information
-    xvfb_pid = db.Column(db.Integer)  # Xvfb process PID
-    app_pid = db.Column(db.Integer)   # Application process PID
-    x11vnc_pid = db.Column(db.Integer)  # x11vnc process PID
+    xvfb_pid = db.Column(db.Integer)
+    app_pid = db.Column(db.Integer)
+    x11vnc_pid = db.Column(db.Integer)
     
     # Session configuration
-    screen_resolution = db.Column(db.String(16), default='1024x768')  # Screen resolution
-    color_depth = db.Column(db.Integer, default=24)  # Color depth
+    screen_resolution = db.Column(db.String(16), default='1024x768')
+    color_depth = db.Column(db.Integer, default=24)
     
     # Statistics
     cpu_usage = db.Column(db.Float, default=0.0)
@@ -126,9 +132,6 @@ class GUISession(db.Model):
     start_time = db.Column(db.DateTime, default=datetime.utcnow)
     last_activity = db.Column(db.DateTime, default=datetime.utcnow)
     end_time = db.Column(db.DateTime, nullable=True)
-    
-    # Note: User relationship is defined in User model with backref
-
     
     def __repr__(self):
         return f'<GUISession {self.name} ({self.session_id})>'
@@ -160,12 +163,9 @@ class GUISession(db.Model):
     
     def get_duration(self):
         """Get session duration as formatted string"""
-        if self.active:
-            end_time = datetime.utcnow()
-        else:
-            end_time = self.end_time or self.last_activity
-        
+        end_time = datetime.utcnow() if self.active else (self.end_time or self.last_activity)
         duration = end_time - self.start_time
+        
         hours = duration.seconds // 3600
         minutes = (duration.seconds % 3600) // 60
         seconds = duration.seconds % 60
@@ -175,28 +175,44 @@ class GUISession(db.Model):
         """Get X11 display string (e.g., ':99')"""
         return f":{self.display_number}" if self.display_number else None
     
-
     def get_vnc_url(self):
-        """Get direct VNC connection URL with proper IP detection"""
-        if self.vnc_port:
+        """Get direct VNC connection URL"""
+        if not self.vnc_port:
+            return None
+        try:
             from app.gui.network_utils import VNCConnectionHelper
             return VNCConnectionHelper.get_vnc_url(self.vnc_port)
-        return None
+        except ImportError:
+            return f"vnc://localhost:{self.vnc_port}"
     
     def get_novnc_url(self, base_url=None):
-        """Get noVNC web client URL with proper IP detection"""
-        if self.vnc_port:
+        """Get noVNC web client URL"""
+        if not self.vnc_port:
+            return None
+        try:
             from app.gui.network_utils import VNCConnectionHelper
             return VNCConnectionHelper.get_novnc_url(self.vnc_port, base_url)
-        return None
-
+        except ImportError:
+            base_url = base_url or "http://localhost:6080"
+            return f"{base_url}/vnc.html?host=localhost&port={self.vnc_port}&autoconnect=true&resize=scale"
+    
     def get_connection_info(self):
         """Get complete VNC connection information"""
-        if self.vnc_port:
+        if not self.vnc_port:
+            return None
+        try:
             from app.gui.network_utils import VNCConnectionHelper
             return VNCConnectionHelper.get_connection_info(self.vnc_port, self.display_number)
-        return None
-
+        except ImportError:
+            return {
+                'host': 'localhost',
+                'port': self.vnc_port,
+                'display': f":{self.display_number}" if self.display_number else None,
+                'connection_string': f"localhost:{self.vnc_port}",
+                'vnc_url': f"vnc://localhost:{self.vnc_port}",
+                'is_remote': False
+            }
+    
     def update_activity(self):
         """Update last activity timestamp"""
         self.last_activity = datetime.utcnow()
@@ -218,10 +234,8 @@ class GUICategory(db.Model):
     name = db.Column(db.String(64), unique=True, nullable=False, index=True)
     display_name = db.Column(db.String(128), nullable=False)
     description = db.Column(db.Text)
-    icon_class = db.Column(db.String(64))  # CSS icon class
+    icon_class = db.Column(db.String(64))
     sort_order = db.Column(db.Integer, default=0)
-    
-    # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     def __repr__(self):
@@ -244,17 +258,11 @@ class GUISessionLog(db.Model):
     __tablename__ = 'gui_session_log'
     
     id = db.Column(db.Integer, primary_key=True)
-    session_id = db.Column(db.String(36), db.ForeignKey('gui_session.session_id'), 
-                          nullable=False, index=True)
+    session_id = db.Column(db.String(36), db.ForeignKey('gui_session.session_id'), nullable=False, index=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
-    
-    # Log entry details
     event_type = db.Column(db.String(32), nullable=False, index=True)
-    # Types: 'session_start', 'session_end', 'process_start', 'process_end', 
-    #        'resolution_change', 'activity_update', 'error'
-    
     message = db.Column(db.String(512))
-    details = db.Column(db.Text)  # JSON string for additional details
+    details = db.Column(db.Text)  # JSON string
     
     # Relationship
     session = db.relationship('GUISession', backref='logs')
@@ -269,7 +277,7 @@ class GUISessionLog(db.Model):
             'timestamp': self.timestamp.isoformat(),
             'event_type': self.event_type,
             'message': self.message,
-            'details': json.loads(self.details) if self.details else None
+            'details': self._parse_details()
         }
     
     def set_details_dict(self, details_dict):
@@ -278,9 +286,13 @@ class GUISessionLog(db.Model):
     
     def get_details_dict(self):
         """Get details as dictionary"""
-        if self.details:
-            try:
-                return json.loads(self.details)
-            except json.JSONDecodeError:
-                return {}
-        return {}
+        return self._parse_details()
+    
+    def _parse_details(self):
+        """Parse details field with error handling"""
+        if not self.details:
+            return {}
+        try:
+            return json.loads(self.details)
+        except (json.JSONDecodeError, TypeError):
+            return {}
