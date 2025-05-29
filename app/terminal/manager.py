@@ -20,7 +20,7 @@ class TerminalManager:
     """Manages terminal sessions with comprehensive logging"""
     
     @staticmethod
-    def create_session(session_id, socketio, allow_create=True):
+    def create_session(app, session_id, socketio, allow_create=True):
         """Create a new terminal session or return existing one"""
         # If session exists, return it
         if session_id in active_terminals:
@@ -82,11 +82,12 @@ class TerminalManager:
                 'session_log': [],       # Structured log entries
                 'cwd': os.getcwd()
             }
+            active_terminals[session_id]['app'] = app
             
             # Start reader thread
             thread = threading.Thread(
                 target=TerminalManager._read_output,
-                args=(session_id, master, socketio)
+                args=(app, session_id, master, socketio)
             )
             thread.daemon = True
             thread.start()
@@ -94,7 +95,7 @@ class TerminalManager:
             active_terminals[session_id]['thread'] = thread
             
             # Log session creation
-            TerminalManager._log_comprehensive_event(session_id, 'session_start', 
+            TerminalManager._log_comprehensive_event(app, session_id, 'session_start', 
                                                    message='Terminal session started')
             
             # Send welcome message and setup
@@ -136,12 +137,17 @@ class TerminalManager:
                 # Command completed
                 current_input = terminal_info.get('input_buffer', '').strip()
                 if current_input:
-                    # Log the complete command
-                    TerminalManager._log_comprehensive_event(
-                        session_id, 'command_input', 
-                        command=current_input,
-                        message=f"Command executed: {current_input}"
-                    )
+                    app = terminal_info.get('app')
+                    if app:
+                        # Log the complete command
+                        TerminalManager._log_comprehensive_event(
+                            app, session_id, 'command_input', 
+                            command=current_input,
+                            message=f"Command executed: {current_input}"
+                        )
+                    else:
+                        # Consider logging a warning if app is not found
+                        pass
                     
                     # Add to command history
                     terminal_info['command_history'].append({
@@ -163,11 +169,16 @@ class TerminalManager:
                 pass
                 
             elif data == '\t':
-                # Tab completion - log attempt
-                TerminalManager._log_comprehensive_event(
-                    session_id, 'tab_completion',
-                    message=f"Tab completion on: {terminal_info.get('input_buffer', '')}"
-                )
+                app = terminal_info.get('app')
+                if app:
+                    # Tab completion - log attempt
+                    TerminalManager._log_comprehensive_event(
+                        app, session_id, 'tab_completion',
+                        message=f"Tab completion on: {terminal_info.get('input_buffer', '')}"
+                    )
+                else:
+                    # Consider logging a warning if app is not found
+                    pass
                 
             else:
                 # Regular character input
@@ -182,7 +193,7 @@ class TerminalManager:
             return False
     
     @staticmethod
-    def _read_output(session_id, fd, socketio):
+    def _read_output(app, session_id, fd, socketio):
         """Read output from terminal and perform comprehensive logging"""
         import logging
         logger = logging.getLogger('terminal_manager')
@@ -203,6 +214,15 @@ class TerminalManager:
                 if session_id not in active_terminals:
                     break
                 
+                try:
+                    # Check if fd is still a valid open file descriptor
+                    os.fstat(fd)
+                except OSError:
+                    # fd is no longer valid (e.g., closed)
+                    with app.app_context():
+                        logger.warning(f"FD for session {session_id} is no longer valid. Exiting reader thread.")
+                    break 
+                
                 # Select to wait for data with timeout
                 ready_to_read, _, _ = select.select([fd], [], [], 0.1)
                 
@@ -211,7 +231,7 @@ class TerminalManager:
                     current_time = time.time()
                     if output_accumulator and (current_time - last_log_time > 0.5):
                         TerminalManager._log_comprehensive_event(
-                            session_id, 'terminal_output',
+                            app, session_id, 'terminal_output',
                             output=output_accumulator,
                             message="Terminal output"
                         )
@@ -225,10 +245,10 @@ class TerminalManager:
                         if session_id in active_terminals and process.poll() is not None:
                             logger.info(f"Process for session {session_id} has ended")
                             TerminalManager._log_comprehensive_event(
-                                session_id, 'process_exit',
+                                app, session_id, 'process_exit',
                                 message=f"Process terminated with code {process.poll()}"
                             )
-                            TerminalManager.close_session(session_id)
+                            TerminalManager.close_session(session_id) # close_session will fetch its own app instance
                             break
                     continue
                 
@@ -261,7 +281,7 @@ class TerminalManager:
                         # If we have a significant amount of output, log it immediately
                         if len(output_accumulator) > 1000:
                             TerminalManager._log_comprehensive_event(
-                                session_id, 'terminal_output',
+                                app, session_id, 'terminal_output',
                                 output=output_accumulator,
                                 message="Terminal output (large batch)"
                             )
@@ -277,20 +297,22 @@ class TerminalManager:
                     time.sleep(0.1)
             
             except Exception as e:
-                logger.error(f"Error in terminal reader: {e}")
-                import traceback
-                logger.error(traceback.format_exc())
+                with app.app_context():
+                    logger.error(f"Error in terminal reader: {e}")
+                    import traceback
+                    logger.error(traceback.format_exc())
                 time.sleep(0.5)
         
         # Final flush of any remaining output
         if output_accumulator:
             TerminalManager._log_comprehensive_event(
-                session_id, 'terminal_output',
+                app, session_id, 'terminal_output',
                 output=output_accumulator,
                 message="Terminal output (final)"
             )
         
-        logger.info(f"Reader thread exiting for session {session_id}")
+        with app.app_context():
+            logger.info(f"Reader thread exiting for session {session_id}")
     
     @staticmethod
     def close_session(session_id):
@@ -312,33 +334,36 @@ class TerminalManager:
                 logger.setLevel(logging.INFO)
             
             # Log session closure with final state
-            try:
-                from flask import current_app
-                with current_app.app_context():
-                    # Save final session state
-                    final_buffer = terminal_info.get('full_buffer', '')
-                    command_history = terminal_info.get('command_history', [])
-                    
-                    TerminalManager._log_comprehensive_event(
-                        session_id, 'session_end',
-                        message='Terminal session closed',
-                        metadata={
-                            'final_buffer_size': len(final_buffer),
-                            'total_commands': len(command_history),
-                            'session_duration': str(datetime.utcnow() - terminal_info.get('last_activity', datetime.utcnow()))
-                        }
-                    )
-                    
-                    # Save complete buffer as final log entry
-                    if final_buffer:
+            app_instance = terminal_info.get('app') # Get app instance
+            if app_instance: # Check if app_instance exists
+                try:
+                    with app_instance.app_context(): # Use the explicit app_instance
+                        # Save final session state
+                        final_buffer = terminal_info.get('full_buffer', '')
+                        command_history = terminal_info.get('command_history', [])
+                        
                         TerminalManager._log_comprehensive_event(
-                            session_id, 'session_buffer',
-                            output=final_buffer,
-                            message='Complete session buffer'
+                            app_instance, session_id, 'session_end',
+                            message='Terminal session closed',
+                            metadata={
+                                'final_buffer_size': len(final_buffer),
+                                'total_commands': len(command_history),
+                                'session_duration': str(datetime.utcnow() - terminal_info.get('last_activity', datetime.utcnow()))
+                            }
                         )
-            except Exception as e:
-                logger.info(f"Session {session_id} closed (couldn't save final state: {e})")
-            
+                        
+                        # Save complete buffer as final log entry
+                        if final_buffer:
+                            TerminalManager._log_comprehensive_event(
+                                app_instance, session_id, 'session_buffer',
+                                output=final_buffer,
+                                message='Complete session buffer'
+                            )
+                except Exception as e:
+                    logger.info(f"Session {session_id} closed (couldn't save final state: {e})")
+            else:
+                logger.warning(f"App instance not found for session {session_id} during close_session logging.")
+
             # Close file descriptor
             fd = terminal_info.get('fd')
             if fd:
@@ -444,60 +469,69 @@ class TerminalManager:
         return buffer, commands
     
     @staticmethod
-    def _log_comprehensive_event(session_id, event_type, command=None, output=None, message=None, metadata=None):
+    def _log_comprehensive_event(app, session_id, event_type, command=None, output=None, message=None, metadata=None):
         """Enhanced logging with comprehensive event tracking"""
-        try:
-            import logging
-            logger = logging.getLogger('terminal_manager')
-            if not logger.handlers:
-                handler = logging.StreamHandler()
-                formatter = logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s')
-                handler.setFormatter(formatter)
-                logger.addHandler(handler)
-                logger.setLevel(logging.INFO)
-            
-            # Create comprehensive log entry
-            log_entry = TerminalLog(
-                session_id=session_id,
-                event_type=event_type,
-                command=command,
-                output=output,
-                timestamp=datetime.utcnow()
-            )
-            
-            # Add metadata as JSON in extra_data field if available
-            if metadata:
-                import json
-                if hasattr(log_entry, 'extra_data'):
-                    log_entry.extra_data = json.dumps(metadata)
-            
-            # Add to database
-            db.session.add(log_entry)
-            db.session.commit()
-            
-            # Also add to session log if session is active
-            if session_id in active_terminals:
-                session_log = active_terminals[session_id].get('session_log', [])
-                session_log.append({
-                    'timestamp': datetime.utcnow(),
-                    'event_type': event_type,
-                    'command': command,
-                    'output': output,
-                    'message': message,
-                    'metadata': metadata
-                })
-                active_terminals[session_id]['session_log'] = session_log
-            
-            return True
-            
-        except Exception as e:
+        # Ensure current_app, db, TerminalLog, logging, datetime, json are available through imports
+        with app.app_context(): # Use the passed app instance
             try:
-                db.session.rollback()
-            except:
-                pass
+                # Existing logger setup:
+                import logging # Keep import here as it was in the original provided snippet
+                logger = logging.getLogger('terminal_manager')
+                if not logger.handlers: # This check might be part of original code
+                    handler = logging.StreamHandler()
+                    formatter = logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s')
+                    handler.setFormatter(formatter)
+                    logger.addHandler(handler)
+                    logger.setLevel(logging.INFO)
+
+                log_entry = TerminalLog(
+                    session_id=session_id,
+                    event_type=event_type,
+                    command=command,
+                    output=output,
+                    timestamp=datetime.utcnow() 
+                )
             
-            logger.error(f"Error logging comprehensive event: {e}")
-            return False
+                if metadata:
+                    import json # Keep import local if only used here
+                    if hasattr(log_entry, 'extra_data'):
+                        log_entry.extra_data = json.dumps(metadata)
+            
+                db.session.add(log_entry)
+                db.session.commit()
+            
+                if session_id in active_terminals:
+                    # This part of the original code should be preserved as is:
+                    session_log = active_terminals[session_id].get('session_log', [])
+                    session_log.append({
+                        'timestamp': datetime.utcnow(),
+                        'event_type': event_type,
+                        'command': command,
+                        'output': output,
+                        'message': message,
+                        'metadata': metadata
+                    })
+                    active_terminals[session_id]['session_log'] = session_log
+
+                return True
+            
+            except Exception as e:
+                # It's good practice to get a logger instance here if not already available
+                # However, the logger setup is inside the try block. For robustness,
+                # especially if logger setup itself could fail or if we are here due to app context issues,
+                # a more resilient logger might be needed or ensure logger is initialized outside/before this.
+                # For now, assuming logger might be available from the try block or a higher scope if it didn't fail early.
+                logger = logging.getLogger('terminal_manager') # Attempt to get logger again or rely on outer scope
+                try:
+                    db.session.rollback()
+                except Exception as dbe:
+                    # Use a logger that is guaranteed to work (e.g., print or root logger direct)
+                    # or ensure this logger.error doesn't also try to use DatabaseHandler if it's failing
+                    print(f"Database rollback failed: {dbe}") # Or use specific logger
+                    logger.error(f"Database rollback failed for session {session_id}: {dbe}")
+
+                logger.error(f"Error logging comprehensive event for session {session_id}, event {event_type}: {e}")
+                return False
     
     @staticmethod
     def send_command(session_id, command, socketio):
@@ -515,11 +549,16 @@ class TerminalManager:
             })
             
             # Log command
-            TerminalManager._log_comprehensive_event(
-                session_id, 'command_input', 
-                command=command,
-                message=f"API command executed: {command}"
-            )
+            app_instance = terminal_info.get('app')
+            if app_instance:
+                TerminalManager._log_comprehensive_event(
+                    app_instance, session_id, 'command_input', 
+                    command=command,
+                    message=f"API command executed: {command}"
+                )
+            else:
+                # Consider logging a warning if app is not found
+                pass
         
         # Reset input buffer
         active_terminals[session_id]['input_buffer'] = ''
@@ -546,10 +585,15 @@ class TerminalManager:
             fcntl.ioctl(fd, termios.TIOCSWINSZ, term_size)
             
             # Log resize event
-            TerminalManager._log_comprehensive_event(
-                session_id, 'terminal_resize',
-                message=f"Terminal resized to {rows}x{cols}"
-            )
+            app_instance = active_terminals[session_id].get('app')
+            if app_instance:
+                TerminalManager._log_comprehensive_event(
+                    app_instance, session_id, 'terminal_resize',
+                    message=f"Terminal resized to {rows}x{cols}"
+                )
+            else:
+                # Consider logging a warning if app is not found
+                pass
             
             current_app.logger.info(f"Resized terminal {session_id} to {rows}x{cols}")
             return True
@@ -583,11 +627,16 @@ class TerminalManager:
             if background and not command.endswith('&'):
                 command = command.rstrip() + ' &'
             
-            TerminalManager._log_comprehensive_event(
-                session_id, 'api_command',
-                command=command,
-                message=f"API command execution: {command}"
-            )
+            app_instance = active_terminals[session_id].get('app')
+            if app_instance:
+                TerminalManager._log_comprehensive_event(
+                    app_instance, session_id, 'api_command',
+                    command=command,
+                    message=f"API command execution: {command}"
+                )
+            else:
+                # Consider logging a warning if app is not found
+                pass
             
             # Send each character with a small delay
             for char in command:
