@@ -1,238 +1,371 @@
-<!-- app/templates/terminal/view.html - Professional Enhancement -->
+<!-- app/templates/terminal/view.html - Windows 11 Style -->
 {% extends "base.html" %}
 
 {% block head %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.1.0/css/xterm.min.css" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.7.0/lib/xterm-addon-fit.css" />
 <style>
-    .terminal-wrapper {
-        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-        border-radius: 0.75rem;
-        padding: 0;
+    .w11-terminal-container {
+        background: var(--w11-card-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--w11-card-stroke);
+        border-radius: var(--w11-radius-large);
         overflow: hidden;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        box-shadow: var(--w11-shadow-8);
+        margin-bottom: 24px;
     }
 
-    .terminal-header {
-        background: rgba(0, 0, 0, 0.3);
-        padding: 1rem 1.5rem;
+    .w11-terminal-header {
+        background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 16px 24px;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        color: white;
     }
 
-    .terminal-header h5 {
-        margin: 0;
-        color: #fff;
+    .w11-terminal-title {
         font-weight: 600;
+        font-size: 16px;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 
-    .terminal-container {
+    .w11-terminal-controls {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .w11-status-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 8px;
+    }
+
+    .w11-status-active {
+        background: #107c10;
+        box-shadow: 0 0 8px rgba(16, 124, 16, 0.5);
+    }
+
+    .w11-status-inactive {
+        background: #6c757d;
+    }
+
+    .w11-terminal-btn {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: white;
+        padding: 8px 12px;
+        border-radius: var(--w11-radius-medium);
+        font-size: 12px;
+        transition: all var(--w11-duration-fast) var(--w11-ease-standard);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .w11-terminal-btn:hover {
+        background: rgba(255, 255, 255, 0.2);
+        border-color: rgba(255, 255, 255, 0.3);
+        color: white;
+        transform: scale(1.05);
+    }
+
+    .w11-terminal-display {
         height: 70vh;
         min-height: 500px;
-        background-color: #0a0a0a;
-        padding: 0;
+        background: #0c0c0c;
+        position: relative;
     }
 
     #terminal {
         width: 100%;
         height: 100%;
+        padding: 16px;
     }
 
-    .terminal-status {
+    .w11-terminal-footer {
+        background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 12px 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 12px;
+    }
+
+    .w11-terminal-info {
         display: flex;
         align-items: center;
-        gap: 1rem;
+        gap: 16px;
     }
 
-    .status-indicator {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        display: inline-block;
+    .w11-terminal-actions {
+        display: flex;
+        gap: 8px;
     }
 
-    .status-indicator.active {
-        background-color: #00ff00;
-        box-shadow: 0 0 10px #00ff00;
+    .w11-shortcuts-card {
+        background: var(--w11-card-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--w11-card-stroke);
+        border-radius: var(--w11-radius-large);
+        margin-top: 24px;
+        overflow: hidden;
+        transition: all var(--w11-duration-normal) var(--w11-ease-standard);
     }
 
-    .status-indicator.inactive {
-        background-color: #ff0000;
+    .w11-shortcuts-header {
+        background: var(--w11-bg-secondary);
+        border-bottom: 1px solid var(--w11-surface-stroke);
+        padding: 16px 24px;
+        font-weight: 600;
+        font-size: 14px;
+        color: var(--w11-text-primary);
     }
 
-    .terminal-footer {
-        background: rgba(0, 0, 0, 0.3);
-        padding: 0.75rem 1.5rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-        color: rgba(255, 255, 255, 0.7);
-        font-size: 0.875rem;
+    .w11-shortcuts-content {
+        padding: 24px;
     }
 
-    .shortcuts-card {
-        background: #f8f9fa;
+    .w11-shortcut-section {
+        margin-bottom: 24px;
+    }
+
+    .w11-shortcut-section:last-child {
+        margin-bottom: 0;
+    }
+
+    .w11-shortcut-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--w11-text-secondary);
+        margin-bottom: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .w11-shortcut-table {
+        width: 100%;
+        margin: 0;
+        background: transparent;
+    }
+
+    .w11-shortcut-table td {
+        padding: 8px 0;
         border: none;
-        border-radius: 0.5rem;
+        vertical-align: middle;
     }
 
-    .btn-terminal {
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        color: #fff;
-        transition: all 0.3s ease;
+    .w11-shortcut-table td:first-child {
+        width: 140px;
     }
 
-    .btn-terminal:hover {
-        background: rgba(255, 255, 255, 0.2);
-        border-color: rgba(255, 255, 255, 0.3);
-        color: #fff;
+    .w11-kbd {
+        background: var(--w11-bg-tertiary);
+        border: 1px solid var(--w11-surface-stroke);
+        border-radius: var(--w11-radius-small);
+        padding: 4px 8px;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--w11-text-primary);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .w11-page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+    }
+
+    .w11-page-title {
+        font-size: 28px;
+        font-weight: 400;
+        color: var(--w11-text-primary);
+        margin-bottom: 4px;
+    }
+
+    .w11-page-subtitle {
+        font-size: 14px;
+        color: var(--w11-text-secondary);
+        margin-bottom: 0;
+    }
+
+    .w11-modal {
+        backdrop-filter: blur(20px);
+    }
+
+    .w11-modal-content {
+        background: var(--w11-card-bg);
+        border: 1px solid var(--w11-card-stroke);
+        border-radius: var(--w11-radius-large);
+        box-shadow: var(--w11-shadow-16);
+    }
+
+    .w11-modal-header {
+        border-bottom: 1px solid var(--w11-surface-stroke);
+        padding: 24px;
+    }
+
+    .w11-modal-body {
+        padding: 24px;
+    }
+
+    .w11-modal-footer {
+        border-top: 1px solid var(--w11-surface-stroke);
+        padding: 20px 24px;
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+    }
+
+    /* Hide shortcuts panel by default */
+    .w11-shortcuts-card.hidden {
+        display: none;
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <!-- Page Header -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h1 class="h2 fw-bold mb-1">
-                    {{ session.name }}
-                    {% if not session.active %}
-                    <span class="badge bg-danger ms-2">Inactive</span>
-                    {% endif %}
-                </h1>
-                <p class="text-muted mb-0">
-                    Terminal Session ID: <code>{{ session.session_id }}</code>
-                </p>
+<div class="w11-page-header">
+    <div>
+        <h1 class="w11-page-title">
+            {{ session.name }}
+            {% if not session.active %}
+            <span class="badge bg-danger ms-2">Inactive</span>
+            {% endif %}
+        </h1>
+        <p class="w11-page-subtitle">
+            Terminal Session ID: <code>{{ session.session_id }}</code>
+        </p>
+    </div>
+    <div class="btn-group" role="group">
+        <a href="{{ url_for('terminal.index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Back
+        </a>
+        {% if session.active %}
+        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#closeModal">
+            <i class="bi bi-x-circle me-1"></i> Close Terminal
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Terminal Container -->
+<div class="w11-terminal-container">
+    <div class="w11-terminal-header">
+        <h5 class="w11-terminal-title">
+            <i class="bi bi-terminal"></i>Terminal
+            {% if not session.active %}
+            <span class="badge bg-danger ms-2">Read-Only</span>
+            {% endif %}
+        </h5>
+        <div class="w11-terminal-controls">
+            <div class="d-flex align-items-center">
+                <span class="w11-status-indicator {{ 'w11-status-active' if session.active else 'w11-status-inactive' }}"></span>
+                <span>{{ 'Active' if session.active else 'Inactive' }}</span>
             </div>
-            <div class="btn-group" role="group">
-                <a href="{{ url_for('terminal.index') }}" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-left"></i> Back
-                </a>
-                {% if session.active %}
-                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#closeModal">
-                    <i class="bi bi-x-circle"></i> Close Terminal
+            <div class="btn-group btn-group-sm" role="group">
+                <button id="btn-clear" class="w11-terminal-btn" title="Clear Terminal">
+                    <i class="bi bi-eraser"></i>
                 </button>
-                {% endif %}
+                <button id="btn-fullscreen" class="w11-terminal-btn" title="Fullscreen">
+                    <i class="bi bi-arrows-fullscreen"></i>
+                </button>
+                <button id="btn-copy" class="w11-terminal-btn" title="Copy">
+                    <i class="bi bi-clipboard"></i>
+                </button>
+                <button id="btn-paste" class="w11-terminal-btn" title="Paste" {% if not session.active %}disabled{% endif %}>
+                    <i class="bi bi-clipboard-plus"></i>
+                </button>
             </div>
+        </div>
+    </div>
+
+    <div class="w11-terminal-display">
+        <div id="terminal"></div>
+    </div>
+
+    <div class="w11-terminal-footer">
+        <div class="w11-terminal-info">
+            <div>Session Type: <strong>{{ session.session_type|title }}</strong></div>
+            {% if session.module_name %}
+            <div>Module: <strong>{{ session.module_name }}</strong></div>
+            {% endif %}
+        </div>
+        <div class="w11-terminal-actions">
+            <button id="btn-shortcuts" class="w11-terminal-btn">
+                <i class="bi bi-keyboard"></i> Shortcuts
+            </button>
         </div>
     </div>
 </div>
 
-<!-- Terminal -->
-<div class="row">
-    <div class="col-12">
-        <div class="terminal-wrapper">
-            <div class="terminal-header">
-                <h5>
-                    <i class="bi bi-terminal me-2"></i>Terminal
-                    {% if not session.active %}
-                    <span class="badge bg-danger ms-2">Read-Only</span>
-                    {% endif %}
-                </h5>
-                <div class="terminal-status">
-                    <div class="d-flex align-items-center">
-                        <span class="status-indicator {{ 'active' if session.active else 'inactive' }} me-2"></span>
-                        <span class="text-white">{{ 'Active' if session.active else 'Inactive' }}</span>
-                    </div>
-                    <div class="btn-group btn-group-sm" role="group">
-                        <button id="btn-clear" class="btn btn-terminal" title="Clear Terminal">
-                            <i class="bi bi-eraser"></i>
-                        </button>
-                        <button id="btn-fullscreen" class="btn btn-terminal" title="Fullscreen">
-                            <i class="bi bi-arrows-fullscreen"></i>
-                        </button>
-                        <button id="btn-copy" class="btn btn-terminal" title="Copy">
-                            <i class="bi bi-clipboard"></i>
-                        </button>
-                        <button id="btn-paste" class="btn btn-terminal" title="Paste" {% if not session.active
-                            %}disabled{% endif %}>
-                            <i class="bi bi-clipboard-plus"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="terminal-container">
-                <div id="terminal"></div>
-            </div>
-
-            <div class="terminal-footer d-flex justify-content-between">
-                <div>
-                    Session Type: <strong>{{ session.session_type|title }}</strong>
-                    {% if session.module_name %}
-                    | Module: <strong>{{ session.module_name }}</strong>
-                    {% endif %}
-                </div>
-                <div>
-                    <button id="btn-shortcuts" class="btn btn-sm btn-outline-light">
-                        <i class="bi bi-keyboard"></i> Shortcuts
-                    </button>
-                </div>
-            </div>
-        </div>
+<!-- Keyboard Shortcuts (Hidden by default) -->
+<div class="w11-shortcuts-card hidden" id="shortcuts-panel">
+    <div class="w11-shortcuts-header">
+        <i class="bi bi-keyboard me-2"></i>Keyboard Shortcuts
     </div>
-</div>
-
-<!-- Keyboard Shortcuts -->
-<div class="row mt-4 d-none" id="shortcuts-panel">
-    <div class="col-12">
-        <div class="card shortcuts-card">
-            <div class="card-header bg-light">
-                <h5 class="mb-0 fw-semibold">
-                    <i class="bi bi-keyboard me-2"></i>Keyboard Shortcuts
-                </h5>
+    <div class="w11-shortcuts-content">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="w11-shortcut-section">
+                    <div class="w11-shortcut-title">Navigation</div>
+                    <table class="w11-shortcut-table">
+                        <tbody>
+                            <tr>
+                                <td><span class="w11-kbd">Tab</span></td>
+                                <td>Command completion</td>
+                            </tr>
+                            <tr>
+                                <td><span class="w11-kbd">↑</span> / <span class="w11-kbd">↓</span></td>
+                                <td>Navigate command history</td>
+                            </tr>
+                            <tr>
+                                <td><span class="w11-kbd">Ctrl</span> + <span class="w11-kbd">A</span></td>
+                                <td>Move to beginning of line</td>
+                            </tr>
+                            <tr>
+                                <td><span class="w11-kbd">Ctrl</span> + <span class="w11-kbd">E</span></td>
+                                <td>Move to end of line</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <h6 class="text-muted mb-3">Navigation</h6>
-                        <table class="table table-sm">
-                            <tbody>
-                                <tr>
-                                    <td><kbd>Tab</kbd></td>
-                                    <td>Command completion</td>
-                                </tr>
-                                <tr>
-                                    <td><kbd>↑</kbd> / <kbd>↓</kbd></td>
-                                    <td>Navigate command history</td>
-                                </tr>
-                                <tr>
-                                    <td><kbd>Ctrl</kbd> + <kbd>A</kbd></td>
-                                    <td>Move to beginning of line</td>
-                                </tr>
-                                <tr>
-                                    <td><kbd>Ctrl</kbd> + <kbd>E</kbd></td>
-                                    <td>Move to end of line</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="col-md-6">
-                        <h6 class="text-muted mb-3">Control</h6>
-                        <table class="table table-sm">
-                            <tbody>
-                                <tr>
-                                    <td><kbd>Ctrl</kbd> + <kbd>C</kbd></td>
-                                    <td>Interrupt current process</td>
-                                </tr>
-                                <tr>
-                                    <td><kbd>Ctrl</kbd> + <kbd>D</kbd></td>
-                                    <td>End of file/Exit</td>
-                                </tr>
-                                <tr>
-                                    <td><kbd>Ctrl</kbd> + <kbd>L</kbd></td>
-                                    <td>Clear screen</td>
-                                </tr>
-                                <tr>
-                                    <td><kbd>Ctrl</kbd> + <kbd>U</kbd></td>
-                                    <td>Clear line before cursor</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+            <div class="col-md-6">
+                <div class="w11-shortcut-section">
+                    <div class="w11-shortcut-title">Control</div>
+                    <table class="w11-shortcut-table">
+                        <tbody>
+                            <tr>
+                                <td><span class="w11-kbd">Ctrl</span> + <span class="w11-kbd">C</span></td>
+                                <td>Interrupt current process</td>
+                            </tr>
+                            <tr>
+                                <td><span class="w11-kbd">Ctrl</span> + <span class="w11-kbd">D</span></td>
+                                <td>End of file/Exit</td>
+                            </tr>
+                            <tr>
+                                <td><span class="w11-kbd">Ctrl</span> + <span class="w11-kbd">L</span></td>
+                                <td>Clear screen</td>
+                            </tr>
+                            <tr>
+                                <td><span class="w11-kbd">Ctrl</span> + <span class="w11-kbd">U</span></td>
+                                <td>Clear line before cursor</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -241,21 +374,21 @@
 
 {% if session.active %}
 <!-- Close Modal -->
-<div class="modal fade" id="closeModal" tabindex="-1">
+<div class="modal fade w11-modal" id="closeModal" tabindex="-1">
     <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
+        <div class="modal-content w11-modal-content">
+            <div class="modal-header w11-modal-header">
                 <h5 class="modal-title">Close Terminal Session</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body w11-modal-body">
                 <p>Are you sure you want to close this terminal session?</p>
-                <p class="text-danger">
-                    <i class="bi bi-exclamation-triangle me-1"></i>
+                <div class="alert alert-warning" style="background: rgba(255, 185, 0, 0.1); border-left: 4px solid #ffb900; color: #8a6c00;">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
                     This will terminate all processes running in this session.
-                </p>
+                </div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer w11-modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <form action="{{ url_for('terminal.close', session_id=session.session_id) }}" method="post">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -277,21 +410,37 @@
 <script src="https://cdn.jsdelivr.net/npm/xterm-addon-search@0.11.0/lib/xterm-addon-search.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        // Terminal configuration with professional theme
+        // Terminal configuration with Windows 11 inspired theme
         const terminal = new Terminal({
             cursorBlink: true,
-            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+            fontFamily: 'Cascadia Code, Consolas, Monaco, "Courier New", monospace',
             fontSize: 14,
             lineHeight: 1.2,
             theme: {
-                background: '#0a0a0a',
-                foreground: '#00ff00',
-                cursor: '#00ff00',
-                cursorAccent: '#0a0a0a',
-                selectionBackground: '#00ff00',
-                selectionForeground: '#0a0a0a'
+                background: '#0c0c0c',
+                foreground: '#cccccc',
+                cursor: '#ffffff',
+                cursorAccent: '#0c0c0c',
+                selectionBackground: '#264f78',
+                selectionForeground: '#ffffff',
+                black: '#0c0c0c',
+                red: '#c50f1f',
+                green: '#13a10e',
+                yellow: '#c19c00',
+                blue: '#0078d4',
+                magenta: '#881798',
+                cyan: '#3a96dd',
+                white: '#cccccc',
+                brightBlack: '#767676',
+                brightRed: '#e74856',
+                brightGreen: '#16c60c',
+                brightYellow: '#f9f1a5',
+                brightBlue: '#3b78ff',
+                brightMagenta: '#b4009e',
+                brightCyan: '#61d6d6',
+                brightWhite: '#f2f2f2'
             },
-            allowTransparency: true,
+            allowTransparency: false,
             scrollback: 5000,
             convertEol: true
         });
@@ -386,7 +535,7 @@
         });
 
         document.getElementById('btn-fullscreen').addEventListener('click', () => {
-            const terminalWrapper = document.querySelector('.terminal-wrapper');
+            const terminalWrapper = document.querySelector('.w11-terminal-container');
 
             if (!document.fullscreenElement) {
                 terminalWrapper.requestFullscreen().catch(err => {
@@ -426,7 +575,7 @@
         // Toggle shortcuts panel
         document.getElementById('btn-shortcuts').addEventListener('click', () => {
             const shortcutsPanel = document.getElementById('shortcuts-panel');
-            shortcutsPanel.classList.toggle('d-none');
+            shortcutsPanel.classList.toggle('hidden');
         });
 
         socket.on('disconnect', () => {
@@ -441,18 +590,55 @@
 
     // Notification helper
     function showNotification(message, type = 'info') {
+        // Create a Windows 11 style notification
         const notification = document.createElement('div');
         notification.className = `alert alert-${type} position-fixed top-0 start-50 translate-middle-x mt-3`;
-        notification.style.zIndex = '9999';
+        notification.style.cssText = `
+            z-index: 9999;
+            background: var(--w11-card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--w11-card-stroke);
+            border-radius: var(--w11-radius-large);
+            box-shadow: var(--w11-shadow-16);
+            animation: slideInDown 0.3s ease-out;
+        `;
         notification.innerHTML = `
-        <i class="bi bi-check-circle me-2"></i>${message}
-    `;
+            <i class="bi bi-check-circle me-2"></i>${message}
+        `;
         document.body.appendChild(notification);
 
         setTimeout(() => {
-            notification.remove();
+            notification.style.animation = 'slideOutUp 0.3s ease-in';
+            setTimeout(() => notification.remove(), 300);
         }, 3000);
     }
+
+    // Add slide animations
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideInDown {
+            from {
+                transform: translate(-50%, -100%);
+                opacity: 0;
+            }
+            to {
+                transform: translate(-50%, 0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideOutUp {
+            from {
+                transform: translate(-50%, 0);
+                opacity: 1;
+            }
+            to {
+                transform: translate(-50%, -100%);
+                opacity: 0;
+            }
+        }
+    `;
+    document.head.appendChild(style);
 </script>
 {% if module_to_execute %}
 <script>

@@ -1,263 +1,443 @@
-<!-- app/templates/core/dashboard.html - Professional Enhancement -->
+<!-- app/templates/core/dashboard.html - Windows 11 Style -->
 {% extends "base.html" %}
 
 {% block content %}
-<!-- Page Header -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h1 class="h2 fw-bold mb-1">Dashboard</h1>
-                <p class="text-muted mb-0">Welcome back, {{ current_user.username }}</p>
-            </div>
-            <div class="text-end">
-                <p class="text-muted mb-0 small">{{ current_date }}</p>
-                <p class="text-muted mb-0 small">System Status: <span class="badge bg-success">Operational</span></p>
+<style>
+    .w11-hero-section {
+        background: linear-gradient(135deg, var(--w11-accent) 0%, var(--w11-accent-light2) 100%);
+        border-radius: var(--w11-radius-xlarge);
+        color: white;
+        padding: 40px;
+        margin-bottom: 32px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .w11-hero-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 200px;
+        height: 200px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        transform: translate(50%, -50%);
+    }
+
+    .w11-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+        margin-bottom: 32px;
+    }
+
+    .w11-stat-card {
+        background: var(--w11-card-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--w11-card-stroke);
+        border-radius: var(--w11-radius-large);
+        padding: 24px;
+        transition: all var(--w11-duration-normal) var(--w11-ease-standard);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .w11-stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--w11-shadow-16);
+    }
+
+    .w11-stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: var(--w11-accent);
+    }
+
+    .w11-stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: var(--w11-radius-medium);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        margin-bottom: 16px;
+    }
+
+    .w11-stat-value {
+        font-size: 32px;
+        font-weight: 600;
+        color: var(--w11-text-primary);
+        margin-bottom: 4px;
+    }
+
+    .w11-stat-label {
+        font-size: 14px;
+        color: var(--w11-text-secondary);
+        font-weight: 500;
+    }
+
+    .w11-progress-ring {
+        width: 60px;
+        height: 60px;
+        position: absolute;
+        top: 24px;
+        right: 24px;
+    }
+
+    .w11-progress-ring circle {
+        fill: none;
+        stroke-width: 4;
+        stroke-linecap: round;
+        transform: rotate(-90deg);
+        transform-origin: 50% 50%;
+    }
+
+    .w11-progress-bg {
+        stroke: var(--w11-bg-tertiary);
+    }
+
+    .w11-progress-fg {
+        stroke: var(--w11-accent);
+        stroke-dasharray: 157;
+        stroke-dashoffset: 157;
+        transition: stroke-dashoffset 1s ease-in-out;
+    }
+
+    .w11-quick-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 32px;
+    }
+
+    .w11-action-btn {
+        background: var(--w11-card-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--w11-card-stroke);
+        border-radius: var(--w11-radius-large);
+        padding: 20px;
+        text-align: center;
+        text-decoration: none;
+        color: var(--w11-text-primary);
+        transition: all var(--w11-duration-normal) var(--w11-ease-standard);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .w11-action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--w11-shadow-8);
+        color: var(--w11-text-primary);
+        text-decoration: none;
+    }
+
+    .w11-action-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: var(--w11-radius-medium);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        color: white;
+    }
+
+    .w11-section-title {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--w11-text-primary);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .w11-info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 24px;
+    }
+
+    .w11-table-card .table {
+        margin-bottom: 0;
+        background: transparent;
+    }
+
+    .w11-table-card .table tbody tr:last-child td {
+        border-bottom: none;
+    }
+</style>
+
+<!-- Hero Section -->
+<div class="w11-hero-section">
+    <div class="row align-items-center">
+        <div class="col-lg-8">
+            <h1 style="font-size: 32px; font-weight: 300; margin-bottom: 8px;">Welcome back, {{ current_user.username }}</h1>
+            <p style="font-size: 16px; opacity: 0.9; margin-bottom: 0;">{{ current_date }}</p>
+        </div>
+        <div class="col-lg-4 text-end">
+            <div style="font-size: 14px; opacity: 0.8;">
+                <div>System Status</div>
+                <div style="font-size: 18px; font-weight: 600; margin-top: 4px;">
+                    <i class="bi bi-check-circle me-2"></i>Operational
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Quick Stats Cards -->
-<div class="row g-4 mb-4">
-    <div class="col-xl-3 col-md-6">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="flex-shrink-0">
-                        <div class="rounded-circle bg-primary bg-opacity-10 p-3">
-                            <i class="bi bi-cpu text-primary" style="font-size: 1.5rem;"></i>
-                        </div>
-                    </div>
-                    <div class="flex-grow-1 ms-3">
-                        <h6 class="text-muted mb-1">CPU Usage</h6>
-                        <h3 class="mb-0">{{ system_info.cpu_percent }}%</h3>
-                        <div class="progress mt-2" style="height: 4px;">
-                            <div class="progress-bar bg-primary" style="width: {{ system_info.cpu_percent }}%"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+<!-- Stats Grid -->
+<div class="w11-stats-grid">
+    <div class="w11-stat-card">
+        <div class="w11-stat-icon" style="background: rgba(0, 120, 212, 0.1); color: var(--w11-accent);">
+            <i class="bi bi-cpu"></i>
         </div>
+        <div class="w11-stat-value">{{ system_info.cpu_percent }}%</div>
+        <div class="w11-stat-label">CPU Usage</div>
+        <svg class="w11-progress-ring">
+            <circle class="w11-progress-bg" cx="30" cy="30" r="25"></circle>
+            <circle class="w11-progress-fg" cx="30" cy="30" r="25" 
+                    style="stroke-dashoffset: {{ 157 - (157 * system_info.cpu_percent / 100) }};"></circle>
+        </svg>
     </div>
-    
-    <div class="col-xl-3 col-md-6">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="flex-shrink-0">
-                        <div class="rounded-circle bg-success bg-opacity-10 p-3">
-                            <i class="bi bi-memory text-success" style="font-size: 1.5rem;"></i>
-                        </div>
-                    </div>
-                    <div class="flex-grow-1 ms-3">
-                        <h6 class="text-muted mb-1">Memory Usage</h6>
-                        <h3 class="mb-0">{{ system_info.memory_percent }}%</h3>
-                        <div class="progress mt-2" style="height: 4px;">
-                            <div class="progress-bar bg-success" style="width: {{ system_info.memory_percent }}%"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+
+    <div class="w11-stat-card">
+        <div class="w11-stat-icon" style="background: rgba(16, 124, 16, 0.1); color: #107c10;">
+            <i class="bi bi-memory"></i>
         </div>
+        <div class="w11-stat-value">{{ system_info.memory_percent }}%</div>
+        <div class="w11-stat-label">Memory Usage</div>
+        <svg class="w11-progress-ring">
+            <circle class="w11-progress-bg" cx="30" cy="30" r="25"></circle>
+            <circle class="w11-progress-fg" cx="30" cy="30" r="25" 
+                    style="stroke: #107c10; stroke-dashoffset: {{ 157 - (157 * system_info.memory_percent / 100) }};"></circle>
+        </svg>
     </div>
-    
-    <div class="col-xl-3 col-md-6">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="flex-shrink-0">
-                        <div class="rounded-circle bg-warning bg-opacity-10 p-3">
-                            <i class="bi bi-hdd text-warning" style="font-size: 1.5rem;"></i>
-                        </div>
-                    </div>
-                    <div class="flex-grow-1 ms-3">
-                        <h6 class="text-muted mb-1">Disk Usage</h6>
-                        <h3 class="mb-0">{{ system_info.disk_percent }}%</h3>
-                        <div class="progress mt-2" style="height: 4px;">
-                            <div class="progress-bar bg-warning" style="width: {{ system_info.disk_percent }}%"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+
+    <div class="w11-stat-card">
+        <div class="w11-stat-icon" style="background: rgba(255, 185, 0, 0.1); color: #ffb900;">
+            <i class="bi bi-hdd"></i>
         </div>
+        <div class="w11-stat-value">{{ system_info.disk_percent }}%</div>
+        <div class="w11-stat-label">Disk Usage</div>
+        <svg class="w11-progress-ring">
+            <circle class="w11-progress-bg" cx="30" cy="30" r="25"></circle>
+            <circle class="w11-progress-fg" cx="30" cy="30" r="25" 
+                    style="stroke: #ffb900; stroke-dashoffset: {{ 157 - (157 * system_info.disk_percent / 100) }};"></circle>
+        </svg>
     </div>
-    
-    <div class="col-xl-3 col-md-6">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="flex-shrink-0">
-                        <div class="rounded-circle bg-info bg-opacity-10 p-3">
-                            <i class="bi bi-activity text-info" style="font-size: 1.5rem;"></i>
-                        </div>
-                    </div>
-                    <div class="flex-grow-1 ms-3">
-                        <h6 class="text-muted mb-1">Active Sessions</h6>
-                        <h3 class="mb-0">{{ sessions_info.active }}</h3>
-                        <p class="text-muted small mb-0">{{ sessions_info.total }} total</p>
-                    </div>
-                </div>
-            </div>
+
+    <div class="w11-stat-card">
+        <div class="w11-stat-icon" style="background: rgba(0, 130, 114, 0.1); color: #008272;">
+            <i class="bi bi-activity"></i>
+        </div>
+        <div class="w11-stat-value">{{ sessions_info.active }}</div>
+        <div class="w11-stat-label">Active Sessions</div>
+        <div style="position: absolute; top: 24px; right: 24px; font-size: 12px; color: var(--w11-text-secondary);">
+            {{ sessions_info.total }} total
         </div>
     </div>
 </div>
 
-<!-- Main Content Row -->
-<div class="row g-4">
+<!-- Quick Actions -->
+<div class="w11-section-title">
+    <i class="bi bi-lightning-fill"></i>
+    Quick Actions
+</div>
+
+<div class="w11-quick-actions">
+    <a href="{{ url_for('terminal.new') }}" class="w11-action-btn">
+        <div class="w11-action-icon" style="background: var(--w11-accent);">
+            <i class="bi bi-terminal"></i>
+        </div>
+        <div>
+            <div style="font-weight: 600; margin-bottom: 4px;">New Terminal</div>
+            <div style="font-size: 12px; color: var(--w11-text-secondary);">Launch terminal session</div>
+        </div>
+    </a>
+
+    <a href="{{ url_for('modules.shop') }}" class="w11-action-btn">
+        <div class="w11-action-icon" style="background: #107c10;">
+            <i class="bi bi-cloud-download"></i>
+        </div>
+        <div>
+            <div style="font-weight: 600; margin-bottom: 4px;">Module Shop</div>
+            <div style="font-size: 12px; color: var(--w11-text-secondary);">Browse modules</div>
+        </div>
+    </a>
+
+    <a href="{{ url_for('sessions.index') }}" class="w11-action-btn">
+        <div class="w11-action-icon" style="background: #008272;">
+            <i class="bi bi-layers"></i>
+        </div>
+        <div>
+            <div style="font-weight: 600; margin-bottom: 4px;">Sessions</div>
+            <div style="font-size: 12px; color: var(--w11-text-secondary);">Manage sessions</div>
+        </div>
+    </a>
+
+    <a href="{{ url_for('gui.index') }}" class="w11-action-btn">
+        <div class="w11-action-icon" style="background: #8a00b3;">
+            <i class="bi bi-display"></i>
+        </div>
+        <div>
+            <div style="font-weight: 600; margin-bottom: 4px;">GUI Apps</div>
+            <div style="font-size: 12px; color: var(--w11-text-secondary);">Launch GUI applications</div>
+        </div>
+    </a>
+
+    <a href="{{ url_for('core.system_info') }}" class="w11-action-btn">
+        <div class="w11-action-icon" style="background: #c42b1c;">
+            <i class="bi bi-info-circle"></i>
+        </div>
+        <div>
+            <div style="font-weight: 600; margin-bottom: 4px;">System Info</div>
+            <div style="font-size: 12px; color: var(--w11-text-secondary);">View system details</div>
+        </div>
+    </a>
+
+    {% if current_user.is_admin() %}
+    <a href="{{ url_for('admin.index') }}" class="w11-action-btn">
+        <div class="w11-action-icon" style="background: #d92c2c;">
+            <i class="bi bi-gear"></i>
+        </div>
+        <div>
+            <div style="font-weight: 600; margin-bottom: 4px;">Admin Panel</div>
+            <div style="font-size: 12px; color: var(--w11-text-secondary);">System administration</div>
+        </div>
+    </a>
+    {% endif %}
+</div>
+
+<!-- Information Grid -->
+<div class="w11-info-grid">
     <!-- Modules Overview -->
-    <div class="col-lg-4">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-header bg-transparent border-0 pb-0">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 fw-semibold">Modules Overview</h5>
-                    <a href="{{ url_for('modules.index') }}" class="btn btn-sm btn-outline-primary">
-                        View All
-                    </a>
+    <div class="card w11-table-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-puzzle me-2"></i>Modules Overview
+            </h5>
+            <a href="{{ url_for('modules.index') }}" class="btn btn-sm btn-primary">
+                View All
+            </a>
+        </div>
+        <div class="card-body">
+            <div class="row text-center mb-4">
+                <div class="col-4">
+                    <div style="font-size: 24px; font-weight: 600; color: var(--w11-accent);">{{ modules_info.total }}</div>
+                    <div style="font-size: 12px; color: var(--w11-text-secondary);">Total</div>
+                </div>
+                <div class="col-4">
+                    <div style="font-size: 24px; font-weight: 600; color: #107c10;">{{ modules_info.installed }}</div>
+                    <div style="font-size: 12px; color: var(--w11-text-secondary);">Installed</div>
+                </div>
+                <div class="col-4">
+                    <div style="font-size: 24px; font-weight: 600; color: #ffb900;">{{ modules_info.available }}</div>
+                    <div style="font-size: 12px; color: var(--w11-text-secondary);">Available</div>
                 </div>
             </div>
-            <div class="card-body">
-                <div class="row text-center mb-4">
-                    <div class="col-4">
-                        <h4 class="mb-1 fw-bold text-primary">{{ modules_info.total }}</h4>
-                        <small class="text-muted">Total</small>
-                    </div>
-                    <div class="col-4">
-                        <h4 class="mb-1 fw-bold text-success">{{ modules_info.installed }}</h4>
-                        <small class="text-muted">Installed</small>
-                    </div>
-                    <div class="col-4">
-                        <h4 class="mb-1 fw-bold text-warning">{{ modules_info.available }}</h4>
-                        <small class="text-muted">Available</small>
-                    </div>
-                </div>
-                
-                <h6 class="text-muted mb-3">Categories</h6>
-                <div class="list-group list-group-flush">
-                    {% for category in modules_info.categories[:5] %}
-                    <a href="{{ url_for('modules.category', name=category.name) }}" 
-                       class="list-group-item list-group-item-action border-0 px-0 py-2 d-flex justify-content-between align-items-center">
-                        <span>{{ category.name }}</span>
-                        <span class="badge bg-primary rounded-pill">{{ category.count }}</span>
-                    </a>
-                    {% else %}
-                    <p class="text-muted text-center">No modules found</p>
-                    {% endfor %}
-                </div>
+            
+            <h6 style="color: var(--w11-text-secondary); margin-bottom: 16px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Categories</h6>
+            <div class="list-group list-group-flush">
+                {% for category in modules_info.categories[:5] %}
+                <a href="{{ url_for('modules.category', name=category.name) }}" 
+                   class="list-group-item list-group-item-action border-0 px-0 py-2 d-flex justify-content-between align-items-center"
+                   style="background: transparent;">
+                    <span>{{ category.name }}</span>
+                    <span class="badge" style="background: var(--w11-accent); color: white; border-radius: var(--w11-radius-large);">{{ category.count }}</span>
+                </a>
+                {% else %}
+                <p style="color: var(--w11-text-secondary); text-align: center;">No modules found</p>
+                {% endfor %}
             </div>
         </div>
     </div>
     
     <!-- Recent Sessions -->
-    <div class="col-lg-4">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-header bg-transparent border-0 pb-0">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 fw-semibold">Recent Sessions</h5>
-                    <a href="{{ url_for('sessions.index') }}" class="btn btn-sm btn-outline-info">
-                        View All
-                    </a>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="list-group list-group-flush">
-                    {% for session in sessions_info.recent[:5] %}
-                    <a href="{{ url_for('sessions.view', session_id=session.session_id) }}"
-                       class="list-group-item list-group-item-action border-0 px-0 py-3">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <h6 class="mb-1">{{ session.name }}</h6>
-                                <p class="text-muted small mb-0">
-                                    <i class="bi bi-clock me-1"></i>
-                                    {{ session.last_activity.strftime('%Y-%m-%d %H:%M') }}
-                                </p>
-                            </div>
-                            <span class="badge bg-{{ 'success' if session.active else 'secondary' }}">
-                                {{ 'Active' if session.active else 'Inactive' }}
-                            </span>
-                        </div>
-                    </a>
-                    {% else %}
-                    <p class="text-muted text-center py-3">No sessions yet</p>
-                    {% endfor %}
-                </div>
-            </div>
+    <div class="card w11-table-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-clock-history me-2"></i>Recent Sessions
+            </h5>
+            <a href="{{ url_for('sessions.index') }}" class="btn btn-sm btn-primary">
+                View All
+            </a>
         </div>
-    </div>
-    
-    <!-- Quick Actions -->
-    <div class="col-lg-4">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-header bg-transparent border-0 pb-0">
-                <h5 class="mb-0 fw-semibold">Quick Actions</h5>
-            </div>
-            <div class="card-body">
-                <div class="d-grid gap-2">
-                    <a href="{{ url_for('terminal.new') }}" class="btn btn-primary">
-                        <i class="bi bi-terminal me-2"></i> New Terminal Session
-                    </a>
-                    <a href="{{ url_for('modules.shop') }}" class="btn btn-success">
-                        <i class="bi bi-cloud-download me-2"></i> Browse Module Shop
-                    </a>
-                    <a href="{{ url_for('sessions.index') }}" class="btn btn-info">
-                        <i class="bi bi-layers me-2"></i> Manage Sessions
-                    </a>
-                    <a href="{{ url_for('core.system_info') }}" class="btn btn-warning">
-                        <i class="bi bi-info-circle me-2"></i> System Information
-                    </a>
-                    {% if current_user.is_admin() %}
-                    <a href="{{ url_for('admin.index') }}" class="btn btn-danger">
-                        <i class="bi bi-gear me-2"></i> Admin Panel
-                    </a>
-                    {% endif %}
-                </div>
+        <div class="card-body">
+            <div class="list-group list-group-flush">
+                {% for session in sessions_info.recent[:5] %}
+                <a href="{{ url_for('sessions.view', session_id=session.session_id) }}"
+                   class="list-group-item list-group-item-action border-0 px-0 py-3"
+                   style="background: transparent;">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="mb-1" style="font-size: 14px; font-weight: 600;">{{ session.name }}</h6>
+                            <p class="mb-0" style="font-size: 12px; color: var(--w11-text-secondary);">
+                                <i class="bi bi-clock me-1"></i>
+                                {{ session.last_activity.strftime('%Y-%m-%d %H:%M') }}
+                            </p>
+                        </div>
+                        <span class="badge" style="background: {% if session.active %}#107c10{% else %}var(--w11-text-secondary){% endif %}; color: white; border-radius: var(--w11-radius-large);">
+                            {{ 'Active' if session.active else 'Inactive' }}
+                        </span>
+                    </div>
+                </a>
+                {% else %}
+                <p style="color: var(--w11-text-secondary); text-align: center; padding: 24px;">No sessions yet</p>
+                {% endfor %}
             </div>
         </div>
     </div>
 </div>
 
 <!-- System Information -->
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-transparent border-0">
-                <h5 class="mb-0 fw-semibold">System Information</h5>
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="bi bi-info-circle me-2"></i>System Information
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <table class="table table-borderless">
+                    <tr>
+                        <td style="color: var(--w11-text-secondary); width: 140px;">Hostname:</td>
+                        <td style="font-weight: 500;">{{ system_info.hostname }}</td>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--w11-text-secondary);">Platform:</td>
+                        <td style="font-weight: 500;">{{ system_info.platform }}</td>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--w11-text-secondary);">Python Version:</td>
+                        <td style="font-weight: 500;">{{ system_info.python_version }}</td>
+                    </tr>
+                </table>
             </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <table class="table table-sm table-borderless">
-                            <tr>
-                                <td class="text-muted">Hostname:</td>
-                                <td class="fw-semibold">{{ system_info.hostname }}</td>
-                            </tr>
-                            <tr>
-                                <td class="text-muted">Platform:</td>
-                                <td class="fw-semibold">{{ system_info.platform }}</td>
-                            </tr>
-                            <tr>
-                                <td class="text-muted">Python Version:</td>
-                                <td class="fw-semibold">{{ system_info.python_version }}</td>
-                            </tr>
-                        </table>
-                    </div>
-                    <div class="col-md-6">
-                        <table class="table table-sm table-borderless">
-                            <tr>
-                                <td class="text-muted">Total Modules:</td>
-                                <td class="fw-semibold">{{ modules_info.total }}</td>
-                            </tr>
-                            <tr>
-                                <td class="text-muted">Active Sessions:</td>
-                                <td class="fw-semibold">{{ sessions_info.active }}</td>
-                            </tr>
-                            <tr>
-                                <td class="text-muted">Total Sessions:</td>
-                                <td class="fw-semibold">{{ sessions_info.total }}</td>
-                            </tr>
-                        </table>
-                    </div>
-                </div>
+            <div class="col-md-6">
+                <table class="table table-borderless">
+                    <tr>
+                        <td style="color: var(--w11-text-secondary); width: 140px;">Total Modules:</td>
+                        <td style="font-weight: 500;">{{ modules_info.total }}</td>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--w11-text-secondary);">Active Sessions:</td>
+                        <td style="font-weight: 500;">{{ sessions_info.active }}</td>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--w11-text-secondary);">Total Sessions:</td>
+                        <td style="font-weight: 500;">{{ sessions_info.total }}</td>
+                    </tr>
+                </table>
             </div>
         </div>
     </div>
@@ -268,12 +448,27 @@
 <script>
 // Add current date
 document.addEventListener('DOMContentLoaded', function() {
-    const dateElement = document.querySelector('.text-end .text-muted');
-    if (dateElement) {
-        const now = new Date();
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        dateElement.textContent = now.toLocaleDateString('en-US', options);
-    }
+    // Animate progress rings
+    const progressRings = document.querySelectorAll('.w11-progress-fg');
+    progressRings.forEach(ring => {
+        const dashoffset = ring.style.strokeDashoffset;
+        ring.style.strokeDashoffset = '157';
+        setTimeout(() => {
+            ring.style.strokeDashoffset = dashoffset;
+        }, 500);
+    });
+    
+    // Add hover effects to stats cards
+    const statCards = document.querySelectorAll('.w11-stat-card');
+    statCards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-4px) scale(1.02)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0) scale(1)';
+        });
+    });
 });
 </script>
 {% endblock %}

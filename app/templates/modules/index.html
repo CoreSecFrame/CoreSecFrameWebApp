@@ -1,111 +1,411 @@
-<!-- app/templates/modules/index.html - Professional Enhancement -->
+<!-- app/templates/modules/index.html - Windows 11 Style -->
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+    .w11-modules-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+    }
+
+    .w11-search-section {
+        background: var(--w11-card-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--w11-card-stroke);
+        border-radius: var(--w11-radius-large);
+        padding: 24px;
+        margin-bottom: 32px;
+    }
+
+    .w11-search-input {
+        background: var(--w11-bg-primary);
+        border: 1px solid var(--w11-surface-stroke);
+        border-radius: var(--w11-radius-medium);
+        padding: 12px 16px;
+        font-size: 14px;
+        transition: all var(--w11-duration-fast) var(--w11-ease-standard);
+        width: 100%;
+    }
+
+    .w11-search-input:focus {
+        border-color: var(--w11-accent);
+        box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
+        outline: none;
+    }
+
+    .w11-sidebar {
+        background: var(--w11-card-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--w11-card-stroke);
+        border-radius: var(--w11-radius-large);
+        padding: 0;
+        position: sticky;
+        top: 20px;
+    }
+
+    .w11-sidebar-header {
+        background: var(--w11-bg-secondary);
+        border-bottom: 1px solid var(--w11-surface-stroke);
+        border-radius: var(--w11-radius-large) var(--w11-radius-large) 0 0;
+        padding: 20px 24px;
+        font-weight: 600;
+        font-size: 16px;
+    }
+
+    .w11-category-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .w11-category-item {
+        border-bottom: 1px solid var(--w11-surface-stroke);
+    }
+
+    .w11-category-item:last-child {
+        border-bottom: none;
+    }
+
+    .w11-category-link {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 24px;
+        color: var(--w11-text-primary);
+        text-decoration: none;
+        transition: all var(--w11-duration-fast) var(--w11-ease-standard);
+    }
+
+    .w11-category-link:hover {
+        background: var(--w11-bg-secondary);
+        color: var(--w11-text-primary);
+        text-decoration: none;
+    }
+
+    .w11-category-link.active {
+        background: rgba(0, 120, 212, 0.1);
+        color: var(--w11-accent);
+        border-right: 3px solid var(--w11-accent);
+    }
+
+    .w11-category-badge {
+        background: var(--w11-accent);
+        color: white;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 4px 8px;
+        border-radius: var(--w11-radius-large);
+    }
+
+    .w11-stats-section {
+        background: var(--w11-bg-tertiary);
+        border-top: 1px solid var(--w11-surface-stroke);
+        padding: 24px;
+        border-radius: 0 0 var(--w11-radius-large) var(--w11-radius-large);
+    }
+
+    .w11-stats-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        text-align: center;
+    }
+
+    .w11-stat-item {
+        padding: 16px 8px;
+    }
+
+    .w11-stat-value {
+        font-size: 24px;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+
+    .w11-stat-label {
+        font-size: 12px;
+        color: var(--w11-text-secondary);
+    }
+
+    .w11-modules-grid {
+        background: var(--w11-card-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--w11-card-stroke);
+        border-radius: var(--w11-radius-large);
+    }
+
+    .w11-modules-header-section {
+        background: var(--w11-bg-secondary);
+        border-bottom: 1px solid var(--w11-surface-stroke);
+        border-radius: var(--w11-radius-large) var(--w11-radius-large) 0 0;
+        padding: 20px 24px;
+        font-weight: 600;
+        font-size: 16px;
+    }
+
+    .w11-modules-table {
+        margin: 0;
+        background: transparent;
+    }
+
+    .w11-module-row {
+        border-bottom: 1px solid var(--w11-surface-stroke);
+        transition: background var(--w11-duration-fast) var(--w11-ease-standard);
+    }
+
+    .w11-module-row:hover {
+        background: var(--w11-bg-secondary);
+    }
+
+    .w11-module-row:last-child {
+        border-bottom: none;
+    }
+
+    .w11-module-cell {
+        padding: 20px 24px;
+        vertical-align: middle;
+        border: none;
+    }
+
+    .w11-module-name {
+        font-weight: 600;
+        color: var(--w11-text-primary);
+        margin-bottom: 0;
+    }
+
+    .w11-module-category {
+        display: inline-block;
+        background: var(--w11-accent);
+        color: white;
+        padding: 4px 12px;
+        border-radius: var(--w11-radius-large);
+        font-size: 12px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all var(--w11-duration-fast) var(--w11-ease-standard);
+    }
+
+    .w11-module-category:hover {
+        background: var(--w11-accent-light1);
+        color: white;
+        text-decoration: none;
+        transform: scale(1.05);
+    }
+
+    .w11-module-status {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 12px;
+        border-radius: var(--w11-radius-large);
+        font-size: 12px;
+        font-weight: 600;
+        gap: 6px;
+    }
+
+    .w11-module-status.installed {
+        background: rgba(16, 124, 16, 0.1);
+        color: #107c10;
+    }
+
+    .w11-module-status.not-installed {
+        background: rgba(108, 117, 125, 0.1);
+        color: #6c757d;
+    }
+
+    .w11-module-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+    }
+
+    .w11-module-btn {
+        padding: 8px 16px;
+        border-radius: var(--w11-radius-medium);
+        border: 1px solid var(--w11-surface-stroke);
+        background: var(--w11-bg-primary);
+        color: var(--w11-text-primary);
+        font-size: 12px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all var(--w11-duration-fast) var(--w11-ease-standard);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .w11-module-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--w11-shadow-4);
+        color: var(--w11-text-primary);
+        text-decoration: none;
+    }
+
+    .w11-module-btn.primary {
+        background: var(--w11-accent);
+        border-color: var(--w11-accent);
+        color: white;
+    }
+
+    .w11-module-btn.primary:hover {
+        background: var(--w11-accent-light1);
+        border-color: var(--w11-accent-light1);
+        color: white;
+    }
+
+    .w11-module-btn.success {
+        background: #107c10;
+        border-color: #107c10;
+        color: white;
+    }
+
+    .w11-module-btn.success:hover {
+        background: #0e6b0e;
+        border-color: #0e6b0e;
+        color: white;
+    }
+
+    .w11-empty-state {
+        text-align: center;
+        padding: 80px 40px;
+        color: var(--w11-text-secondary);
+    }
+
+    .w11-empty-icon {
+        font-size: 64px;
+        margin-bottom: 24px;
+        color: var(--w11-text-disabled);
+    }
+
+    .w11-empty-title {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 12px;
+        color: var(--w11-text-primary);
+    }
+
+    .w11-empty-description {
+        font-size: 14px;
+        margin-bottom: 32px;
+    }
+
+    .w11-search-badge {
+        background: rgba(0, 120, 212, 0.1);
+        color: var(--w11-accent);
+        padding: 4px 12px;
+        border-radius: var(--w11-radius-large);
+        font-size: 12px;
+        font-weight: 600;
+        margin-left: 12px;
+    }
+</style>
+
 <!-- Page Header -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h1 class="h2 fw-bold mb-1">Security Modules</h1>
-                <p class="text-muted mb-0">Manage and configure your security tools</p>
-            </div>
-            <div class="btn-group" role="group">
-                <a href="{{ url_for('modules.cleanup') }}" class="btn btn-outline-warning" title="Clean up database">
-                    <i class="bi bi-tools"></i> Cleanup
-                </a>
-                <a href="{{ url_for('modules.scan') }}" class="btn btn-outline-primary">
-                    <i class="bi bi-arrow-repeat"></i> Scan Local
-                </a>
-                <a href="{{ url_for('modules.shop') }}" class="btn btn-success">
-                    <i class="bi bi-cloud-download"></i> Module Shop
-                </a>
-            </div>
-        </div>
+<div class="w11-modules-header">
+    <div>
+        <h1 style="font-size: 28px; font-weight: 400; margin-bottom: 4px;">Security Modules</h1>
+        <p style="font-size: 14px; color: var(--w11-text-secondary); margin-bottom: 0;">Manage and configure your security tools</p>
+    </div>
+    <div class="btn-group" role="group">
+        <a href="{{ url_for('modules.cleanup') }}" class="btn btn-outline-warning" title="Clean up database">
+            <i class="bi bi-tools me-1"></i> Cleanup
+        </a>
+        <a href="{{ url_for('modules.scan') }}" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-repeat me-1"></i> Scan Local
+        </a>
+        <a href="{{ url_for('modules.shop') }}" class="btn btn-success">
+            <i class="bi bi-cloud-download me-1"></i> Module Shop
+        </a>
     </div>
 </div>
 
-<!-- Search Bar -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <form action="{{ url_for('modules.search') }}" method="get">
-                    <div class="input-group">
-                        <span class="input-group-text bg-transparent border-end-0">
-                            <i class="bi bi-search"></i>
-                        </span>
-                        <input type="text" name="q" class="form-control border-start-0 ps-0"
-                               placeholder="Search modules by name, description or category..."
-                               value="{{ search_query|default('') }}">
-                        <button type="submit" class="btn btn-primary">Search</button>
-                        {% if search_query %}
-                        <a href="{{ url_for('modules.index') }}" class="btn btn-outline-secondary">
-                            <i class="bi bi-x-circle"></i> Clear
-                        </a>
-                        {% endif %}
-                    </div>
-                </form>
-                
-                {% if search_query %}
-                <div class="mt-3">
-                    <p class="mb-0">
-                        <i class="bi bi-info-circle text-primary"></i>
-                        Showing results for: <strong>{{ search_query }}</strong>
-                        <span class="badge bg-primary ms-2">{{ modules|length }} result{{ 's' if modules|length != 1 }}</span>
-                    </p>
+<!-- Search Section -->
+<div class="w11-search-section">
+    <form action="{{ url_for('modules.search') }}" method="get">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <div class="input-group">
+                    <span class="input-group-text" style="background: var(--w11-bg-primary); border: 1px solid var(--w11-surface-stroke); border-right: none;">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" name="q" class="w11-search-input" style="border-left: none;"
+                           placeholder="Search modules by name, description or category..."
+                           value="{{ search_query|default('') }}">
                 </div>
-                {% endif %}
+            </div>
+            <div class="col-md-4">
+                <div class="d-flex gap-8px">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search me-1"></i> Search
+                    </button>
+                    {% if search_query %}
+                    <a href="{{ url_for('modules.index') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle me-1"></i> Clear
+                    </a>
+                    {% endif %}
+                </div>
             </div>
         </div>
-    </div>
+        
+        {% if search_query %}
+        <div class="mt-3">
+            <span style="color: var(--w11-text-secondary);">
+                <i class="bi bi-info-circle me-1"></i>
+                Showing results for: <strong>{{ search_query }}</strong>
+            </span>
+            <span class="w11-search-badge">{{ modules|length }} result{{ 's' if modules|length != 1 }}</span>
+        </div>
+        {% endif %}
+    </form>
 </div>
 
 <div class="row g-4">
     <!-- Categories Sidebar -->
     <div class="col-lg-3">
-        <div class="card border-0 shadow-sm sticky-top" style="top: 1rem;">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0 fw-semibold">
-                    <i class="bi bi-folder2 me-2"></i>Categories
-                </h5>
+        <div class="w11-sidebar">
+            <div class="w11-sidebar-header">
+                <i class="bi bi-folder2 me-2"></i>Categories
             </div>
-            <div class="list-group list-group-flush">
-                <a href="{{ url_for('modules.index') }}"
-                   class="list-group-item list-group-item-action d-flex justify-content-between align-items-center {% if not request.endpoint == 'modules.category' %}active{% endif %}">
-                    <span>All Modules</span>
-                    <span class="badge bg-primary rounded-pill">{{ total_modules }}</span>
-                </a>
+            <ul class="w11-category-list">
+                <li class="w11-category-item">
+                    <a href="{{ url_for('modules.index') }}" 
+                       class="w11-category-link {% if not request.endpoint == 'modules.category' %}active{% endif %}">
+                        <span>All Modules</span>
+                        <span class="w11-category-badge">{{ total_modules }}</span>
+                    </a>
+                </li>
                 {% for category in categories %}
-                <a href="{{ url_for('modules.category', name=category.name) }}"
-                   class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                    <span>{{ category.name }}</span>
-                    <span class="badge bg-primary rounded-pill">
-                        {{ modules|selectattr('category', 'equalto', category.name)|list|length }}
-                    </span>
-                </a>
+                <li class="w11-category-item">
+                    <a href="{{ url_for('modules.category', name=category.name) }}"
+                       class="w11-category-link">
+                        <span>{{ category.name }}</span>
+                        <span class="w11-category-badge">
+                            {{ modules|selectattr('category', 'equalto', category.name)|list|length }}
+                        </span>
+                    </a>
+                </li>
                 {% endfor %}
-            </div>
+            </ul>
             
-            <!-- Statistics Card -->
-            <div class="card-body border-top">
-                <h6 class="text-muted mb-3">Statistics</h6>
-                <div class="row text-center">
-                    <div class="col-6 mb-3">
-                        <h4 class="mb-0 text-primary">{{ total_modules }}</h4>
-                        <small class="text-muted">Total</small>
+            <!-- Statistics Section -->
+            <div class="w11-stats-section">
+                <h6 style="color: var(--w11-text-secondary); margin-bottom: 16px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Statistics</h6>
+                <div class="w11-stats-grid">
+                    <div class="w11-stat-item">
+                        <div class="w11-stat-value" style="color: var(--w11-accent);">{{ total_modules }}</div>
+                        <div class="w11-stat-label">Total</div>
                     </div>
-                    <div class="col-6 mb-3">
-                        <h4 class="mb-0 text-success">{{ installed_modules }}</h4>
-                        <small class="text-muted">Installed</small>
+                    <div class="w11-stat-item">
+                        <div class="w11-stat-value" style="color: #107c10;">{{ installed_modules }}</div>
+                        <div class="w11-stat-label">Installed</div>
                     </div>
-                    <div class="col-6">
-                        <h4 class="mb-0 text-warning">{{ categories|length }}</h4>
-                        <small class="text-muted">Categories</small>
+                    <div class="w11-stat-item">
+                        <div class="w11-stat-value" style="color: #ffb900;">{{ categories|length }}</div>
+                        <div class="w11-stat-label">Categories</div>
                     </div>
-                    <div class="col-6">
-                        <h4 class="mb-0 text-info">{{ total_modules - installed_modules }}</h4>
-                        <small class="text-muted">Available</small>
+                    <div class="w11-stat-item">
+                        <div class="w11-stat-value" style="color: #008272;">{{ total_modules - installed_modules }}</div>
+                        <div class="w11-stat-label">Available</div>
                     </div>
                 </div>
             </div>
@@ -114,90 +414,91 @@
     
     <!-- Modules Grid -->
     <div class="col-lg-9">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-transparent border-0">
-                <h5 class="mb-0 fw-semibold">Available Modules</h5>
-            </div>
-            <div class="card-body p-0">
-                {% if modules %}
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th width="200">Module</th>
-                                <th width="150">Category</th>
-                                <th>Description</th>
-                                <th width="100" class="text-center">Status</th>
-                                <th width="200" class="text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for module in modules %}
-                            <tr class="align-middle">
-                                <td>
-                                    <strong>{{ module.name }}</strong>
-                                </td>
-                                <td>
-                                    <a href="{{ url_for('modules.category', name=module.category) }}"
-                                       class="badge bg-primary text-decoration-none">
-                                        {{ module.category }}
-                                    </a>
-                                </td>
-                                <td>
-                                    <span class="text-muted">{{ module.description|truncate(80) }}</span>
-                                </td>
-                                <td class="text-center">
-                                    {% if module.installed %}
-                                    <span class="badge bg-success">
-                                        <i class="bi bi-check-circle me-1"></i>Installed
-                                    </span>
-                                    {% else %}
-                                    <span class="badge bg-secondary">
-                                        <i class="bi bi-download me-1"></i>Not Installed
-                                    </span>
-                                    {% endif %}
-                                </td>
-                                <td class="text-center">
-                                    <div class="btn-group btn-group-sm" role="group">
-                                        <a href="{{ url_for('modules.view', id=module.id) }}"
-                                           class="btn btn-outline-primary">
-                                            <i class="bi bi-info-circle"></i> Details
-                                        </a>
-                                        {% if module.installed %}
-                                        <a href="{{ url_for('terminal.new') }}?module={{ module.name }}"
-                                           class="btn btn-outline-success">
-                                            <i class="bi bi-play-circle"></i> Run
-                                        </a>
-                                        {% endif %}
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <div class="text-center py-5">
-                    <i class="bi bi-inbox display-1 text-muted"></i>
-                    <h4 class="mt-3">No modules found</h4>
-                    <p class="text-muted">
-                        {% if search_query %}
-                        Try adjusting your search criteria
-                        {% else %}
-                        Start by scanning for local modules or visiting the module shop
-                        {% endif %}
-                    </p>
-                    <div class="mt-4">
-                        <a href="{{ url_for('modules.scan') }}" class="btn btn-primary me-2">
-                            <i class="bi bi-arrow-repeat"></i> Scan for Modules
-                        </a>
-                        <a href="{{ url_for('modules.shop') }}" class="btn btn-success">
-                            <i class="bi bi-cloud-download"></i> Browse Shop
-                        </a>
-                    </div>
-                </div>
+        <div class="w11-modules-grid">
+            <div class="w11-modules-header-section">
+                Available Modules
+                {% if search_query or current_category %}
+                <span class="w11-search-badge">Filtered</span>
                 {% endif %}
             </div>
+            
+            {% if modules %}
+            <table class="table w11-modules-table">
+                <thead>
+                    <tr style="background: var(--w11-bg-tertiary);">
+                        <th class="w11-module-cell" style="font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--w11-text-secondary); width: 200px;">Module</th>
+                        <th class="w11-module-cell" style="font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--w11-text-secondary); width: 150px;">Category</th>
+                        <th class="w11-module-cell" style="font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--w11-text-secondary);">Description</th>
+                        <th class="w11-module-cell text-center" style="font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--w11-text-secondary); width: 100px;">Status</th>
+                        <th class="w11-module-cell text-center" style="font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--w11-text-secondary); width: 200px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for module in modules %}
+                    <tr class="w11-module-row">
+                        <td class="w11-module-cell">
+                            <div class="w11-module-name">{{ module.name }}</div>
+                        </td>
+                        <td class="w11-module-cell">
+                            <a href="{{ url_for('modules.category', name=module.category) }}"
+                               class="w11-module-category">
+                                {{ module.category }}
+                            </a>
+                        </td>
+                        <td class="w11-module-cell">
+                            <span style="color: var(--w11-text-secondary);">{{ module.description|truncate(80) }}</span>
+                        </td>
+                        <td class="w11-module-cell text-center">
+                            {% if module.installed %}
+                            <span class="w11-module-status installed">
+                                <i class="bi bi-check-circle"></i>Installed
+                            </span>
+                            {% else %}
+                            <span class="w11-module-status not-installed">
+                                <i class="bi bi-download"></i>Not Installed
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="w11-module-cell">
+                            <div class="w11-module-actions">
+                                <a href="{{ url_for('modules.view', id=module.id) }}"
+                                   class="w11-module-btn primary">
+                                    <i class="bi bi-info-circle"></i> Details
+                                </a>
+                                {% if module.installed %}
+                                <a href="{{ url_for('terminal.new') }}?module={{ module.name }}"
+                                   class="w11-module-btn success">
+                                    <i class="bi bi-play-circle"></i> Run
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <!-- No Modules State -->
+            <div class="w11-empty-state">
+                <i class="bi bi-inbox w11-empty-icon"></i>
+                <h4 class="w11-empty-title">No modules found</h4>
+                <p class="w11-empty-description">
+                    {% if search_query %}
+                    Try adjusting your search criteria
+                    {% else %}
+                    Start by scanning for local modules or visiting the module shop
+                    {% endif %}
+                </p>
+                <div>
+                    <a href="{{ url_for('modules.scan') }}" class="btn btn-primary me-2">
+                        <i class="bi bi-arrow-repeat me-1"></i> Scan for Modules
+                    </a>
+                    <a href="{{ url_for('modules.shop') }}" class="btn btn-success">
+                        <i class="bi bi-cloud-download me-1"></i> Browse Shop
+                    </a>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
