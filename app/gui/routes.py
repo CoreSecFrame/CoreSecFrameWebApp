@@ -5,6 +5,119 @@ from app.gui.models import GUIApplication, GUISession, GUICategory, GUISessionLo
 from app.gui.manager import GUISessionManager
 from datetime import datetime
 import traceback
+import shutil # For _test_command_availability and _scan_system_applications
+import os # For _scan_system_applications
+
+# Module-level constant for default applications to scan
+DEFAULT_SCAN_APPLICATIONS = [
+    # Web Browsers
+    {
+        'name': 'firefox',
+        'display_name': 'Firefox',
+        'description': 'Mozilla Firefox web browser',
+        'command': 'firefox',
+        'category': 'browsers',
+        'icon_path': '/usr/share/pixmaps/firefox.png'
+    },
+    {
+        'name': 'chromium',
+        'display_name': 'Chromium',
+        'description': 'Open-source web browser',
+        'command': 'chromium-browser',
+        'category': 'browsers',
+        'icon_path': '/usr/share/pixmaps/chromium.png'
+    },
+    {
+        'name': 'google-chrome',
+        'display_name': 'Google Chrome',
+        'description': 'Google Chrome web browser',
+        'command': 'google-chrome',
+        'category': 'browsers',
+        'icon_path': '/usr/share/pixmaps/google-chrome.png'
+    },
+    
+    # Text Editors
+    {
+        'name': 'gedit',
+        'display_name': 'Text Editor (gedit)',
+        'description': 'GNOME text editor',
+        'command': 'gedit',
+        'category': 'editors',
+        'icon_path': '/usr/share/pixmaps/gedit.png'
+    },
+    {
+        'name': 'nano',
+        'display_name': 'Nano Editor',
+        'description': 'Simple text editor',
+        'command': 'nano',
+        'category': 'editors',
+        'icon_path': '/usr/share/pixmaps/nano.png'
+    },
+    {
+        'name': 'vim',
+        'display_name': 'Vim Editor',
+        'description': 'Vi improved text editor',
+        'command': 'gvim', # gvim is the GUI version
+        'category': 'editors',
+        'icon_path': '/usr/share/pixmaps/vim.png'
+    },
+    
+    # Terminals
+    {
+        'name': 'xterm',
+        'display_name': 'XTerm',
+        'description': 'Classic X terminal emulator',
+        'command': 'xterm',
+        'category': 'terminals',
+        'icon_path': '/usr/share/pixmaps/xterm.png'
+    },
+    {
+        'name': 'gnome-terminal',
+        'display_name': 'GNOME Terminal',
+        'description': 'GNOME terminal emulator',
+        'command': 'gnome-terminal',
+        'category': 'terminals',
+        'icon_path': '/usr/share/pixmaps/gnome-terminal.png'
+    },
+    
+    # Utilities
+    {
+        'name': 'calculator',
+        'display_name': 'Calculator',
+        'description': 'Desktop calculator',
+        'command': 'gnome-calculator', # Example, might vary (e.g., kcalc)
+        'category': 'utilities',
+        'icon_path': '/usr/share/pixmaps/calc.png' # Example path
+    },
+    {
+        'name': 'file-manager',
+        'display_name': 'File Manager',
+        'description': 'GNOME file manager', # Example, could be Dolphin, Thunar etc.
+        'command': 'nautilus', 
+        'category': 'utilities',
+        'icon_path': '/usr/share/pixmaps/nautilus.png' # Example path
+    },
+    
+    # Development
+    {
+        'name': 'code',
+        'display_name': 'Visual Studio Code',
+        'description': 'Code editor by Microsoft',
+        'command': 'code',
+        'category': 'development',
+        'icon_path': '/usr/share/pixmaps/code.png' # Example path
+    },
+    
+    # Multimedia
+    {
+        'name': 'vlc',
+        'display_name': 'VLC Media Player',
+        'description': 'Multimedia player',
+        'command': 'vlc',
+        'category': 'multimedia',
+        'icon_path': '/usr/share/pixmaps/vlc.png'
+    }
+]
 
 gui_bp = Blueprint('gui', __name__, url_prefix='/gui')
 
@@ -994,8 +1107,7 @@ def api_system_info():
 def _test_command_availability(command):
     """Test if a command is available on the system"""
     try:
-        import shutil
-        
+        # shutil is already imported at the module level
         # Extract the base command (first word)
         base_command = command.split()[0]
         
@@ -1007,134 +1119,27 @@ def _test_command_availability(command):
         return False
 
 def _scan_system_applications():
-    """Scan system for common GUI applications"""
+    """Scan system for common GUI applications using the module-level constant."""
     try:
-        import shutil
-        import os
+        # shutil and os are already imported at the module level
         
-        # Common GUI applications with their details
-        common_apps = [
-            # Web Browsers
-            {
-                'name': 'firefox',
-                'display_name': 'Firefox',
-                'description': 'Mozilla Firefox web browser',
-                'command': 'firefox',
-                'category': 'browsers',
-                'icon_path': '/usr/share/pixmaps/firefox.png'
-            },
-            {
-                'name': 'chromium',
-                'display_name': 'Chromium',
-                'description': 'Open-source web browser',
-                'command': 'chromium-browser',
-                'category': 'browsers',
-                'icon_path': '/usr/share/pixmaps/chromium.png'
-            },
-            {
-                'name': 'google-chrome',
-                'display_name': 'Google Chrome',
-                'description': 'Google Chrome web browser',
-                'command': 'google-chrome',
-                'category': 'browsers',
-                'icon_path': '/usr/share/pixmaps/google-chrome.png'
-            },
-            
-            # Text Editors
-            {
-                'name': 'gedit',
-                'display_name': 'Text Editor (gedit)',
-                'description': 'GNOME text editor',
-                'command': 'gedit',
-                'category': 'editors',
-                'icon_path': '/usr/share/pixmaps/gedit.png'
-            },
-            {
-                'name': 'nano',
-                'display_name': 'Nano Editor',
-                'description': 'Simple text editor',
-                'command': 'nano',
-                'category': 'editors',
-                'icon_path': '/usr/share/pixmaps/nano.png'
-            },
-            {
-                'name': 'vim',
-                'display_name': 'Vim Editor',
-                'description': 'Vi improved text editor',
-                'command': 'gvim',
-                'category': 'editors',
-                'icon_path': '/usr/share/pixmaps/vim.png'
-            },
-            
-            # Terminals
-            {
-                'name': 'xterm',
-                'display_name': 'XTerm',
-                'description': 'Classic X terminal emulator',
-                'command': 'xterm',
-                'category': 'terminals',
-                'icon_path': '/usr/share/pixmaps/xterm.png'
-            },
-            {
-                'name': 'gnome-terminal',
-                'display_name': 'GNOME Terminal',
-                'description': 'GNOME terminal emulator',
-                'command': 'gnome-terminal',
-                'category': 'terminals',
-                'icon_path': '/usr/share/pixmaps/gnome-terminal.png'
-            },
-            
-            # Utilities
-            {
-                'name': 'calculator',
-                'display_name': 'Calculator',
-                'description': 'Desktop calculator',
-                'command': 'gnome-calculator',
-                'category': 'utilities',
-                'icon_path': '/usr/share/pixmaps/calc.png'
-            },
-            {
-                'name': 'file-manager',
-                'display_name': 'File Manager',
-                'description': 'GNOME file manager',
-                'command': 'nautilus',
-                'category': 'utilities',
-                'icon_path': '/usr/share/pixmaps/nautilus.png'
-            },
-            
-            # Development
-            {
-                'name': 'code',
-                'display_name': 'Visual Studio Code',
-                'description': 'Code editor by Microsoft',
-                'command': 'code',
-                'category': 'development',
-                'icon_path': '/usr/share/pixmaps/code.png'
-            },
-            
-            # Multimedia
-            {
-                'name': 'vlc',
-                'display_name': 'VLC Media Player',
-                'description': 'Multimedia player',
-                'command': 'vlc',
-                'category': 'multimedia',
-                'icon_path': '/usr/share/pixmaps/vlc.png'
-            }
-        ]
+        # Use the module-level constant
+        common_apps_to_scan = DEFAULT_SCAN_APPLICATIONS
         
-        # Test each application and return only available ones
         available_apps = []
         
-        for app in common_apps:
+        for app_info in common_apps_to_scan: # Iterate over a copy or directly if not modifying
+            # Create a copy to avoid modifying the original constant list items
+            app = app_info.copy() 
+            
             if _test_command_availability(app['command']):
                 # Check if icon exists
-                if app['icon_path'] and not os.path.exists(app['icon_path']):
-                    app['icon_path'] = None
+                if app.get('icon_path') and not os.path.exists(app['icon_path']):
+                    app['icon_path'] = None  # Set to None if path is invalid
                 
                 available_apps.append(app)
         
-        current_app.logger.info(f"Scanned system: found {len(available_apps)} available GUI applications")
+        current_app.logger.info(f"Scanned system: found {len(available_apps)} available GUI applications from default list.")
         return available_apps
         
     except Exception as e:

@@ -18,7 +18,8 @@ def setup_module_paths():
     """Setup Python paths for module imports"""
     # Get the project root directory
     current_file = Path(__file__).resolve()
-    project_root = current_file.parent.parent.parent  # Go up to project root
+    # Assuming runner.py is in /app/modules/runner.py, traverse up three levels (runner.py -> modules -> app -> project_root)
+    project_root = current_file.parent.parent.parent 
     modules_dir = project_root / 'modules'
     
     # Add paths to sys.path if not already present
@@ -46,6 +47,7 @@ def find_module_class(module, module_name, verbose=False):
     Returns:
         tuple: (class_instance, class_name) or (None, None) if not found
     """
+    # Define common naming conventions for module classes (e.g., ModName, ModNameModule, ModNameTool)
     possible_class_names = [
         module_name,
         module_name.capitalize(),
@@ -77,7 +79,8 @@ def find_module_class(module, module_name, verbose=False):
                         print(f"Could not instantiate {class_name}: {e}")
                     continue
     
-    # If no exact match, look for any class that inherits from base classes
+    # Fallback: If no standard name matches, inspect all attributes in the module
+    # to find a compatible class based on required methods and naming hints.
     for attr_name in dir(module):
         if attr_name.startswith('_'):
             continue
@@ -133,7 +136,9 @@ def run_module(module_path, module_name, class_name, mode='guided', verbose=Fals
         # Import the module
         module = None
         
-        # Method 1: Try direct import using module path relative to project
+        # Method 1: Attempt direct import using importlib.import_module.
+        # This method works well for modules correctly structured within the 'modules' package 
+        # (e.g., modules/category/module_name.py or modules/module_name.py).
         try:
             if 'modules' in str(module_path):
                 # Build import path
@@ -154,8 +159,11 @@ def run_module(module_path, module_name, class_name, mode='guided', verbose=Fals
         except ImportError as e:
             if verbose:
                 print(f"Import method 1 failed: {e}")
+        # End of Method 1
         
-        # Method 2: Try spec-based import
+        # Method 2: Fallback to spec-based import.
+        # This is more flexible and can handle modules located via absolute paths or
+        # those not fitting the standard package structure.
         if module is None:
             try:
                 if verbose:
@@ -167,11 +175,14 @@ def run_module(module_path, module_name, class_name, mode='guided', verbose=Fals
                     
                 module = importlib.util.module_from_spec(spec)
                 
-                # Add to sys.modules before executing
-                import_name = f"modules.{module_name}"
+                # Add to sys.modules before executing.
+                # Crucial step: This makes the module available in sys.modules *before* exec_module.
+                # This is important if the module being loaded performs any internal relative imports
+                # (e.g., from . import utils) as it needs to be recognized as part of a package.
+                import_name = f"modules.{module_name}" # Standardized import name
                 sys.modules[import_name] = module
                 
-                spec.loader.exec_module(module)
+                spec.loader.exec_module(module) # Actually execute the module code
                 
                 if verbose:
                     print("✓ Successfully imported using spec")
@@ -179,7 +190,9 @@ def run_module(module_path, module_name, class_name, mode='guided', verbose=Fals
             except Exception as e:
                 if verbose:
                     print(f"Import method 2 failed: {e}")
+                # Spec-based import is more flexible but can be more complex if not set up correctly.
                 raise ImportError(f"Failed to import module: {e}")
+        # End of Method 2
         
         # Find the appropriate class
         instance, found_class_name = find_module_class(module, module_name, verbose)

@@ -83,11 +83,11 @@ class EnhancedFormatter(logging.Formatter):
 class SecurityLogFilter(logging.Filter):
     """Filter to identify and flag security-related events"""
     
-    SECURITY_KEYWORDS = [
+    SECURITY_KEYWORDS = {
         'authentication', 'login', 'logout', 'unauthorized', 'forbidden',
         'csrf', 'xss', 'injection', 'attack', 'malicious', 'exploit',
         'breach', 'intrusion', 'suspicious', 'failed_login', 'brute_force'
-    ]
+    }
     
     def filter(self, record):
         # Check if this is a security-related log

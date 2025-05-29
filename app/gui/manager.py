@@ -490,40 +490,181 @@ class VNCGUIManager:
     
     @staticmethod
     def _start_xvfb(display_number, resolution, color_depth):
-        """Start Xvfb server"""
+        """Start Xvfb server and wait for display to be ready."""
         cmd = ['Xvfb', f':{display_number}', '-screen', '0', f'{resolution}x{color_depth}',
                '-ac', '-nolisten', 'tcp', '-dpi', '96']
         
         try:
             process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            time.sleep(3)
             
-            if process.poll() is None and VNCGUIManager._test_display(display_number):
-                return process.pid
-            else:
-                if process.poll() is None:
+            max_wait_time = 5  # seconds
+            check_interval = 0.5  # seconds
+            elapsed_time = 0
+            
+            while elapsed_time < max_wait_time:
+                if VNCGUIManager._test_display(display_number):
+                    if process.poll() is None: # Check if Xvfb is still running
+                        current_app.logger.info(f"Xvfb on display :{display_number} started successfully (PID: {process.pid}).")
+                        return process.pid
+                    else:
+                        # Xvfb process died after display test was positive once, this is unlikely but possible
+                        current_app.logger.error(f"Xvfb on display :{display_number} (PID: {process.pid}) died after starting.")
+                        return None # Xvfb died
+                
+                # Check if Xvfb process died before display was ready
+                if process.poll() is not None:
+                    current_app.logger.error(f"Xvfb on display :{display_number} (PID: {process.pid}) failed to start or died. Exit code: {process.returncode}")
+                    return None
+
+                time.sleep(check_interval)
+                elapsed_time += check_interval
+            
+            # Timeout reached
+            current_app.logger.error(f"Xvfb on display :{display_number} (PID: {process.pid}) failed to become ready within {max_wait_time}s.")
+            if process.poll() is None: # If process is still running, terminate it
+                try:
                     process.terminate()
-                return None
+                    process.wait(timeout=2) # Wait for termination
+                except subprocess.TimeoutExpired:
+                    process.kill() # Force kill if it doesn't terminate
+                except Exception as term_exc:
+                    current_app.logger.error(f"Error terminating unresponsive Xvfb (PID: {process.pid}): {term_exc}")
+            return None
+            
+        except FileNotFoundError:
+            current_app.logger.error(f"Xvfb command not found. Is it installed and in PATH?")
+            return None
         except Exception as e:
-            current_app.logger.error(f"Error starting Xvfb: {e}")
+            current_app.logger.error(f"An unexpected error occurred while starting Xvfb: {e}\n{traceback.format_exc()}")
+            # Ensure cleanup if Popen object 'process' exists and is running
+            if 'process' in locals() and process.poll() is None:
+                 try:
+                     process.terminate()
+                     process.wait(timeout=2)
+                 except subprocess.TimeoutExpired:
+                     process.kill()
+                 except Exception as term_exc:
+                    current_app.logger.error(f"Error during cleanup of Xvfb (PID: {process.pid if hasattr(process, 'pid') else 'unknown'}): {term_exc}")
             return None
     
     @staticmethod
     def _start_x11vnc(display_number, vnc_port):
-        """Start x11vnc server"""
+        """Start x11vnc server and read PID from file."""
+        pid_dir = "/tmp/coresecframe"
+        if not os.path.exists(pid_dir):
+            os.makedirs(pid_dir, exist_ok=True) # Ensure the directory exists
+        
+        pid_file_path = os.path.join(pid_dir, f"x11vnc_{display_number}.pid")
+
+        # Clean up any stale PID file first
+        if os.path.exists(pid_file_path):
+            try:
+                os.remove(pid_file_path)
+            except OSError as e:
+                current_app.logger.warning(f"Could not remove stale PID file {pid_file_path}: {e}")
+
         cmd = ['x11vnc', '-display', f':{display_number}', '-rfbport', str(vnc_port),
-               '-forever', '-shared', '-nopw', '-noshm', '-noxdamage', '-quiet', '-bg']
+               '-forever', '-shared', '-nopw', '-noshm', '-noxdamage', '-quiet', '-bg',
+               '-pidfile', pid_file_path]
         
         try:
-            subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            time.sleep(4)
+            # Start the x11vnc process
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             
-            # Check if VNC server is running
-            if not VNCGUIManager._is_port_available(vnc_port):
-                return 99999  # Placeholder PID for background process
+            # Wait for VNC port to become available (max 10 seconds)
+            max_wait_time = 10  # seconds
+            check_interval = 0.5  # seconds
+            elapsed_time = 0
+            
+            while elapsed_time < max_wait_time:
+                # _is_port_available returns True if connect fails (port is free)
+                # and False if connect succeeds (port is taken/listening)
+                # We want to wait until the port is taken by x11vnc.
+                if not VNCGUIManager._is_port_available(vnc_port): 
+                    current_app.logger.info(f"x11vnc has started and port {vnc_port} is now listening after {elapsed_time:.1f}s.")
+                    break
+                time.sleep(check_interval)
+                elapsed_time += check_interval
+            else:
+                # Timeout reached
+                stderr_output = ""
+                if process.stderr:
+                    stderr_output = process.stderr.read().decode(errors='ignore')
+                current_app.logger.error(
+                    f"x11vnc failed to start or port {vnc_port} did not become available within {max_wait_time}s. "
+                    f"Stderr: {stderr_output}"
+                )
+                if process.poll() is None: # if process is still running
+                    process.terminate()
+                    process.wait(timeout=5) # wait for termination
+                return None
+
+            # Wait a brief moment for the PID file to be written
+            time.sleep(0.5) 
+            
+            if os.path.exists(pid_file_path):
+                try:
+                    with open(pid_file_path, 'r') as f:
+                        pid_str = f.read().strip()
+                    if pid_str.isdigit():
+                        pid = int(pid_str)
+                        # Verify the process is actually running with this PID
+                        if psutil.pid_exists(pid):
+                            # Check if the process command matches x11vnc (optional but good)
+                            # This is a bit more involved, might skip for now if psutil.Process(pid).name() is tricky
+                            current_app.logger.info(f"x11vnc started successfully with PID {pid} from {pid_file_path}")
+                            return pid
+                        else:
+                            current_app.logger.error(f"PID {pid} from {pid_file_path} does not exist. Cleaning up PID file.")
+                            try:
+                                os.remove(pid_file_path)
+                            except OSError as e_rm:
+                                current_app.logger.warning(f"Could not remove problematic PID file {pid_file_path}: {e_rm}")
+                    else:
+                        current_app.logger.error(f"Invalid PID content in {pid_file_path}: '{pid_str}'. Cleaning up PID file.")
+                        try:
+                            os.remove(pid_file_path)
+                        except OSError as e_rm:
+                            current_app.logger.warning(f"Could not remove problematic PID file {pid_file_path}: {e_rm}")
+                except IOError as e:
+                    current_app.logger.error(f"Error reading PID file {pid_file_path}: {e}")
+                except ValueError:
+                    current_app.logger.error(f"Invalid PID format in {pid_file_path}. Cleaning up PID file.")
+                    try:
+                        os.remove(pid_file_path)
+                    except OSError as e_rm:
+                        current_app.logger.warning(f"Could not remove problematic PID file {pid_file_path}: {e_rm}")
+            else:
+                current_app.logger.error(f"PID file {pid_file_path} not found after x11vnc start.")
+
+            # If PID reading failed or PID is invalid, attempt to clean up the x11vnc process if it was started by Popen
+            # and we don't have a valid PID to return.
+            pid_to_return = locals().get('pid') # Check if pid variable was successfully set and validated
+            if pid_to_return is None and process.poll() is None: # Check if subprocess started by Popen is running
+                 current_app.logger.warning(f"Cleaning up x11vnc process (Popen object) due to PID file/validation issues.")
+                 process.terminate()
+                 try:
+                     process.wait(timeout=2) # Wait for it to terminate
+                 except subprocess.TimeoutExpired:
+                     process.kill() # Force kill if it doesn't terminate
+            
+            return None # Return None if PID couldn't be confirmed or validated
+
+        except FileNotFoundError:
+            current_app.logger.error(f"x11vnc command not found. Is it installed and in PATH?")
+            return None
+        except subprocess.CalledProcessError as e: # Should not happen with Popen directly unless check_call is used
+            current_app.logger.error(f"Error during x11vnc subprocess execution: {e}")
             return None
         except Exception as e:
-            current_app.logger.error(f"Error starting x11vnc: {e}")
+            current_app.logger.error(f"An unexpected error occurred while starting x11vnc: {e}\n{traceback.format_exc()}")
+            # Ensure cleanup if Popen object 'process' exists
+            if 'process' in locals() and process.poll() is None:
+                 process.terminate()
+                 try:
+                     process.wait(timeout=2)
+                 except subprocess.TimeoutExpired:
+                     process.kill()
             return None
     
     @staticmethod
@@ -544,15 +685,43 @@ class VNCGUIManager:
         cwd = application.working_directory
         
         try:
+            # Note: stdout and stderr are DEVNULL. For better debugging, these could be captured.
             process = subprocess.Popen(cmd, env=env, cwd=cwd,
-                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            time.sleep(2)
-            
+                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                     preexec_fn=os.setsid) # Start in new session to manage as a group if needed
+
+            # Wait for a very short moment to let the process start or fail quickly
+            initial_wait = 0.5 # seconds
+            time.sleep(initial_wait)
+
             if process.poll() is None:
+                # Process started and is running after initial_wait
+                current_app.logger.info(f"VNC application '{application.name}' (PID: {process.pid}) started successfully.")
                 return process.pid
+            else:
+                # Process terminated quickly, indicating an error
+                # If stderr/stdout were captured, they could be logged here.
+                current_app.logger.error(
+                    f"VNC application '{application.name}' (PID: {process.pid}) failed to start or exited prematurely. "
+                    f"Exit code: {process.returncode}."
+                )
+                return None
+                
+        except FileNotFoundError:
+            current_app.logger.error(f"Command for VNC application '{application.name}' not found: {cmd[0]}. Is it installed and in PATH?")
             return None
         except Exception as e:
-            current_app.logger.error(f"Error starting VNC application: {e}")
+            current_app.logger.error(f"Error starting VNC application '{application.name}': {e}\n{traceback.format_exc()}")
+            # Ensure cleanup if Popen object 'process' exists and is running
+            if 'process' in locals() and process.poll() is None:
+                 try:
+                     # Attempt to terminate the process group if setsid was used
+                     os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+                     time.sleep(0.5) # Give it a moment to terminate
+                     if process.poll() is None: # Check if still running
+                         os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+                 except Exception as term_exc: # Broad exception for cleanup
+                     current_app.logger.error(f"Error during cleanup of VNC application (PID: {process.pid if hasattr(process, 'pid') else 'unknown'}): {term_exc}")
             return None
     
     @staticmethod

@@ -49,12 +49,16 @@ def system_info():
     """Display detailed system information"""
     try:
         # Get basic system info
-        system_info = _get_system_info()
+        # Optimized CPU fetching: Call with interval once, then use interval=None
+        initial_overall_cpu = psutil.cpu_percent(interval=1)
+        fetched_per_cpu = psutil.cpu_percent(percpu=True, interval=None) # Uses prior interval
+        
+        system_info_data = _get_system_info(overall_cpu_percent=initial_overall_cpu)
         
         # Get detailed network, disk, CPU, memory info
         network_info = _get_network_info()
         disk_info = _get_disk_info()
-        cpu_info = _get_cpu_info()
+        cpu_info_data = _get_cpu_info(per_cpu_percent_values=fetched_per_cpu, overall_cpu_percent_value=initial_overall_cpu)
         memory_info = _get_memory_info()
         swap_info = _get_swap_info()
         python_info = _get_python_info()
@@ -63,10 +67,10 @@ def system_info():
         return render_template(
             'core/system_info.html',
             title='System Information',
-            system_info=system_info,
+            system_info=system_info_data,
             network_info=network_info,
             disk_info=disk_info,
-            cpu_info=cpu_info,
+            cpu_info=cpu_info_data, # Use the new variable name
             memory_info=memory_info,
             swap_info=swap_info,
             python_info=python_info,
@@ -78,11 +82,16 @@ def system_info():
 
 # Private helper functions with consistent error handling
 
-def _get_system_info():
-    """Get basic system information with error handling"""
+def _get_system_info(overall_cpu_percent=None):
+    """Get basic system information with error handling, allowing pre-fetched CPU percent."""
     try:
+        # If overall_cpu_percent is not provided, fetch it.
+        # This ensures dashboard calls and direct calls still work.
+        if overall_cpu_percent is None:
+            overall_cpu_percent = psutil.cpu_percent(interval=1)
+            
         return {
-            'cpu_percent': psutil.cpu_percent(interval=1),
+            'cpu_percent': overall_cpu_percent,
             'memory_percent': psutil.virtual_memory().percent,
             'disk_percent': psutil.disk_usage('/').percent,
             'hostname': platform.node(),
@@ -254,17 +263,33 @@ def _get_disk_info():
         current_app.logger.warning(f"Error getting disk info: {e}")
         return []
 
-def _get_cpu_info():
-    """Get CPU information with error handling"""
+def _get_cpu_info(per_cpu_percent_values=None, overall_cpu_percent_value=None):
+    """Get CPU information with error handling, allowing pre-fetched CPU percentages."""
     try:
-        cpu_freq = psutil.cpu_freq()
+        cpu_freq = psutil.cpu_freq() # This does not involve interval-based CPU load
+        
+        # Fetch per-CPU percentages if not provided
+        if per_cpu_percent_values is None:
+            # This call will establish its own interval if overall_cpu_percent_value is also None,
+            # or use the system-wide interval if overall_cpu_percent_value was fetched just before it.
+            # For standalone calls to _get_cpu_info, an interval is needed.
+            per_cpu_percent_values = psutil.cpu_percent(interval=1, percpu=True)
+
+        # Calculate overall CPU percentage if not provided
+        if overall_cpu_percent_value is None:
+            if per_cpu_percent_values: # If we have per-CPU values (fetched or passed)
+                overall_cpu_percent_value = sum(per_cpu_percent_values) / len(per_cpu_percent_values)
+            else: # Fallback if per_cpu_percent_values is empty or None
+                overall_cpu_percent_value = psutil.cpu_percent(interval=1) # Needs an interval
+
         return {
             'physical_cores': psutil.cpu_count(logical=False),
             'logical_cores': psutil.cpu_count(logical=True),
             'current_frequency': cpu_freq.current if cpu_freq else 'N/A',
             'min_frequency': cpu_freq.min if cpu_freq else 'N/A',
             'max_frequency': cpu_freq.max if cpu_freq else 'N/A',
-            'cpu_percent': psutil.cpu_percent(interval=1, percpu=True),
+            'cpu_percent': per_cpu_percent_values, # This is the per-CPU list
+            'overall_cpu_percent': overall_cpu_percent_value, # Added overall CPU percent
             'architecture': platform.machine(),
             'processor': platform.processor()
         }
@@ -276,7 +301,8 @@ def _get_cpu_info():
             'current_frequency': 'N/A',
             'min_frequency': 'N/A',
             'max_frequency': 'N/A',
-            'cpu_percent': [0],
+            'cpu_percent': [0] * psutil.cpu_count(logical=True), # Default to list of zeros
+            'overall_cpu_percent': 0,
             'architecture': 'Unknown',
             'processor': 'Unknown'
         }
