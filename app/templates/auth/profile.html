@@ -11,7 +11,7 @@
                 <div class="row mb-4">
                     <div class="col-md-4 text-center">
                         <div class="mb-3">
-                            <i class="bi bi-person-circle" style="font-size: 5rem;"></i>
+                            <i class="fl fl-person-circle-filled" style="font-size: 5rem;"></i> 
                         </div>
                         <h4>{{ current_user.username }}</h4>
                         <p class="text-muted">{{ current_user.email }}</p>
@@ -53,6 +53,37 @@
                         </table>
                     </div>
                 </div>
+                
+                <hr>
+
+                <h5 class="mt-4">Appearance Settings</h5>
+                
+                <!-- Theme Selection -->
+                <div class="mb-3">
+                    <label class="form-label">Theme Mode:</label>
+                    <div class="form-check">
+                        <input type="radio" class="form-check-input" name="themeMode" id="themeLight" value="light">
+                        <label class="form-check-label" for="themeLight">Light</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="radio" class="form-check-input" name="themeMode" id="themeDark" value="dark">
+                        <label class="form-check-label" for="themeDark">Dark</label>
+                    </div>
+                </div>
+
+                <!-- Accent Color Selection -->
+                <div class="mb-3">
+                    <label class="form-label">Accent Color:</label>
+                    <div class="d-flex flex-wrap" id="accentColorSwatches">
+                        <button type="button" class="accent-swatch" data-accent-color="var(--accent-default-blue)" style="background-color: var(--accent-default-blue);" title="Default Blue"></button>
+                        <button type="button" class="accent-swatch" data-accent-color="var(--accent-red)" style="background-color: var(--accent-red);" title="Red"></button>
+                        <button type="button" class="accent-swatch" data-accent-color="var(--accent-orange)" style="background-color: var(--accent-orange);" title="Orange"></button>
+                        <button type="button" class="accent-swatch" data-accent-color="var(--accent-green)" style="background-color: var(--accent-green);" title="Green"></button>
+                        <button type="button" class="accent-swatch" data-accent-color="var(--accent-purple)" style="background-color: var(--accent-purple);" title="Purple"></button>
+                        <button type="button" class="accent-swatch" data-accent-color="var(--accent-teal)" style="background-color: var(--accent-teal);" title="Teal"></button>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
