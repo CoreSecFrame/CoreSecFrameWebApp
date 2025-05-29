@@ -27,7 +27,7 @@
             --w11-accent-dark3: #80baf5;
 
             /* Light Theme */
-            --w11-bg-primary: #ffffff;
+            --w11-bg-primary: #fafafa;
             --w11-bg-secondary: #f9f9f9;
             --w11-bg-tertiary: #f3f3f3;
             --w11-bg-quarternary: #eeeeee;
@@ -131,6 +131,18 @@
             color: var(--w11-text-secondary) !important;
         }
 
+        [data-theme="dark"] .table-striped tbody tr {
+            background-color: var(--w11-bg-primary) !important;
+            color: var(--w11-text-primary) !important;
+        }
+
+        [data-theme="dark"] .table tbody tr td,
+        [data-theme="dark"] .table tbody tr th {
+            color: var(--w11-text-primary) !important;
+            background-color: transparent !important;
+        }
+
+
         * {
             box-sizing: border-box;
         }
@@ -163,11 +175,11 @@
 
         /* Windows 11 Navigation */
         .navbar {
-            background: var(--w11-card-bg);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--w11-surface-stroke);
-            padding: 8px 24px;
-            box-shadow: var(--w11-shadow-2);
+            background: var(--theme-dark-fill-primary);
+            box-shadow: var(--shadow-sm);
+            padding: 0.75rem 1rem; /* Added horizontal padding to navbar itself */
+            border-bottom: 2px solid var(--current-accent);
+            z-index: 1030; /* Ensure navbar is above page content but below modals */
         }
 
         .navbar-brand {

@@ -2,6 +2,43 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+    /* Estilo del ícono de búsqueda */
+    .input-group-text.module-search-icon {
+        background: var(--w11-bg-primary, #1e1e1e);
+        border: 1px solid var(--w11-surface-stroke, #444);
+        border-right: none;
+        border-radius: var(--w11-radius-medium, 6px) 0 0 var(--w11-radius-medium, 6px);
+        padding: 0 14px;
+        display: flex;
+        align-items: center;
+        height: 42px;
+    }
+
+    /* Input de búsqueda */
+    .module-search-input {
+        border-left: none;
+        border-right: none;
+        border-radius: 0;
+        height: 42px;
+    }
+
+    /* Botón de limpiar búsqueda */
+    #clearSearchBtn {
+        border-radius: 0 var(--w11-radius-medium, 6px) var(--w11-radius-medium, 6px) 0;
+        height: 42px;
+        display: flex;
+        align-items: center;
+        padding: 0 14px;
+    }
+
+    /* Evita doble bordes */
+    .input-group .form-control,
+    .input-group .input-group-text,
+    .input-group .btn {
+        box-shadow: none;
+    }
+</style>
 <div class="row mb-3">
     <div class="col-md-12 d-flex justify-content-between align-items-center">
         <h1>Module Shop</h1>
@@ -45,13 +82,17 @@
             </div>
             <div class="card-body">
                 <div class="mb-4">
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input type="text" id="moduleSearch" class="form-control" placeholder="Search modules...">
+                    <div class="input-group module-search-group">
+                        <span class="input-group-text module-search-icon">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" id="moduleSearch" class="form-control module-search-input"
+                            placeholder="Search modules...">
                         <button class="btn btn-outline-secondary" type="button" id="clearSearchBtn">
                             <i class="bi bi-x-circle"></i>
                         </button>
                     </div>
+
                     <div id="searchInfo" class="mt-2 d-none">
                         <span class="badge bg-info">
                             <span id="searchResultCount">0</span> results found
@@ -61,7 +102,7 @@
                         </button>
                     </div>
                 </div>
-                
+
                 <div class="table-responsive">
                     <table class="table table-striped table-hover">
                         <thead>
@@ -122,124 +163,124 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Category filtering
-    const categoryLinks = document.querySelectorAll('.list-group-item[data-category]');
-    const moduleRows = document.querySelectorAll('#moduleList tr');
-    let currentCategory = 'all';
-    let searchTerm = '';
-    
-    categoryLinks.forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            // Update active state
-            categoryLinks.forEach(item => item.classList.remove('active'));
-            this.classList.add('active');
-            
-            currentCategory = this.getAttribute('data-category');
-            
-            // Apply both category and search filters
-            applyFilters();
+    document.addEventListener('DOMContentLoaded', function () {
+        // Category filtering
+        const categoryLinks = document.querySelectorAll('.list-group-item[data-category]');
+        const moduleRows = document.querySelectorAll('#moduleList tr');
+        let currentCategory = 'all';
+        let searchTerm = '';
+
+        categoryLinks.forEach(link => {
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+
+                // Update active state
+                categoryLinks.forEach(item => item.classList.remove('active'));
+                this.classList.add('active');
+
+                currentCategory = this.getAttribute('data-category');
+
+                // Apply both category and search filters
+                applyFilters();
+            });
         });
-    });
-    
-    // Search functionality
-    const searchInput = document.getElementById('moduleSearch');
-    const clearSearchBtn = document.getElementById('clearSearchBtn');
-    const resetSearchBtn = document.getElementById('resetSearchBtn');
-    const searchInfo = document.getElementById('searchInfo');
-    const searchResultCount = document.getElementById('searchResultCount');
-    const noResults = document.getElementById('noResults');
-    
-    searchInput.addEventListener('input', function() {
-        searchTerm = this.value.toLowerCase();
-        applyFilters();
-        
-        // Show or hide clear button based on search input
-        if (searchTerm) {
-            clearSearchBtn.style.display = '';
-            searchInfo.classList.remove('d-none');
-        } else {
-            clearSearchBtn.style.display = 'none';
-            searchInfo.classList.add('d-none');
-        }
-    });
-    
-    clearSearchBtn.addEventListener('click', function() {
-        searchInput.value = '';
-        searchTerm = '';
-        applyFilters();
-        this.style.display = 'none';
-        searchInfo.classList.add('d-none');
-    });
-    
-    resetSearchBtn.addEventListener('click', function() {
-        // Reset search
-        searchInput.value = '';
-        searchTerm = '';
-        
-        // Reset category to "All"
-        currentCategory = 'all';
-        categoryLinks.forEach(item => item.classList.remove('active'));
-        document.querySelector('.list-group-item[data-category="all"]').classList.add('active');
-        
-        // Apply filters
-        applyFilters();
-        
-        // Hide search info
-        searchInfo.classList.add('d-none');
-        clearSearchBtn.style.display = 'none';
-    });
-    
-    // Initialize clear button visibility
-    clearSearchBtn.style.display = 'none';
-    
-    // Function to apply both category and search filters
-    function applyFilters() {
-        let visibleCount = 0;
-        
-        moduleRows.forEach(row => {
-            const name = row.getAttribute('data-name').toLowerCase();
-            const description = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
-            const category = row.getAttribute('data-category').toLowerCase();
-            
-            // Check if row matches both category and search filters
-            const matchesCategory = currentCategory === 'all' || category === currentCategory.toLowerCase();
-            const matchesSearch = !searchTerm || 
-                                 name.includes(searchTerm) || 
-                                 description.includes(searchTerm) || 
-                                 category.includes(searchTerm);
-            
-            if (matchesCategory && matchesSearch) {
-                row.style.display = '';
-                visibleCount++;
+
+        // Search functionality
+        const searchInput = document.getElementById('moduleSearch');
+        const clearSearchBtn = document.getElementById('clearSearchBtn');
+        const resetSearchBtn = document.getElementById('resetSearchBtn');
+        const searchInfo = document.getElementById('searchInfo');
+        const searchResultCount = document.getElementById('searchResultCount');
+        const noResults = document.getElementById('noResults');
+
+        searchInput.addEventListener('input', function () {
+            searchTerm = this.value.toLowerCase();
+            applyFilters();
+
+            // Show or hide clear button based on search input
+            if (searchTerm) {
+                clearSearchBtn.style.display = '';
+                searchInfo.classList.remove('d-none');
             } else {
-                row.style.display = 'none';
+                clearSearchBtn.style.display = 'none';
+                searchInfo.classList.add('d-none');
             }
         });
-        
-        // Update the results count
-        searchResultCount.textContent = visibleCount;
-        
-        // Show "no results" message if needed
-        if (visibleCount === 0) {
-            noResults.classList.remove('d-none');
-        } else {
-            noResults.classList.add('d-none');
+
+        clearSearchBtn.addEventListener('click', function () {
+            searchInput.value = '';
+            searchTerm = '';
+            applyFilters();
+            this.style.display = 'none';
+            searchInfo.classList.add('d-none');
+        });
+
+        resetSearchBtn.addEventListener('click', function () {
+            // Reset search
+            searchInput.value = '';
+            searchTerm = '';
+
+            // Reset category to "All"
+            currentCategory = 'all';
+            categoryLinks.forEach(item => item.classList.remove('active'));
+            document.querySelector('.list-group-item[data-category="all"]').classList.add('active');
+
+            // Apply filters
+            applyFilters();
+
+            // Hide search info
+            searchInfo.classList.add('d-none');
+            clearSearchBtn.style.display = 'none';
+        });
+
+        // Initialize clear button visibility
+        clearSearchBtn.style.display = 'none';
+
+        // Function to apply both category and search filters
+        function applyFilters() {
+            let visibleCount = 0;
+
+            moduleRows.forEach(row => {
+                const name = row.getAttribute('data-name').toLowerCase();
+                const description = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
+                const category = row.getAttribute('data-category').toLowerCase();
+
+                // Check if row matches both category and search filters
+                const matchesCategory = currentCategory === 'all' || category === currentCategory.toLowerCase();
+                const matchesSearch = !searchTerm ||
+                    name.includes(searchTerm) ||
+                    description.includes(searchTerm) ||
+                    category.includes(searchTerm);
+
+                if (matchesCategory && matchesSearch) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Update the results count
+            searchResultCount.textContent = visibleCount;
+
+            // Show "no results" message if needed
+            if (visibleCount === 0) {
+                noResults.classList.remove('d-none');
+            } else {
+                noResults.classList.add('d-none');
+            }
         }
-    }
-    
-    // Refresh button
-    const refreshButton = document.getElementById('refreshButton');
-    
-    refreshButton.addEventListener('click', function() {
-        this.disabled = true;
-        this.innerHTML = '<i class="bi bi-arrow-repeat"></i> Refreshing...';
-        
-        // Reload the page
-        window.location.reload();
+
+        // Refresh button
+        const refreshButton = document.getElementById('refreshButton');
+
+        refreshButton.addEventListener('click', function () {
+            this.disabled = true;
+            this.innerHTML = '<i class="bi bi-arrow-repeat"></i> Refreshing...';
+
+            // Reload the page
+            window.location.reload();
+        });
     });
-});
 </script>
 {% endblock %}
