@@ -134,3 +134,66 @@ document.addEventListener('DOMContentLoaded', function() {
     window.setAppTheme = applyTheme;
     window.setAppAccentColor = applyAccentColor;
 });
+
+// Dark mode functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const themeToggle = document.getElementById('theme-toggle');
+    const themeIcon = document.getElementById('theme-icon');
+    const body = document.body;
+    
+    // Get saved theme or default to light
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    setTheme(savedTheme);
+    
+    if (themeToggle) {
+        themeToggle.addEventListener('click', function() {
+            const currentTheme = body.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            setTheme(newTheme);
+        });
+    }
+    
+    function setTheme(theme) {
+        body.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+        
+        if (themeIcon) {
+            if (theme === 'dark') {
+                themeIcon.className = 'bi bi-sun-fill';
+            } else {
+                themeIcon.className = 'bi bi-moon-fill';
+            }
+        }
+        
+        // Apply theme to dynamically created modals
+        applyThemeToModals();
+    }
+    
+    function applyThemeToModals() {
+        const theme = body.getAttribute('data-theme');
+        const modals = document.querySelectorAll('.modal, .custom-modal');
+        
+        modals.forEach(modal => {
+            modal.setAttribute('data-theme', theme);
+        });
+    }
+    
+    // Watch for new modals being added to DOM
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            mutation.addedNodes.forEach(function(node) {
+                if (node.nodeType === 1) { // Element node
+                    if (node.matches('.modal, .custom-modal') || 
+                        node.querySelector('.modal, .custom-modal')) {
+                        applyThemeToModals();
+                    }
+                }
+            });
+        });
+    });
+    
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+});

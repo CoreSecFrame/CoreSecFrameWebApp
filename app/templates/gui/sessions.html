@@ -2,72 +2,9 @@
 {% extends "gui/base_gui.html" %}
 {% block head %}
 {{ super() }}
-<style>
-/* Notification animations */
-@keyframes slideInRight {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-@keyframes slideOutRight {
-    from {
-        transform: translateX(0);
-        opacity: 1;
-    }
-    to {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-}
-
-/* Notification container styles */
-#notification-container {
-    position: fixed !important;
-    top: 80px !important;
-    right: 20px !important;
-    z-index: 9999 !important;
-    max-width: 400px !important;
-    pointer-events: none !important;
-}
-
-.gui-notification {
-    pointer-events: auto !important;
-    margin-bottom: 10px !important;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.4) !important;
-    border: 2px solid rgba(0,0,0,0.1) !important;
-    border-radius: 8px !important;
-    opacity: 1 !important;
-    background-color: white !important;
-    filter: brightness(1.05) !important;
-}
-
-/* Aumentar opacidad según tipo de notificación */
-.gui-notification.alert-success {
-    background-color: rgba(209, 231, 221, 0.98) !important;
-    border-color: rgba(25, 135, 84, 0.3) !important;
-}
-
-.gui-notification.alert-danger {
-    background-color: rgba(248, 215, 218, 0.98) !important;
-    border-color: rgba(220, 53, 69, 0.3) !important;
-}
-
-.gui-notification.alert-warning {
-    background-color: rgba(255, 243, 205, 0.98) !important;
-    border-color: rgba(255, 193, 7, 0.3) !important;
-}
-
-.gui-notification.alert-info {
-    background-color: rgba(207, 244, 252, 0.98) !important;
-    border-color: rgba(13, 202, 240, 0.3) !important;
-}
-</style>
+{% block css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/gui.css') }}">
+{% endblock %}
 {% endblock %}
 {% block content %}
 <!-- Page Header -->

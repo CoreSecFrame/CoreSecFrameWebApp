@@ -1,0 +1,262 @@
+/* Login & Register Styles */
+.w11-login-container {
+    min-height: 80vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, 
+        rgba(0, 120, 212, 0.1) 0%, 
+        rgba(16, 124, 16, 0.1) 50%, 
+        rgba(136, 23, 152, 0.1) 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+.w11-login-container::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(0, 120, 212, 0.05) 0%, transparent 70%);
+    animation: float 20s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translate(0%, 0%) rotate(0deg); }
+    33% { transform: translate(30px, -30px) rotate(120deg); }
+    66% { transform: translate(-20px, 20px) rotate(240deg); }
+}
+
+.w11-login-card {
+    background: var(--w11-card-bg);
+    backdrop-filter: blur(40px);
+    border: 1px solid var(--w11-card-stroke);
+    border-radius: var(--w11-radius-xlarge);
+    box-shadow: var(--w11-shadow-16);
+    padding: 0;
+    width: 100%;
+    max-width: 420px;
+    position: relative;
+    z-index: 1;
+    overflow: hidden;
+}
+
+.w11-login-header {
+    text-align: center;
+    padding: 40px 40px 20px;
+    background: var(--w11-bg-secondary);
+    border-bottom: 1px solid var(--w11-surface-stroke);
+}
+
+.w11-login-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--w11-accent) 0%, var(--w11-accent-light1) 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 36px;
+    color: white;
+    box-shadow: var(--w11-shadow-8);
+}
+
+.w11-login-title {
+    font-size: 24px;
+    font-weight: 400;
+    color: var(--w11-text-primary);
+    margin-bottom: 8px;
+}
+
+.w11-login-subtitle {
+    font-size: 14px;
+    color: var(--w11-text-secondary);
+    margin-bottom: 0;
+}
+
+.w11-login-body { padding: 40px; }
+
+.w11-form-group { margin-bottom: 24px; }
+
+.w11-form-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--w11-text-secondary);
+    margin-bottom: 8px;
+    display: block;
+}
+
+.w11-input-group { position: relative; }
+
+.w11-input-icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--w11-text-secondary);
+    z-index: 2;
+}
+
+.w11-form-input {
+    width: 100%;
+    padding: 16px 16px 16px 48px;
+    background: var(--w11-bg-primary);
+    border: 1px solid var(--w11-surface-stroke);
+    border-radius: var(--w11-radius-medium);
+    font-size: 14px;
+    color: var(--w11-text-primary);
+    transition: all var(--w11-duration-fast) var(--w11-ease-standard);
+}
+
+.w11-form-input:focus {
+    outline: none;
+    border-color: var(--w11-accent);
+    box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
+}
+
+.w11-form-input::placeholder { color: var(--w11-text-disabled); }
+
+.w11-checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 32px;
+}
+
+.w11-checkbox {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--w11-surface-stroke);
+    border-radius: var(--w11-radius-small);
+    background: var(--w11-bg-primary);
+    position: relative;
+    cursor: pointer;
+    transition: all var(--w11-duration-fast) var(--w11-ease-standard);
+}
+
+.w11-checkbox:hover { border-color: var(--w11-accent); }
+
+.w11-checkbox input {
+    opacity: 0;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    margin: 0;
+}
+
+.w11-checkbox input:checked + .w11-checkbox-indicator {
+    background: var(--w11-accent);
+    border-color: var(--w11-accent);
+}
+
+.w11-checkbox input:checked + .w11-checkbox-indicator::after {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.w11-checkbox-indicator {
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    transition: all var(--w11-duration-fast) var(--w11-ease-standard);
+    position: relative;
+}
+
+.w11-checkbox-indicator::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    color: white;
+    font-weight: bold;
+    font-size: 12px;
+    opacity: 0;
+    transition: all var(--w11-duration-fast) var(--w11-ease-standard);
+}
+
+.w11-checkbox-label {
+    font-size: 14px;
+    color: var(--w11-text-secondary);
+    cursor: pointer;
+}
+
+.w11-login-btn {
+    width: 100%;
+    padding: 16px;
+    background: var(--w11-accent);
+    border: none;
+    border-radius: var(--w11-radius-medium);
+    color: white;
+    font-size: 16px;
+    font-weight: 500;
+    transition: all var(--w11-duration-normal) var(--w11-ease-standard);
+    cursor: pointer;
+    margin-bottom: 24px;
+}
+
+.w11-login-btn:hover {
+    background: var(--w11-accent-light1);
+    transform: translateY(-1px);
+    box-shadow: var(--w11-shadow-8);
+}
+
+.w11-login-btn:active { transform: translateY(0); }
+
+.w11-login-footer {
+    text-align: center;
+    padding: 24px 40px 40px;
+    border-top: 1px solid var(--w11-surface-stroke);
+    background: var(--w11-bg-secondary);
+}
+
+.w11-login-link {
+    color: var(--w11-accent);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color var(--w11-duration-fast) var(--w11-ease-standard);
+}
+
+.w11-login-link:hover {
+    color: var(--w11-accent-light1);
+    text-decoration: underline;
+}
+
+.w11-error-message {
+    background: rgba(196, 43, 28, 0.1);
+    border: 1px solid rgba(196, 43, 28, 0.2);
+    border-radius: var(--w11-radius-medium);
+    padding: 12px 16px;
+    color: #c42b1c;
+    font-size: 12px;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.w11-copyright {
+    text-align: center;
+    margin-top: 32px;
+    font-size: 12px;
+    color: var(--w11-text-disabled);
+}
+
+@keyframes particle-float {
+    0% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(0);
+    }
+    50% {
+        opacity: 1;
+        transform: translate(var(--random-x, 100px), var(--random-y, 100px)) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(var(--random-x2, 200px), var(--random-y2, 200px)) scale(0);
+    }
+}

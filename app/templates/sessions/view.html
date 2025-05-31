@@ -1,6 +1,8 @@
 <!-- app/templates/sessions/view.html -->
 {% extends "base.html" %}
-
+{% block css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/sessions.css') }}">
+{% endblock %}
 {% block content %}
 <div class="row mb-3">
     <div class="col-md-12 d-flex justify-content-between align-items-center">
@@ -38,7 +40,7 @@
                         {% if session.active %}Active{% else %}Inactive{% endif %}
                     </span>
                 </div>
-                
+
                 <div class="mb-3">
                     <h5>Type</h5>
                     {% if session.session_type == 'terminal' %}
@@ -48,12 +50,12 @@
                     {% elif session.session_type == 'direct' %}
                     <span class="badge bg-warning fs-6">Direct Mode</span>
                     {% endif %}
-                    
+
                     {% if session.module_name %}
                     <p class="mt-2">Module: {{ session.module_name }}</p>
                     {% endif %}
                 </div>
-                
+
                 <div class="mb-3">
                     <h5>Timing</h5>
                     <p><strong>Created:</strong> {{ session.start_time.strftime('%Y-%m-%d %H:%M:%S') }}</p>
@@ -62,7 +64,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="card">
             <div class="card-header bg-info text-white">
                 Actions
@@ -90,7 +92,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-md-8">
         <div class="card">
             <div class="card-header bg-dark text-white">
@@ -112,7 +114,7 @@
                             </h6>
                             <small>{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</small>
                         </div>
-                        
+
                         {% if log.event_type == 'command' %}
                         <p class="mb-1">
                             <code>$ {{ log.command }}</code>

@@ -1,0 +1,188 @@
+/* Terminal Styles */
+.w11-terminal-container {
+    background: var(--w11-card-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--w11-card-stroke);
+    border-radius: var(--w11-radius-large);
+    overflow: hidden;
+    box-shadow: var(--w11-shadow-8);
+    margin-bottom: 24px;
+}
+
+.w11-terminal-header {
+    background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 16px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+}
+
+.w11-terminal-title {
+    font-weight: 600;
+    font-size: 16px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.w11-terminal-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.w11-status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+}
+
+.w11-status-active {
+    background: #107c10;
+    box-shadow: 0 0 8px rgba(16, 124, 16, 0.5);
+}
+
+.w11-status-inactive { background: #6c757d; }
+
+.w11-terminal-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 8px 12px;
+    border-radius: var(--w11-radius-medium);
+    font-size: 12px;
+    transition: all var(--w11-duration-fast) var(--w11-ease-standard);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.w11-terminal-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: white;
+    transform: scale(1.05);
+}
+
+.w11-terminal-display {
+    height: 70vh;
+    min-height: 500px;
+    background: #0c0c0c;
+    position: relative;
+}
+
+#terminal {
+    width: 100%;
+    height: 100%;
+    padding: 16px;
+}
+
+.w11-terminal-footer {
+    background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 12px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 12px;
+}
+
+.w11-terminal-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.w11-terminal-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.w11-shortcuts-card {
+    background: var(--w11-card-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--w11-card-stroke);
+    border-radius: var(--w11-radius-large);
+    margin-top: 24px;
+    overflow: hidden;
+    transition: all var(--w11-duration-normal) var(--w11-ease-standard);
+}
+
+.w11-shortcuts-header {
+    background: var(--w11-bg-secondary);
+    border-bottom: 1px solid var(--w11-surface-stroke);
+    padding: 16px 24px;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--w11-text-primary);
+}
+
+.w11-shortcuts-content { padding: 24px; }
+
+.w11-shortcut-section { margin-bottom: 24px; }
+.w11-shortcut-section:last-child { margin-bottom: 0; }
+
+.w11-shortcut-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--w11-text-secondary);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.w11-shortcut-table {
+    width: 100%;
+    margin: 0;
+    background: transparent;
+}
+
+.w11-shortcut-table td {
+    padding: 8px 0;
+    border: none;
+    vertical-align: middle;
+}
+
+.w11-shortcut-table td:first-child { width: 140px; }
+
+.w11-kbd {
+    background: var(--w11-bg-tertiary);
+    border: 1px solid var(--w11-surface-stroke);
+    border-radius: var(--w11-radius-small);
+    padding: 4px 8px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--w11-text-primary);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.w11-shortcuts-card.hidden { display: none; }
+
+@keyframes slideInDown {
+    from {
+        transform: translate(-50%, -100%);
+        opacity: 0;
+    }
+    to {
+        transform: translate(-50%, 0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutUp {
+    from {
+        transform: translate(-50%, 0);
+        opacity: 1;
+    }
+    to {
+        transform: translate(-50%, -100%);
+        opacity: 0;
+    }
+}

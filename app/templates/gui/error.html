@@ -1,6 +1,8 @@
 <!-- app/templates/gui/error.html -->
 {% extends "base.html" %}
-
+{% block css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/gui.css') }}">
+{% endblock %}
 {% block content %}
 <div class="container text-center mt-5">
     <h1 class="display-1">{{ error_code or '500' }}</h1>

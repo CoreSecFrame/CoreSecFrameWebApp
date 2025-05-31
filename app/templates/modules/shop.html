@@ -1,44 +1,10 @@
 <!-- app/templates/modules/shop.html (with fixed search functionality) -->
 {% extends "base.html" %}
-
+{% block css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/modules.css') }}">
+{% endblock %}
 {% block content %}
-<style>
-    /* Estilo del ícono de búsqueda */
-    .input-group-text.module-search-icon {
-        background: var(--w11-bg-primary, #1e1e1e);
-        border: 1px solid var(--w11-surface-stroke, #444);
-        border-right: none;
-        border-radius: var(--w11-radius-medium, 6px) 0 0 var(--w11-radius-medium, 6px);
-        padding: 0 14px;
-        display: flex;
-        align-items: center;
-        height: 42px;
-    }
 
-    /* Input de búsqueda */
-    .module-search-input {
-        border-left: none;
-        border-right: none;
-        border-radius: 0;
-        height: 42px;
-    }
-
-    /* Botón de limpiar búsqueda */
-    #clearSearchBtn {
-        border-radius: 0 var(--w11-radius-medium, 6px) var(--w11-radius-medium, 6px) 0;
-        height: 42px;
-        display: flex;
-        align-items: center;
-        padding: 0 14px;
-    }
-
-    /* Evita doble bordes */
-    .input-group .form-control,
-    .input-group .input-group-text,
-    .input-group .btn {
-        box-shadow: none;
-    }
-</style>
 <div class="row mb-3">
     <div class="col-md-12 d-flex justify-content-between align-items-center">
         <h1>Module Shop</h1>
