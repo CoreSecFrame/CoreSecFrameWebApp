@@ -1,13 +1,14 @@
 /* GUI Styles */
 .gui-card {
     transition: all 0.3s ease;
-    border: none;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    background-color: var(--w11-card-bg);
+    border: 1px solid var(--w11-card-stroke);
+    box-shadow: var(--w11-shadow-2); /* Using theme shadow */
 }
 
 .gui-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    box-shadow: var(--w11-shadow-4); /* Using theme shadow */
 }
 
 .app-icon {
@@ -45,7 +46,7 @@
 .session-status-inactive { background-color: #6c757d; }
 
 .vnc-container {
-    border: 2px solid #dee2e6;
+    border: 2px solid var(--w11-surface-stroke); /* Was #dee2e6 */
     border-radius: 8px;
     overflow: hidden;
     background: #000;
@@ -71,20 +72,21 @@
 }
 
 .gui-stats-card {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border: none;
+    background: var(--w11-bg-secondary); /* Was gradient */
+    border: 1px solid var(--w11-surface-stroke); /* Added border */
     border-radius: 12px;
 }
 
 .category-icon {
     font-size: 2rem;
     margin-bottom: 1rem;
-    color: #6c757d;
+    color: var(--w11-text-secondary); /* Was #6c757d */
 }
 
 .launch-form {
-    background: #f8f9fa;
-    border-radius: 8px;
+    background: var(--w11-bg-secondary); /* Was #f8f9fa */
+    border-radius: 8px; /* Kept */
+    border: 1px solid var(--w11-surface-stroke); /* Added */
     padding: 1.5rem;
     margin-bottom: 1.5rem;
 }
@@ -158,22 +160,22 @@
 }
 
 #notification-container {
-    position: fixed !important;
-    top: 80px !important;
-    right: 20px !important;
-    z-index: 9999 !important;
-    max-width: 400px !important;
-    pointer-events: none !important;
+    position: fixed !important; /* Keep for layout */
+    top: 80px !important; /* Keep for layout */
+    right: 20px !important; /* Keep for layout */
+    z-index: 9999 !important; /* Keep for layout - was 9999, keep this value */
+    max-width: 400px !important; /* Keep for layout */
+    pointer-events: none !important; /* Keep for layout */
 }
 
 .gui-notification {
-    pointer-events: auto !important;
-    margin-bottom: 10px !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
-    border: none !important;
-    border-radius: 8px !important;
-    opacity: 1 !important;
-    background-color: white !important;
+    pointer-events: auto; /* Removed !important */
+    margin-bottom: 10px; /* Removed !important */
+    box-shadow: var(--w11-shadow-8); /* Use theme shadow */
+    border: 1px solid var(--w11-card-stroke); /* Use theme border */
+    border-radius: var(--w11-radius-medium); /* Use theme radius */
+    opacity: 1; /* Removed !important */
+    background-color: var(--w11-card-bg); /* Use theme card bg */
 }
 
 /* GUI Viewer Styles */
@@ -285,24 +287,50 @@
 
 /* Enhanced notification styles */
 .gui-notification.alert-success {
-    background-color: rgba(209, 231, 221, 0.98) !important;
-    border-color: rgba(25, 135, 84, 0.3) !important;
+    background-color: var(--w11-alert-success-gui-bg, rgba(209, 231, 221, 0.98)); /* New var or existing if suitable */
+    border-color: var(--w11-alert-success-gui-border-color, rgba(25, 135, 84, 0.3));
+    color: var(--w11-alert-success-gui-text-color, #0a3622);
+}
+[data-theme="dark"] .gui-notification.alert-success {
+    background-color: rgba(16, 124, 16, 0.2); 
+    border-color: #107c10;
+    color: #4dc247;
 }
 
 .gui-notification.alert-danger {
-    background-color: rgba(248, 215, 218, 0.98) !important;
-    border-color: rgba(220, 53, 69, 0.3) !important;
+    background-color: var(--w11-alert-danger-gui-bg, rgba(248, 215, 218, 0.98));
+    border-color: var(--w11-alert-danger-gui-border-color, rgba(220, 53, 69, 0.3));
+    color: var(--w11-alert-danger-gui-text-color, #58151c);
+}
+[data-theme="dark"] .gui-notification.alert-danger {
+    background-color: rgba(196, 43, 28, 0.2);
+    border-color: #c42b1c;
+    color: #ff6b6b;
 }
 
 .gui-notification.alert-warning {
-    background-color: rgba(255, 243, 205, 0.98) !important;
-    border-color: rgba(255, 193, 7, 0.3) !important;
+    background-color: var(--w11-alert-warning-gui-bg, rgba(255, 243, 205, 0.98));
+    border-color: var(--w11-alert-warning-gui-border-color, rgba(255, 193, 7, 0.3));
+    color: var(--w11-alert-warning-gui-text-color, #664d03);
+}
+[data-theme="dark"] .gui-notification.alert-warning {
+    background-color: rgba(255, 185, 0, 0.2);
+    border-color: #ffb900;
+    color: #ffd93d;
 }
 
 .gui-notification.alert-info {
-    background-color: rgba(207, 244, 252, 0.98) !important;
-    border-color: rgba(13, 202, 240, 0.3) !important;
+    background-color: var(--w11-alert-info-gui-bg, rgba(207, 244, 252, 0.98));
+    border-color: var(--w11-alert-info-gui-border-color, rgba(13, 202, 240, 0.3));
+    color: var(--w11-alert-info-gui-text-color, #055160);
+}
+[data-theme="dark"] .gui-notification.alert-info {
+    background-color: rgba(0, 120, 212, 0.2);
+    border-color: var(--w11-accent);
+    color: #60abef;
 }
 
-.navbar { z-index: 1030 !important; }
-#notification-container { z-index: 1040 !important; }
+/* Keep important for z-index as they are high-risk to change without visual test */
+.navbar { z-index: 1030 !important; } 
+/* #notification-container z-index is handled above and kept with !important */
+/* Removing the duplicate #notification-container z-index rule from here */

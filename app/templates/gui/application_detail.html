@@ -12,7 +12,7 @@
                 <h1 class="h2 fw-bold mb-1">
                     {{ application.display_name }}
                 </h1>
-                <p class="text-muted mb-0">{{ application.description }}</p>
+                <p class="w11-stat-tile-label mb-0">{{ application.description }}</p>
             </div>
             <div class="btn-group" role="group">
                 <a href="{{ url_for('gui.applications') }}" class="btn btn-outline-secondary">
@@ -54,7 +54,7 @@
                     </div>
                     
                     <div class="col-md-9">
-                        <h6 class="text-muted mb-3">Technical Information</h6>
+                        <h6 class="w11-stat-tile-label mb-3">Technical Information</h6>
                         <table class="table table-borderless">
                             <tr>
                                 <td width="150"><strong>Command:</strong></td>
@@ -104,7 +104,7 @@
                         </table>
                         
                         {% if application.get_environment_dict() %}
-                        <h6 class="text-muted mb-3 mt-4">Environment Variables</h6>
+                        <h6 class="w11-stat-tile-label mb-3 mt-4">Environment Variables</h6>
                         <div class="bg-light p-3 rounded">
                             {% for key, value in application.get_environment_dict().items() %}
                             <div class="mb-1">
@@ -115,7 +115,7 @@
                         {% endif %}
                         
                         {% if application.get_required_packages_list() %}
-                        <h6 class="text-muted mb-3 mt-4">Required Packages</h6>
+                        <h6 class="w11-stat-tile-label mb-3 mt-4">Required Packages</h6>
                         <div class="d-flex flex-wrap gap-1">
                             {% for package in application.get_required_packages_list() %}
                             <span class="badge bg-light text-dark">{{ package }}</span>
@@ -175,7 +175,7 @@
                                         Port {{ session.vnc_port }}
                                     </small>
                                     {% else %}
-                                    <span class="text-muted">—</span>
+                                    <span class="w11-stat-tile-label">—</span>
                                     {% endif %}
                                 </td>
                                 <td>
@@ -225,7 +225,7 @@
                     
                     <!-- Quick Launch Options -->
                     <div class="border rounded p-3">
-                        <h6 class="text-muted mb-3">Quick Launch Presets</h6>
+                        <h6 class="w11-stat-tile-label mb-3">Quick Launch Presets</h6>
                         <div class="d-grid gap-2">
                             <button class="btn btn-outline-primary btn-sm" 
                                     onclick="quickLaunch('1024x768', 24)">
@@ -244,15 +244,15 @@
                     
                     <!-- Statistics -->
                     <div class="border rounded p-3">
-                        <h6 class="text-muted mb-3">Session Statistics</h6>
+                        <h6 class="w11-stat-tile-label mb-3">Session Statistics</h6>
                         <div class="row text-center">
                             <div class="col-6">
                                 <h4 class="text-success">{{ application.sessions.filter_by(active=True).count() }}</h4>
-                                <small class="text-muted">Active</small>
+                                <small class="w11-stat-tile-label">Active</small>
                             </div>
                             <div class="col-6">
                                 <h4 class="text-info">{{ application.sessions.count() }}</h4>
-                                <small class="text-muted">Total</small>
+                                <small class="w11-stat-tile-label">Total</small>
                             </div>
                         </div>
                     </div>

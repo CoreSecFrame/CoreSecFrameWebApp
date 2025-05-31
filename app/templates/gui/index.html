@@ -63,7 +63,7 @@
             <div class="card-body text-center">
                 <i class="bi bi-app-indicator text-primary mb-2" style="font-size: 2rem;"></i>
                 <h3 class="mb-1">{{ applications|length }}</h3>
-                <p class="text-muted mb-0 small">Available Apps</p>
+                <p class="w11-stat-tile-label">Available Apps</p>
             </div>
         </div>
     </div>
@@ -72,7 +72,7 @@
             <div class="card-body text-center">
                 <i class="bi bi-play-circle text-success mb-2" style="font-size: 2rem;"></i>
                 <h3 class="mb-1">{{ active_sessions|length }}</h3>
-                <p class="text-muted mb-0 small">Active Sessions</p>
+                <p class="w11-stat-tile-label">Active Sessions</p>
             </div>
         </div>
     </div>
@@ -81,7 +81,7 @@
             <div class="card-body text-center">
                 <i class="bi bi-collection text-info mb-2" style="font-size: 2rem;"></i>
                 <h3 class="mb-1">{{ categories|length }}</h3>
-                <p class="text-muted mb-0 small">Categories</p>
+                <p class="w11-stat-tile-label">Categories</p>
             </div>
         </div>
     </div>
@@ -90,7 +90,7 @@
             <div class="card-body text-center">
                 <i class="bi bi-display text-warning mb-2" style="font-size: 2rem;"></i>
                 <h3 class="mb-1">{{ current_user.gui_sessions.filter_by(active=True).count() }}</h3>
-                <p class="text-muted mb-0 small">My Active</p>
+                <p class="w11-stat-tile-label">My Active</p>
             </div>
         </div>
     </div>
@@ -297,7 +297,7 @@
                                             {% endif %}
                                             <div class="flex-grow-1">
                                                 <h6 class="mb-1">{{ app.display_name }}</h6>
-                                                <p class="text-muted small mb-2">{{ app.description|truncate(60) }}</p>
+                                                <p class="w11-stat-tile-label">{{ app.description|truncate(60) }}</p>
                                                 <div class="d-flex flex-wrap gap-1">
                                                     <span class="badge bg-light text-dark">{{ app.category or 'Uncategorized' }}</span>
                                                     {% if gui_uses_wslg %}
@@ -344,7 +344,7 @@
                                             {% endif %}
                                             <div class="flex-grow-1">
                                                 <h6 class="mb-1">{{ app.display_name }}</h6>
-                                                <p class="text-muted small mb-2">{{ app.description|truncate(60) }}</p>
+                                                <p class="w11-stat-tile-label">{{ app.description|truncate(60) }}</p>
                                                 {% if gui_uses_wslg %}
                                                 <span class="badge bg-success badge-sm">WSLg Native</span>
                                                 {% else %}

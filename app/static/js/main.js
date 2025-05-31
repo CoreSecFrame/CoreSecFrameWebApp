@@ -68,14 +68,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Theme Switching Functionality
     /**
-     * Applies the selected theme (light/dark) to the application.
-     * Sets the 'data-theme' attribute on the documentElement and stores the preference in localStorage.
+     * Updates the application theme (light/dark).
+     * Sets 'data-theme' on documentElement, stores in localStorage, updates toggle icon, and logs.
      * @param {string} theme - The theme to apply ('light' or 'dark').
      */
-    function applyTheme(theme) {
+    function updateTheme(theme) {
         document.documentElement.setAttribute('data-theme', theme);
         localStorage.setItem('theme', theme);
-        console.log(`Theme applied: ${theme}`); // For debugging
+
+        const themeIcon = document.getElementById('theme-icon');
+        if (themeIcon) {
+            if (theme === 'dark') {
+                themeIcon.className = 'bi bi-sun-fill';
+            } else {
+                themeIcon.className = 'bi bi-moon-fill';
+            }
+        }
+        
+        console.log(`Theme updated to: ${theme}`); // For debugging
+        
+        // Apply theme to dynamically created modals
+        applyThemeToModals();
     }
 
     /**
@@ -93,14 +106,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const savedTheme = localStorage.getItem('theme') || 'light'; // Default to light theme
     const savedAccentColor = localStorage.getItem('accentColor') || 'var(--accent-default-blue)'; // Default to Fluent blue
 
-    applyTheme(savedTheme);
+    updateTheme(savedTheme); // Use the new function
     applyAccentColor(savedAccentColor);
 
     // Update UI elements on profile page if they exist
     const themeLightRadio = document.getElementById('themeLight');
     const themeDarkRadio = document.getElementById('themeDark');
     if (themeLightRadio && themeDarkRadio) {
-        if (savedTheme === 'light') {
+        // Reflect current theme state from documentElement after initial updateTheme call
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        if (currentTheme === 'light') {
             themeLightRadio.checked = true;
         } else {
             themeDarkRadio.checked = true;
@@ -108,7 +123,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         document.querySelectorAll('input[name="themeMode"]').forEach(radio => {
             radio.addEventListener('change', function() {
-                applyTheme(this.value);
+                updateTheme(this.value); // Use the new function
             });
         });
     }
@@ -131,53 +146,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Make functions globally available if needed for other dynamic UI elements later
-    window.setAppTheme = applyTheme;
+    window.setAppTheme = updateTheme; // Expose the new function
     window.setAppAccentColor = applyAccentColor;
-});
 
-// Dark mode functionality
-document.addEventListener('DOMContentLoaded', function() {
-    const themeToggle = document.getElementById('theme-toggle');
-    const themeIcon = document.getElementById('theme-icon');
-    const body = document.body;
-    
-    // Get saved theme or default to light
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    setTheme(savedTheme);
-    
-    if (themeToggle) {
-        themeToggle.addEventListener('click', function() {
-            const currentTheme = body.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            setTheme(newTheme);
-        });
-    }
-    
-    function setTheme(theme) {
-        body.setAttribute('data-theme', theme);
-        localStorage.setItem('theme', theme);
-        
-        if (themeIcon) {
-            if (theme === 'dark') {
-                themeIcon.className = 'bi bi-sun-fill';
-            } else {
-                themeIcon.className = 'bi bi-moon-fill';
-            }
-        }
-        
-        // Apply theme to dynamically created modals
-        applyThemeToModals();
-    }
-    
+    // Moved Modal Theming Logic here for better scope and cohesion
     function applyThemeToModals() {
-        const theme = body.getAttribute('data-theme');
+        // Read theme from documentElement
+        const theme = document.documentElement.getAttribute('data-theme'); 
         const modals = document.querySelectorAll('.modal, .custom-modal');
         
         modals.forEach(modal => {
             modal.setAttribute('data-theme', theme);
         });
     }
-    
+
     // Watch for new modals being added to DOM
     const observer = new MutationObserver(function(mutations) {
         mutations.forEach(function(mutation) {
@@ -185,15 +167,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (node.nodeType === 1) { // Element node
                     if (node.matches('.modal, .custom-modal') || 
                         node.querySelector('.modal, .custom-modal')) {
-                        applyThemeToModals();
+                        applyThemeToModals(); // This will now correctly call the function defined above
                     }
                 }
             });
         });
     });
     
-    observer.observe(document.body, {
+    observer.observe(document.body, { // Observe body for dynamically added modals
         childList: true,
         subtree: true
     });
+
+    // Theme toggle specific logic (if #theme-toggle exists)
+    // This was previously in the second DOMContentLoaded, moving relevant parts here.
+    const themeToggle = document.getElementById('theme-toggle');
+    if (themeToggle) {
+        themeToggle.addEventListener('click', function() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            updateTheme(newTheme);
+        });
+    }
+    // The initial theme application and icon update are already handled by updateTheme(savedTheme)
+    // and the logic within updateTheme itself.
+});
+
+// The second DOMContentLoaded listener is now significantly reduced or can be removed if empty.
+// For now, I'll leave it empty. If other non-theme logic was there, it should remain.
+// Based on the initial read, the second listener was purely for theme toggle and modal observer.
+document.addEventListener('DOMContentLoaded', function() {
+    // Intentionally left empty if all specific logic moved to the first listener.
+    // If other, unrelated JavaScript was here, it should be preserved.
+    // For this refactoring, assuming it was primarily for theme related elements.
 });

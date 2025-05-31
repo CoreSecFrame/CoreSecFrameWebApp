@@ -239,6 +239,11 @@
     gap: 8px;
 }
 
+/* Dark theme adjustment for error message text */
+[data-theme="dark"] .w11-error-message {
+    color: #ff6b6b; /* Lighter red text, similar to .alert-danger in dark mode */
+}
+
 .w11-copyright {
     text-align: center;
     margin-top: 32px;

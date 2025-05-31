@@ -97,18 +97,27 @@
 }
 
 .w11-session-type.terminal {
-    background: rgba(108, 117, 125, 0.1);
-    color: #6c757d;
+    background: rgba(108, 117, 125, 0.1); /* Adapts with theme */
+    color: #6c757d; /* Light theme text */
+}
+[data-theme="dark"] .w11-session-type.terminal {
+    color: var(--w11-text-secondary); /* Dark theme: Lighter gray text */
 }
 
 .w11-session-type.guided {
-    background: rgba(0, 130, 114, 0.1);
-    color: #008272;
+    background: rgba(0, 130, 114, 0.1); /* Adapts with theme */
+    color: #008272; /* Light theme text */
+}
+[data-theme="dark"] .w11-session-type.guided {
+    color: #20c997; /* Dark theme: Lighter teal text */
 }
 
 .w11-session-type.direct {
-    background: rgba(255, 185, 0, 0.1);
-    color: #ffb900;
+    background: rgba(255, 185, 0, 0.1); /* Adapts with theme */
+    color: #ffb900; /* Light theme text */
+}
+[data-theme="dark"] .w11-session-type.direct {
+    color: #ffd966; /* Dark theme: Lighter yellow/orange text */
 }
 
 .w11-session-status {
@@ -122,13 +131,19 @@
 }
 
 .w11-session-status.active {
-    background: rgba(16, 124, 16, 0.1);
-    color: #107c10;
+    background: rgba(16, 124, 16, 0.1); /* Adapts with theme */
+    color: #107c10; /* Light theme text */
+}
+[data-theme="dark"] .w11-session-status.active {
+    color: #4dc247; /* Dark theme: Lighter green text */
 }
 
 .w11-session-status.inactive {
-    background: rgba(108, 117, 125, 0.1);
-    color: #6c757d;
+    background: rgba(108, 117, 125, 0.1); /* Adapts with theme */
+    color: #6c757d; /* Light theme text */
+}
+[data-theme="dark"] .w11-session-status.inactive {
+    color: var(--w11-text-secondary); /* Dark theme: Lighter gray text */
 }
 
 .w11-action-buttons {

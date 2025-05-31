@@ -155,9 +155,9 @@
     transition: background var(--w11-duration-fast) var(--w11-ease-standard);
 }
 
-.log-entry.table-danger { background-color: rgba(196, 43, 28, 0.1) !important; }
-.log-entry.table-warning { background-color: rgba(255, 185, 0, 0.1) !important; }
-.log-entry.table-info { background-color: rgba(0, 120, 212, 0.1) !important; }
+.log-entry.table-danger { background-color: rgba(196, 43, 28, 0.1); }
+.log-entry.table-warning { background-color: rgba(255, 185, 0, 0.1); }
+.log-entry.table-info { background-color: rgba(0, 120, 212, 0.1); }
 
 .log-message {
     max-width: 400px;
