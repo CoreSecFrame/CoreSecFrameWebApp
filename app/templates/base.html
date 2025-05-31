@@ -1,4 +1,4 @@
-<!-- app/templates/base.html - Professional Enhancement -->
+<!-- app/templates/base.html - Windows 11 Style -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,21 +11,460 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
     
-    <!-- Google Fonts -->
+    <!-- Segoe UI Variable Font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Custom Styles -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <!-- Windows 11 Styles -->
+    <style>
+        :root {
+            /* Windows 11 Color System */
+            --w11-accent: #0078d4;
+            --w11-accent-light1: #106ebe;
+            --w11-accent-light2: #005a9e;
+            --w11-accent-light3: #004578;
+            --w11-accent-dark1: #409cef;
+            --w11-accent-dark2: #60abef;
+            --w11-accent-dark3: #80baf5;
+
+            /* Light Theme */
+            --w11-bg-primary: #fafafa;
+            --w11-bg-secondary: #f9f9f9;
+            --w11-bg-tertiary: #f3f3f3;
+            --w11-bg-quarternary: #eeeeee;
+            --w11-bg-solid: #f3f3f3;
+            --w11-surface-stroke: #e5e5e5;
+            --w11-divider-stroke: #d1d1d1;
+            --w11-text-primary: #1c1c1c;
+            --w11-text-secondary: #757575;
+            --w11-text-tertiary: #616161;
+            --w11-text-disabled: #a6a6a6;
+
+            /* Card Backgrounds */
+            --w11-card-bg: rgba(255, 255, 255, 0.7);
+            --w11-card-stroke: rgba(0, 0, 0, 0.05);
+            
+            /* Shadows */
+            --w11-shadow-2: 0 2px 4px rgba(0, 0, 0, 0.1);
+            --w11-shadow-4: 0 4px 8px rgba(0, 0, 0, 0.12);
+            --w11-shadow-8: 0 8px 16px rgba(0, 0, 0, 0.14);
+            --w11-shadow-16: 0 16px 32px rgba(0, 0, 0, 0.16);
+
+            /* Border Radius */
+            --w11-radius-small: 4px;
+            --w11-radius-medium: 8px;
+            --w11-radius-large: 12px;
+            --w11-radius-xlarge: 16px;
+
+            /* Transitions */
+            --w11-duration-fast: 150ms;
+            --w11-duration-normal: 250ms;
+            --w11-duration-slow: 350ms;
+            --w11-ease-standard: cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+
+        /* Dark mode text color fixes */
+        [data-theme="dark"] {
+            --w11-bg-primary: #1c1c1c;
+            --w11-bg-secondary: #2c2c2c;
+            --w11-bg-tertiary: #383838;
+            --w11-bg-quarternary: #404040;
+            --w11-bg-solid: #2c2c2c;
+            --w11-surface-stroke: #383838;
+            --w11-divider-stroke: #404040;
+            --w11-text-primary: #ffffff;
+            --w11-text-secondary: #c7c7c7;
+            --w11-text-tertiary: #a6a6a6;
+            --w11-text-disabled: #757575;
+            --w11-card-bg: rgba(44, 44, 44, 0.8);
+            --w11-card-stroke: rgba(255, 255, 255, 0.08);
+        }
+
+        /* Force text colors in dark mode */
+        [data-theme="dark"] body {
+            color: var(--w11-text-primary) !important;
+        }
+
+        [data-theme="dark"] h1, 
+        [data-theme="dark"] h2, 
+        [data-theme="dark"] h3, 
+        [data-theme="dark"] h4, 
+        [data-theme="dark"] h5, 
+        [data-theme="dark"] h6 {
+            color: var(--w11-text-primary) !important;
+        }
+
+        [data-theme="dark"] p,
+        [data-theme="dark"] span,
+        [data-theme="dark"] div {
+            color: var(--w11-text-primary);
+        }
+
+        [data-theme="dark"] .text-muted {
+            color: var(--w11-text-secondary) !important;
+        }
+
+        [data-theme="dark"] .card {
+            color: var(--w11-text-primary);
+        }
+
+        [data-theme="dark"] .form-label {
+            color: var(--w11-text-secondary);
+        }
+
+        [data-theme="dark"] .table {
+            color: var(--w11-text-primary);
+        }
+
+        [data-theme="dark"] .navbar-nav .nav-link {
+            color: var(--w11-text-secondary) !important;
+        }
+
+        [data-theme="dark"] .navbar-nav .nav-link:hover {
+            color: var(--w11-text-primary) !important;
+        }
+
+        [data-theme="dark"] .dropdown-item {
+            color: var(--w11-text-primary) !important;
+        }
+
+        [data-theme="dark"] .dropdown-header {
+            color: var(--w11-text-secondary) !important;
+        }
+
+        [data-theme="dark"] .table-striped tbody tr {
+            background-color: var(--w11-bg-primary) !important;
+            color: var(--w11-text-primary) !important;
+        }
+
+        [data-theme="dark"] .table tbody tr td,
+        [data-theme="dark"] .table tbody tr th {
+            color: var(--w11-text-primary) !important;
+            background-color: transparent !important;
+        }
+
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: var(--w11-bg-primary);
+            color: var(--w11-text-primary);
+            font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            font-size: 14px;
+            line-height: 1.5;
+            overflow-x: hidden;
+        }
+
+        /* Typography */
+        h1, h2, h3, h4, h5, h6 {
+            font-weight: 600;
+            color: var(--w11-text-primary);
+            margin-bottom: 16px;
+        }
+
+        h1 { font-size: 28px; font-weight: 400; }
+        h2 { font-size: 24px; }
+        h3 { font-size: 20px; }
+        h4 { font-size: 18px; }
+        h5 { font-size: 16px; }
+        h6 { font-size: 14px; font-weight: 600; }
+
+        /* Windows 11 Navigation */
+        .navbar {
+            background: var(--theme-dark-fill-primary);
+            box-shadow: var(--shadow-sm);
+            padding: 0.75rem 1rem; /* Added horizontal padding to navbar itself */
+            border-bottom: 2px solid var(--current-accent);
+            z-index: 1030; /* Ensure navbar is above page content but below modals */
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+            font-size: 18px;
+            color: var(--w11-text-primary) !important;
+            display: flex;
+            align-items: center;
+            transition: transform var(--w11-duration-fast) var(--w11-ease-standard);
+        }
+
+        .navbar-brand:hover {
+            transform: scale(1.02);
+        }
+
+        .navbar-brand i {
+            font-size: 20px;
+            color: var(--w11-accent);
+            margin-right: 8px;
+        }
+
+        .navbar-nav .nav-link {
+            color: var(--w11-text-secondary) !important;
+            font-weight: 400;
+            padding: 8px 16px !important;
+            margin: 0 4px;
+            border-radius: var(--w11-radius-medium);
+            transition: all var(--w11-duration-fast) var(--w11-ease-standard);
+            position: relative;
+        }
+
+        .navbar-nav .nav-link:hover {
+            background: var(--w11-bg-tertiary);
+            color: var(--w11-text-primary) !important;
+        }
+
+        .navbar-nav .nav-link.active {
+            background: var(--w11-accent);
+            color: white !important;
+        }
+
+        /* Windows 11 Cards */
+        .card {
+            background: var(--w11-card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--w11-card-stroke);
+            border-radius: var(--w11-radius-large);
+            box-shadow: var(--w11-shadow-2);
+            margin-bottom: 24px;
+            transition: all var(--w11-duration-normal) var(--w11-ease-standard);
+        }
+
+        .card:hover {
+            box-shadow: var(--w11-shadow-8);
+            transform: translateY(-2px);
+        }
+
+        .card-header {
+            background: var(--w11-bg-secondary);
+            border-bottom: 1px solid var(--w11-surface-stroke);
+            border-radius: var(--w11-radius-large) var(--w11-radius-large) 0 0 !important;
+            padding: 20px 24px;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .card-body {
+            padding: 24px;
+        }
+
+        /* Windows 11 Buttons */
+        .btn {
+            padding: 8px 20px;
+            font-weight: 500;
+            font-size: 14px;
+            border-radius: var(--w11-radius-medium);
+            transition: all var(--w11-duration-fast) var(--w11-ease-standard);
+            border: 1px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--w11-shadow-4);
+        }
+
+        .btn-primary {
+            background: var(--w11-accent);
+            color: white;
+            border-color: var(--w11-accent);
+        }
+
+        .btn-primary:hover {
+            background: var(--w11-accent-light1);
+            border-color: var(--w11-accent-light1);
+        }
+
+        .btn-secondary {
+            background: var(--w11-bg-tertiary);
+            color: var(--w11-text-primary);
+            border-color: var(--w11-surface-stroke);
+        }
+
+        .btn-secondary:hover {
+            background: var(--w11-bg-quarternary);
+        }
+
+        /* Windows 11 Form Controls */
+        .form-control, .form-select {
+            background: var(--w11-bg-secondary);
+            color: var(--w11-text-primary);
+            border: 1px solid var(--w11-surface-stroke);
+            border-radius: var(--w11-radius-medium);
+            padding: 12px 16px;
+            font-size: 14px;
+            transition: all var(--w11-duration-fast) var(--w11-ease-standard);
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--w11-accent);
+            box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
+        }
+
+        /* Windows 11 Tables */
+        .table {
+            border-radius: var(--w11-radius-large);
+            overflow: hidden;
+            background: var(--w11-bg-primary);
+        }
+
+        .table thead th {
+            background: var(--w11-bg-secondary);
+            border-bottom: 1px solid var(--w11-surface-stroke);
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--w11-text-secondary);
+            padding: 16px 20px;
+        }
+
+        .table tbody tr {
+            transition: background var(--w11-duration-fast) var(--w11-ease-standard);
+            border-bottom: 1px solid var(--w11-surface-stroke);
+        }
+
+        .table tbody tr:hover {
+            background: var(--w11-bg-secondary);
+        }
+
+        .table td {
+            padding: 16px 20px;
+            vertical-align: middle;
+        }
+
+        /* Windows 11 Alerts */
+        .alert {
+            border-radius: var(--w11-radius-large);
+            padding: 16px 20px;
+            border: 1px solid transparent;
+            border-left-width: 4px;
+        }
+
+        .alert-success {
+            background: rgba(16, 124, 16, 0.1);
+            border-left-color: #107c10;
+            color: #107c10;
+        }
+
+        .alert-danger {
+            background: rgba(196, 43, 28, 0.1);
+            border-left-color: #c42b1c;
+            color: #c42b1c;
+        }
+
+        .alert-warning {
+            background: rgba(255, 185, 0, 0.1);
+            border-left-color: #ffb900;
+            color: #8a6c00;
+        }
+
+        .alert-info {
+            background: rgba(0, 120, 212, 0.1);
+            border-left-color: var(--w11-accent);
+            color: var(--w11-accent);
+        }
+
+        /* Windows 11 Badges */
+        .badge {
+            padding: 6px 12px;
+            font-weight: 500;
+            font-size: 12px;
+            border-radius: var(--w11-radius-large);
+        }
+
+        /* Footer */
+        footer {
+            background: var(--w11-bg-secondary);
+            border-top: 1px solid var(--w11-surface-stroke);
+            padding: 20px 0;
+            margin-top: auto;
+            color: var(--w11-text-secondary);
+        }
+
+        /* Dropdown */
+        .dropdown-menu {
+            background: var(--w11-card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--w11-card-stroke);
+            border-radius: var(--w11-radius-large);
+            box-shadow: var(--w11-shadow-16);
+            padding: 8px;
+        }
+
+        .dropdown-item {
+            border-radius: var(--w11-radius-medium);
+            padding: 8px 12px;
+            transition: background var(--w11-duration-fast) var(--w11-ease-standard);
+        }
+
+        .dropdown-item:hover {
+            background: var(--w11-bg-tertiary);
+        }
+
+        /* User Avatar */
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--w11-accent);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fadeInUp var(--w11-duration-normal) var(--w11-ease-standard);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            body {
+                font-size: 14px;
+            }
+            
+            .navbar {
+                padding: 12px 16px;
+            }
+            
+            .card-body {
+                padding: 20px;
+            }
+            
+            .container-fluid {
+                padding-left: 16px;
+                padding-right: 16px;
+            }
+        }
+    </style>
     
     {% block head %}{% endblock %}
 </head>
 <body>
-    <!-- Professional Navigation -->
+    <!-- Windows 11 Style Navigation -->
     <header>
-        <nav class="navbar navbar-expand-lg navbar-dark">
-            <div class="container-fluid px-4">
+        <nav class="navbar navbar-expand-lg">
+            <div class="container-fluid">
                 <a class="navbar-brand" href="{{ url_for('core.index') }}">
-                    <i class="bi bi-shield-lock-fill me-2"></i>
+                    <i class="bi bi-shield-lock-fill"></i>
                     <span>CoreSecFrame</span>
                 </a>
                 
@@ -74,14 +513,13 @@
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="navbarDropdown" 
                                role="button" data-bs-toggle="dropdown">
-                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" 
-                                     style="width: 32px; height: 32px; font-size: 14px; font-weight: 600;">
+                                <div class="user-avatar me-2">
                                     {{ current_user.username[0].upper() }}
                                 </div>
                                 <span>{{ current_user.username }}</span>
                             </a>
-                            <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-2">
-                                <li class="dropdown-header text-muted small">Signed in as</li>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li class="dropdown-header">Signed in as</li>
                                 <li class="dropdown-header"><strong>{{ current_user.username }}</strong></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
@@ -111,7 +549,7 @@
                             </a>
                         </li>
                         <li class="nav-item ms-2">
-                            <a class="btn btn-primary btn-sm" href="{{ url_for('auth.register') }}">
+                            <a class="btn btn-primary" href="{{ url_for('auth.register') }}">
                                 Register
                             </a>
                         </li>
@@ -124,7 +562,7 @@
 
     <!-- Main Content -->
     <main class="flex-grow-1">
-        <div class="container-fluid px-4 py-4">
+        <div class="container-fluid py-4">
             <!-- Flash Messages -->
             {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -147,15 +585,15 @@
         </div>
     </main>
 
-    <!-- Professional Footer -->
-    <footer class="mt-auto">
-        <div class="container-fluid px-4">
+    <!-- Windows 11 Style Footer -->
+    <footer>
+        <div class="container-fluid">
             <div class="row">
                 <div class="col-md-6">
                     <span>&copy; 2025 CoreSecFrame. All rights reserved.</span>
                 </div>
                 <div class="col-md-6 text-md-end">
-                    <span class="text-muted">Version 1.0.0</span>
+                    <span>Version 1.0.0</span>
                 </div>
             </div>
         </div>
