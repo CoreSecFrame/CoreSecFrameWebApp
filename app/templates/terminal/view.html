@@ -4,235 +4,9 @@
 {% block head %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.1.0/css/xterm.min.css" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.7.0/lib/xterm-addon-fit.css" />
-<style>
-    .w11-terminal-container {
-        background: var(--w11-card-bg);
-        backdrop-filter: blur(20px);
-        border: 1px solid var(--w11-card-stroke);
-        border-radius: var(--w11-radius-large);
-        overflow: hidden;
-        box-shadow: var(--w11-shadow-8);
-        margin-bottom: 24px;
-    }
-
-    .w11-terminal-header {
-        background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        padding: 16px 24px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        color: white;
-    }
-
-    .w11-terminal-title {
-        font-weight: 600;
-        font-size: 16px;
-        margin: 0;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .w11-terminal-controls {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .w11-status-indicator {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        display: inline-block;
-        margin-right: 8px;
-    }
-
-    .w11-status-active {
-        background: #107c10;
-        box-shadow: 0 0 8px rgba(16, 124, 16, 0.5);
-    }
-
-    .w11-status-inactive {
-        background: #6c757d;
-    }
-
-    .w11-terminal-btn {
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        color: white;
-        padding: 8px 12px;
-        border-radius: var(--w11-radius-medium);
-        font-size: 12px;
-        transition: all var(--w11-duration-fast) var(--w11-ease-standard);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .w11-terminal-btn:hover {
-        background: rgba(255, 255, 255, 0.2);
-        border-color: rgba(255, 255, 255, 0.3);
-        color: white;
-        transform: scale(1.05);
-    }
-
-    .w11-terminal-display {
-        height: 70vh;
-        min-height: 500px;
-        background: #0c0c0c;
-        position: relative;
-    }
-
-    #terminal {
-        width: 100%;
-        height: 100%;
-        padding: 16px;
-    }
-
-    .w11-terminal-footer {
-        background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-        padding: 12px 24px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        color: rgba(255, 255, 255, 0.8);
-        font-size: 12px;
-    }
-
-    .w11-terminal-info {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-    }
-
-    .w11-terminal-actions {
-        display: flex;
-        gap: 8px;
-    }
-
-    .w11-shortcuts-card {
-        background: var(--w11-card-bg);
-        backdrop-filter: blur(20px);
-        border: 1px solid var(--w11-card-stroke);
-        border-radius: var(--w11-radius-large);
-        margin-top: 24px;
-        overflow: hidden;
-        transition: all var(--w11-duration-normal) var(--w11-ease-standard);
-    }
-
-    .w11-shortcuts-header {
-        background: var(--w11-bg-secondary);
-        border-bottom: 1px solid var(--w11-surface-stroke);
-        padding: 16px 24px;
-        font-weight: 600;
-        font-size: 14px;
-        color: var(--w11-text-primary);
-    }
-
-    .w11-shortcuts-content {
-        padding: 24px;
-    }
-
-    .w11-shortcut-section {
-        margin-bottom: 24px;
-    }
-
-    .w11-shortcut-section:last-child {
-        margin-bottom: 0;
-    }
-
-    .w11-shortcut-title {
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--w11-text-secondary);
-        margin-bottom: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .w11-shortcut-table {
-        width: 100%;
-        margin: 0;
-        background: transparent;
-    }
-
-    .w11-shortcut-table td {
-        padding: 8px 0;
-        border: none;
-        vertical-align: middle;
-    }
-
-    .w11-shortcut-table td:first-child {
-        width: 140px;
-    }
-
-    .w11-kbd {
-        background: var(--w11-bg-tertiary);
-        border: 1px solid var(--w11-surface-stroke);
-        border-radius: var(--w11-radius-small);
-        padding: 4px 8px;
-        font-family: 'Consolas', 'Monaco', monospace;
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--w11-text-primary);
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    .w11-page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 32px;
-    }
-
-    .w11-page-title {
-        font-size: 28px;
-        font-weight: 400;
-        color: var(--w11-text-primary);
-        margin-bottom: 4px;
-    }
-
-    .w11-page-subtitle {
-        font-size: 14px;
-        color: var(--w11-text-secondary);
-        margin-bottom: 0;
-    }
-
-    .w11-modal {
-        backdrop-filter: blur(20px);
-    }
-
-    .w11-modal-content {
-        background: var(--w11-card-bg);
-        border: 1px solid var(--w11-card-stroke);
-        border-radius: var(--w11-radius-large);
-        box-shadow: var(--w11-shadow-16);
-    }
-
-    .w11-modal-header {
-        border-bottom: 1px solid var(--w11-surface-stroke);
-        padding: 24px;
-    }
-
-    .w11-modal-body {
-        padding: 24px;
-    }
-
-    .w11-modal-footer {
-        border-top: 1px solid var(--w11-surface-stroke);
-        padding: 20px 24px;
-        display: flex;
-        gap: 12px;
-        justify-content: flex-end;
-    }
-
-    /* Hide shortcuts panel by default */
-    .w11-shortcuts-card.hidden {
-        display: none;
-    }
-</style>
+{% block css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/terminal.css') }}">
+{% endblock %}
 {% endblock %}
 
 {% block content %}
@@ -272,7 +46,8 @@
         </h5>
         <div class="w11-terminal-controls">
             <div class="d-flex align-items-center">
-                <span class="w11-status-indicator {{ 'w11-status-active' if session.active else 'w11-status-inactive' }}"></span>
+                <span
+                    class="w11-status-indicator {{ 'w11-status-active' if session.active else 'w11-status-inactive' }}"></span>
                 <span>{{ 'Active' if session.active else 'Inactive' }}</span>
             </div>
             <div class="btn-group btn-group-sm" role="group">
@@ -285,7 +60,8 @@
                 <button id="btn-copy" class="w11-terminal-btn" title="Copy">
                     <i class="bi bi-clipboard"></i>
                 </button>
-                <button id="btn-paste" class="w11-terminal-btn" title="Paste" {% if not session.active %}disabled{% endif %}>
+                <button id="btn-paste" class="w11-terminal-btn" title="Paste" {% if not session.active %}disabled{%
+                    endif %}>
                     <i class="bi bi-clipboard-plus"></i>
                 </button>
             </div>
@@ -383,7 +159,8 @@
             </div>
             <div class="modal-body w11-modal-body">
                 <p>Are you sure you want to close this terminal session?</p>
-                <div class="alert alert-warning" style="background: rgba(255, 185, 0, 0.1); border-left: 4px solid #ffb900; color: #8a6c00;">
+                <div class="alert alert-warning"
+                    style="background: rgba(255, 185, 0, 0.1); border-left: 4px solid #ffb900; color: #8a6c00;">
                     <i class="bi bi-exclamation-triangle me-2"></i>
                     This will terminate all processes running in this session.
                 </div>

@@ -1,6 +1,8 @@
 <!-- app/templates/gui/launch_application.html - WSLg Enhanced -->
 {% extends "gui/base_gui.html" %}
-
+{% block css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/gui.css') }}">
+{% endblock %}
 {% block content %}
 <!-- Page Header -->
 <div class="row mb-4">

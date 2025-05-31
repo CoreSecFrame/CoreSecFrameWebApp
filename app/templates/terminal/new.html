@@ -1,6 +1,8 @@
 <!-- app/templates/terminal/new.html -->
 {% extends "base.html" %}
-
+{% block css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/terminal.css') }}">
+{% endblock %}
 {% block content %}
 <div class="row mb-4">
     <div class="col-md-12">

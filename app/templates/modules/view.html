@@ -1,6 +1,8 @@
 <!-- app/templates/modules/view.html -->
 {% extends "base.html" %}
-
+{% block css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/modules.css') }}">
+{% endblock %}
 {% block content %}
 {% if not module.installed %}
 <div class="alert alert-info">

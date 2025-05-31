@@ -1,0 +1,308 @@
+/* GUI Styles */
+.gui-card {
+    transition: all 0.3s ease;
+    border: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.gui-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
+
+.app-icon {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+.app-icon-placeholder {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+}
+
+.session-status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+}
+
+.session-status-active {
+    background-color: #28a745;
+    box-shadow: 0 0 5px rgba(40, 167, 69, 0.5);
+}
+
+.session-status-inactive { background-color: #6c757d; }
+
+.vnc-container {
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #000;
+    position: relative;
+}
+
+.vnc-toolbar {
+    background: #343a40;
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+    font-size: 0.875rem;
+}
+
+.resolution-badge {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+}
+
+.gui-stats-card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: none;
+    border-radius: 12px;
+}
+
+.category-icon {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    color: #6c757d;
+}
+
+.launch-form {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.process-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.875rem;
+}
+
+.process-running { color: #28a745; }
+.process-stopped { color: #dc3545; }
+
+.connect-button {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    border: none;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.connect-button:hover {
+    background: linear-gradient(135deg, #1e7e34 0%, #1c7430 100%);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.session-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .session-grid { grid-template-columns: 1fr; }
+    .app-icon, .app-icon-placeholder {
+        width: 40px;
+        height: 40px;
+    }
+}
+
+/* Notification animations */
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+#notification-container {
+    position: fixed !important;
+    top: 80px !important;
+    right: 20px !important;
+    z-index: 9999 !important;
+    max-width: 400px !important;
+    pointer-events: none !important;
+}
+
+.gui-notification {
+    pointer-events: auto !important;
+    margin-bottom: 10px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+    border: none !important;
+    border-radius: 8px !important;
+    opacity: 1 !important;
+    background-color: white !important;
+}
+
+/* GUI Viewer Styles */
+.gui-viewer-container {
+    background: #1a1a1a;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    position: relative;
+}
+
+.gui-viewer-header {
+    background: rgba(0, 0, 0, 0.8);
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.gui-viewer-content {
+    position: relative;
+    background: #000;
+    min-height: 600px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gui-display {
+    max-width: 100%;
+    max-height: 80vh;
+    border: none;
+    display: block;
+}
+
+.gui-controls {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 1000;
+}
+
+.gui-status {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-indicator.connected {
+    background-color: #00ff00;
+    box-shadow: 0 0 10px #00ff00;
+}
+
+.status-indicator.connecting {
+    background-color: #ffaa00;
+    animation: pulse 1s infinite;
+}
+
+.status-indicator.disconnected { background-color: #ff0000; }
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.connection-info {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    z-index: 1000;
+}
+
+.gui-toolbar {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.75rem 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    z-index: 2000;
+}
+
+/* Enhanced notification styles */
+.gui-notification.alert-success {
+    background-color: rgba(209, 231, 221, 0.98) !important;
+    border-color: rgba(25, 135, 84, 0.3) !important;
+}
+
+.gui-notification.alert-danger {
+    background-color: rgba(248, 215, 218, 0.98) !important;
+    border-color: rgba(220, 53, 69, 0.3) !important;
+}
+
+.gui-notification.alert-warning {
+    background-color: rgba(255, 243, 205, 0.98) !important;
+    border-color: rgba(255, 193, 7, 0.3) !important;
+}
+
+.gui-notification.alert-info {
+    background-color: rgba(207, 244, 252, 0.98) !important;
+    border-color: rgba(13, 202, 240, 0.3) !important;
+}
+
+.navbar { z-index: 1030 !important; }
+#notification-container { z-index: 1040 !important; }
