@@ -20,7 +20,7 @@
     background: var(--w11-bg-primary);
     border: 1px solid var(--w11-surface-stroke);
     border-right: none;
-    color: var(--w11-text-muted);
+    color: var(--w11-text-disabled); /* Was var(--w11-text-muted) */
 }
 
 .input-group-text.w11-search-icon {
@@ -140,6 +140,7 @@
     font-size: 24px;
     font-weight: 600;
     margin-bottom: 4px;
+    color: var(--w11-text-primary); /* Added color */
 }
 
 .w11-stat-label {
@@ -218,13 +219,19 @@
 }
 
 .w11-module-status.installed {
-    background: rgba(16, 124, 16, 0.1);
-    color: #107c10;
+    background: rgba(16, 124, 16, 0.1); /* Adapts with theme due to alpha */
+    color: #107c10; /* Light theme text */
+}
+[data-theme="dark"] .w11-module-status.installed {
+    color: #4dc247; /* Dark theme: Lighter green text */
 }
 
 .w11-module-status.not-installed {
-    background: rgba(108, 117, 125, 0.1);
-    color: #6c757d;
+    background: rgba(108, 117, 125, 0.1); /* Adapts with theme due to alpha */
+    color: #6c757d; /* Light theme text */
+}
+[data-theme="dark"] .w11-module-status.not-installed {
+    color: var(--w11-text-secondary); /* Dark theme: Lighter gray text */
 }
 
 .w11-module-actions {
@@ -317,6 +324,7 @@
 .input-group-text.module-search-icon {
     background: var(--w11-bg-primary, #1e1e1e);
     border: 1px solid var(--w11-surface-stroke, #444);
+    color: var(--w11-text-disabled); /* Added color */
     border-right: none;
     border-radius: var(--w11-radius-medium, 6px) 0 0 var(--w11-radius-medium, 6px);
     padding: 0 14px;

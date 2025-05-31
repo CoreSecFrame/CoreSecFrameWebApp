@@ -62,286 +62,276 @@
     --w11-card-stroke: rgba(255, 255, 255, 0.08);
 }
 
-/* Force dark mode on all elements */
-[data-theme="dark"] * {
-    color: var(--w11-text-primary);
-}
+/*
+The rule [data-theme="dark"] * { color: var(--w11-text-primary); } was removed.
+The body tag [data-theme="dark"] body already sets the primary text color,
+and specific components should use appropriate text variables or inherit.
+A global override is too aggressive and can break intended color variations.
+*/
 
 [data-theme="dark"] body {
-    background: var(--w11-bg-primary) !important;
-    color: var(--w11-text-primary) !important;
+    background: var(--w11-bg-primary);
+    color: var(--w11-text-primary);
 }
 
 /* Modal dark mode fixes */
 [data-theme="dark"] .modal-content {
-    background: var(--w11-card-bg) !important;
-    border: 1px solid var(--w11-card-stroke) !important;
-    color: var(--w11-text-primary) !important;
+    background: var(--w11-card-bg);
+    border: 1px solid var(--w11-card-stroke);
+    color: var(--w11-text-primary);
 }
 
 [data-theme="dark"] .modal-header {
-    background: var(--w11-bg-secondary) !important;
-    border-bottom: 1px solid var(--w11-surface-stroke) !important;
-    color: var(--w11-text-primary) !important;
+    background: var(--w11-bg-secondary);
+    border-bottom: 1px solid var(--w11-surface-stroke);
+    color: var(--w11-text-primary);
 }
 
 [data-theme="dark"] .modal-body {
-    background: var(--w11-card-bg) !important;
-    color: var(--w11-text-primary) !important;
+    background: var(--w11-card-bg);
+    color: var(--w11-text-primary);
 }
 
 [data-theme="dark"] .modal-footer {
-    background: var(--w11-bg-secondary) !important;
-    border-top: 1px solid var(--w11-surface-stroke) !important;
+    background: var(--w11-bg-secondary);
+    border-top: 1px solid var(--w11-surface-stroke);
 }
 
 [data-theme="dark"] .modal-title {
-    color: var(--w11-text-primary) !important;
+    color: var(--w11-text-primary);
 }
 
 /* Custom modal dark mode */
 [data-theme="dark"] .custom-modal-content {
-    background: var(--w11-card-bg) !important;
-    border: 1px solid var(--w11-card-stroke) !important;
+    background: var(--w11-card-bg);
+    border: 1px solid var(--w11-card-stroke);
 }
 
 [data-theme="dark"] .custom-modal-header {
-    background: var(--w11-bg-secondary) !important;
-    border-bottom: 1px solid var(--w11-surface-stroke) !important;
-    color: var(--w11-text-primary) !important;
+    background: var(--w11-bg-secondary);
+    border-bottom: 1px solid var(--w11-surface-stroke);
+    color: var(--w11-text-primary);
 }
 
 [data-theme="dark"] .custom-modal-body {
-    background: var(--w11-card-bg) !important;
-    color: var(--w11-text-primary) !important;
+    background: var(--w11-card-bg);
+    color: var(--w11-text-primary);
 }
 
 [data-theme="dark"] .custom-modal-footer {
-    background: var(--w11-bg-secondary) !important;
-    border-top: 1px solid var(--w11-surface-stroke) !important;
+    background: var(--w11-bg-secondary);
+    border-top: 1px solid var(--w11-surface-stroke);
 }
 
 /* Alert dark mode fixes */
 [data-theme="dark"] .alert {
-    color: var(--w11-text-primary) !important;
-    background: var(--w11-bg-secondary) !important;
-    border: 1px solid var(--w11-surface-stroke) !important;
+    color: var(--w11-text-primary);
+    background: var(--w11-bg-secondary);
+    border: 1px solid var(--w11-surface-stroke);
 }
 
 [data-theme="dark"] .alert-success {
-    background: rgba(16, 124, 16, 0.2) !important;
-    border-left-color: #107c10 !important;
-    color: #4dc247 !important;
+    background: rgba(16, 124, 16, 0.2);
+    border-left-color: #107c10;
+    color: #4dc247;
 }
 
 [data-theme="dark"] .alert-danger {
-    background: rgba(196, 43, 28, 0.2) !important;
-    border-left-color: #c42b1c !important;
-    color: #ff6b6b !important;
+    background: rgba(196, 43, 28, 0.2);
+    border-left-color: #c42b1c;
+    color: #ff6b6b;
 }
 
 [data-theme="dark"] .alert-warning {
-    background: rgba(255, 185, 0, 0.2) !important;
-    border-left-color: #ffb900 !important;
-    color: #ffd93d !important;
+    background: rgba(255, 185, 0, 0.2);
+    border-left-color: #ffb900;
+    color: #ffd93d;
 }
 
 [data-theme="dark"] .alert-info {
-    background: rgba(0, 120, 212, 0.2) !important;
-    border-left-color: var(--w11-accent) !important;
-    color: #60abef !important;
+    background: rgba(0, 120, 212, 0.2);
+    border-left-color: var(--w11-accent); /* This was already using a variable, good. */
+    color: #60abef;
 }
 
 /* Button dark mode fixes */
-[data-theme="dark"] .btn-secondary {
-    background: var(--w11-bg-tertiary) !important;
-    border-color: var(--w11-surface-stroke) !important;
-    color: var(--w11-text-primary) !important;
-}
-
-[data-theme="dark"] .btn-secondary:hover {
-    background: var(--w11-bg-quarternary) !important;
-    border-color: var(--w11-surface-stroke) !important;
-    color: var(--w11-text-primary) !important;
-}
+/* [data-theme="dark"] .btn-secondary and its hover state are removed as base styles use variables correctly */
 
 [data-theme="dark"] .btn-outline-secondary {
-    border-color: var(--w11-surface-stroke) !important;
-    color: var(--w11-text-secondary) !important;
+    border-color: var(--w11-surface-stroke);
+    color: var(--w11-text-secondary);
 }
 
 [data-theme="dark"] .btn-outline-secondary:hover {
-    background: var(--w11-bg-tertiary) !important;
-    border-color: var(--w11-surface-stroke) !important;
-    color: var(--w11-text-primary) !important;
+    background: var(--w11-bg-tertiary);
+    border-color: var(--w11-surface-stroke);
+    color: var(--w11-text-primary);
 }
 
 /* Form dark mode fixes */
-[data-theme="dark"] .form-control {
-    background: var(--w11-bg-secondary) !important;
-    border: 1px solid var(--w11-surface-stroke) !important;
-    color: var(--w11-text-primary) !important;
-}
+/* Non-focus .form-control and .form-select rules removed as base styles use variables correctly */
 
 [data-theme="dark"] .form-control:focus {
-    background: var(--w11-bg-secondary) !important;
-    border-color: var(--w11-accent) !important;
-    color: var(--w11-text-primary) !important;
-    box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2) !important;
+    /* background, border-color, color are likely redundant if base :focus uses variables or matches dark non-focus */
+    /* Keeping box-shadow as it might be a specific dark theme focus style, but removing !important */
+    /* If the box-shadow is the same as light theme, this rule might be entirely redundant if base uses variables */
+    box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2); /* Assuming this is the intended dark theme focus color for now */
 }
-
-[data-theme="dark"] .form-select {
-    background: var(--w11-bg-secondary) !important;
-    border: 1px solid var(--w11-surface-stroke) !important;
-    color: var(--w11-text-primary) !important;
-}
+/* Corresponding .form-select:focus would inherit similar behavior or need its own rule if different */
 
 [data-theme="dark"] .form-control::placeholder {
-    color: var(--w11-text-disabled) !important;
+    color: var(--w11-text-disabled);
 }
 
 /* Badge dark mode fixes */
 [data-theme="dark"] .badge {
-    color: white !important;
+    color: white; /* Default badge text in dark mode, consider var(--w11-text-primary) if appropriate */
 }
 
 [data-theme="dark"] .badge.bg-light {
-    background: var(--w11-bg-tertiary) !important;
-    color: var(--w11-text-primary) !important;
+    background: var(--w11-bg-tertiary);
+    color: var(--w11-text-primary);
 }
 
 [data-theme="dark"] .badge.text-dark {
-    color: var(--w11-text-primary) !important;
+    color: var(--w11-text-primary); /* Effectively makes .text-dark behave as light text in dark mode */
 }
 
 /* List group dark mode */
 [data-theme="dark"] .list-group-item {
-    background: var(--w11-bg-secondary) !important;
-    border: 1px solid var(--w11-surface-stroke) !important;
-    color: var(--w11-text-primary) !important;
+    background: var(--w11-bg-secondary);
+    border: 1px solid var(--w11-surface-stroke);
+    color: var(--w11-text-primary);
 }
 
 [data-theme="dark"] .list-group-item:hover {
-    background: var(--w11-bg-tertiary) !important;
+    background: var(--w11-bg-tertiary);
 }
 
 [data-theme="dark"] .list-group-item-action:hover {
-    background: var(--w11-bg-tertiary) !important;
-    color: var(--w11-text-primary) !important;
+    background: var(--w11-bg-tertiary);
+    color: var(--w11-text-primary); /* Ensure text color consistency on hover */
 }
 
 /* Dropdown dark mode */
-[data-theme="dark"] .dropdown-menu {
-    background: var(--w11-card-bg) !important;
-    border: 1px solid var(--w11-card-stroke) !important;
-}
+/* [data-theme="dark"] .dropdown-menu rule removed as base styles use variables correctly */
 
 [data-theme="dark"] .dropdown-item {
-    color: var(--w11-text-primary) !important;
+    color: var(--w11-text-primary);
 }
 
 [data-theme="dark"] .dropdown-item:hover {
-    background: var(--w11-bg-tertiary) !important;
-    color: var(--w11-text-primary) !important;
+    /* background is handled by base .dropdown-item:hover which uses var(--w11-bg-tertiary) */
+    color: var(--w11-text-primary); /* Ensure text color consistency on hover */
 }
 
 [data-theme="dark"] .dropdown-divider {
-    border-color: var(--w11-surface-stroke) !important;
+    border-color: var(--w11-surface-stroke);
 }
 
 /* Code and pre elements */
 [data-theme="dark"] code {
-    background: var(--w11-bg-tertiary) !important;
-    color: var(--w11-text-primary) !important;
-    padding: 2px 6px;
-    border-radius: 4px;
+    background: var(--w11-bg-tertiary);
+    color: var(--w11-text-primary);
+    padding: 2px 6px; /* Assuming these are intentional for dark theme or overriding base */
+    border-radius: 4px; /* Assuming these are intentional for dark theme or overriding base */
 }
 
 [data-theme="dark"] pre {
-    background: var(--w11-bg-tertiary) !important;
-    color: var(--w11-text-primary) !important;
-    border: 1px solid var(--w11-surface-stroke) !important;
+    background: var(--w11-bg-tertiary);
+    color: var(--w11-text-primary);
+    border: 1px solid var(--w11-surface-stroke);
 }
 
 /* Pagination dark mode */
 [data-theme="dark"] .page-link {
-    background: var(--w11-bg-secondary) !important;
-    border: 1px solid var(--w11-surface-stroke) !important;
-    color: var(--w11-text-primary) !important;
+    background: var(--w11-bg-secondary);
+    border: 1px solid var(--w11-surface-stroke);
+    color: var(--w11-text-primary);
 }
 
 [data-theme="dark"] .page-link:hover {
-    background: var(--w11-bg-tertiary) !important;
-    border-color: var(--w11-surface-stroke) !important;
-    color: var(--w11-text-primary) !important;
+    background: var(--w11-bg-tertiary);
+    border-color: var(--w11-surface-stroke);
+    color: var(--w11-text-primary);
 }
 
 [data-theme="dark"] .page-item.active .page-link {
-    background: var(--w11-accent) !important;
-    border-color: var(--w11-accent) !important;
+    background: var(--w11-accent);
+    border-color: var(--w11-accent);
+    /* color will be var(--w11-text-primary) from the general .page-link dark theme rule, which is white. */
+    /* This is usually fine with a blue accent background. */
 }
 
 /* Tab dark mode */
 [data-theme="dark"] .nav-tabs .nav-link {
-    background: var(--w11-bg-secondary) !important;
-    border: 1px solid var(--w11-surface-stroke) !important;
-    color: var(--w11-text-secondary) !important;
+    background: var(--w11-bg-secondary);
+    border: 1px solid var(--w11-surface-stroke);
+    color: var(--w11-text-secondary);
 }
 
 [data-theme="dark"] .nav-tabs .nav-link:hover {
-    background: var(--w11-bg-tertiary) !important;
-    color: var(--w11-text-primary) !important;
+    background: var(--w11-bg-tertiary);
+    color: var(--w11-text-primary);
 }
 
 [data-theme="dark"] .nav-tabs .nav-link.active {
-    background: var(--w11-card-bg) !important;
-    border-bottom-color: var(--w11-card-bg) !important;
-    color: var(--w11-text-primary) !important;
+    background: var(--w11-card-bg);
+    border-bottom-color: var(--w11-card-bg); /* Blends with tab-content */
+    color: var(--w11-text-primary);
 }
 
 [data-theme="dark"] .tab-content {
-    background: var(--w11-card-bg) !important;
-    border: 1px solid var(--w11-surface-stroke) !important;
-    border-top: none !important;
+    background: var(--w11-card-bg);
+    border: 1px solid var(--w11-surface-stroke);
+    border-top: none; /* Key for visual integration with active tab */
 }
 
 /* Accordion dark mode */
 [data-theme="dark"] .accordion-item {
-    background: var(--w11-bg-secondary) !important;
-    border: 1px solid var(--w11-surface-stroke) !important;
+    background: var(--w11-bg-secondary);
+    border: 1px solid var(--w11-surface-stroke);
 }
 
 [data-theme="dark"] .accordion-button {
-    background: var(--w11-bg-secondary) !important;
-    color: var(--w11-text-primary) !important;
-    border-bottom: 1px solid var(--w11-surface-stroke) !important;
+    background: var(--w11-bg-secondary);
+    color: var(--w11-text-primary);
+    border-bottom: 1px solid var(--w11-surface-stroke); /* Applied when button is collapsed */
 }
 
 [data-theme="dark"] .accordion-button:not(.collapsed) {
-    background: var(--w11-bg-tertiary) !important;
-    color: var(--w11-text-primary) !important;
+    background: var(--w11-bg-tertiary); /* Different background when expanded */
+    color: var(--w11-text-primary);
+    /* Bootstrap typically handles removing/altering border for the expanded state */
 }
 
 [data-theme="dark"] .accordion-body {
-    background: var(--w11-card-bg) !important;
-    color: var(--w11-text-primary) !important;
+    background: var(--w11-card-bg);
+    color: var(--w11-text-primary);
 }
 
 /* Input group dark mode */
 [data-theme="dark"] .input-group-text {
-    background: var(--w11-bg-secondary) !important;
-    border: 1px solid var(--w11-surface-stroke) !important;
-    color: var(--w11-text-secondary) !important;
+    background: var(--w11-bg-secondary);
+    border: 1px solid var(--w11-surface-stroke);
+    color: var(--w11-text-secondary);
 }
 
 /* Progress dark mode */
 [data-theme="dark"] .progress {
-    background: var(--w11-bg-tertiary) !important;
+    background: var(--w11-bg-tertiary);
 }
 
 [data-theme="dark"] .progress-bar {
-    background: var(--w11-accent) !important;
+    background: var(--w11-accent);
 }
+
+/* Dark mode specific table cell text color */
+[data-theme="dark"] .table td {
+    color: var(--w11-text-primary);
+}
+/* Note: .table thead th already uses var(--w11-text-secondary) which adapts. */
+
 /* Base Styles */
 * { box-sizing: border-box; }
 
@@ -501,6 +491,7 @@ h6 { font-size: 14px; font-weight: 600; }
     border-radius: var(--w11-radius-large);
     overflow: hidden;
     background: var(--w11-bg-primary);
+    --bs-table-striped-bg: transparent; /* Disable Bootstrap's default striping */
 }
 
 .table thead th {
@@ -512,17 +503,250 @@ h6 { font-size: 14px; font-weight: 600; }
     letter-spacing: 0.5px;
     color: var(--w11-text-secondary);
     padding: 16px 20px;
+    border-top: none;
 }
 
 .table tbody tr {
     transition: background var(--w11-duration-fast) var(--w11-ease-standard);
     border-bottom: 1px solid var(--w11-surface-stroke);
+    background: var(--w11-bg-primary);
 }
 
-.table tbody tr:hover { background: var(--w11-bg-secondary); }
-.table td {
+.table tbody tr:hover {
+    background: var(--w11-bg-secondary) !important;
+}
+
+.table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.table td, .table th {
     padding: 16px 20px;
     vertical-align: middle;
+    border-top: none;
+    border-bottom: 1px solid var(--w11-surface-stroke);
+    color: var(--w11-text-primary);
+    background: transparent;
+}
+
+.table td:first-child, .table th:first-child {
+    border-left: none;
+}
+
+.table td:last-child, .table th:last-child {
+    border-right: none;
+}
+
+/* Remove Bootstrap's table striping completely */
+.table-striped > tbody > tr:nth-of-type(odd) > td,
+.table-striped > tbody > tr:nth-of-type(odd) > th {
+    background-color: var(--w11-bg-primary) !important;
+}
+
+.table-striped > tbody > tr:nth-of-type(even) > td,
+.table-striped > tbody > tr:nth-of-type(even) > th {
+    background-color: var(--w11-bg-primary) !important;
+}
+
+/* Light Mode Table Styles */
+[data-theme="light"] .table,
+body:not([data-theme]) .table {
+    background: var(--w11-bg-primary);
+}
+
+[data-theme="light"] .table thead th,
+body:not([data-theme]) .table thead th {
+    background: var(--w11-bg-secondary);
+    color: var(--w11-text-secondary);
+    border-bottom: 1px solid var(--w11-surface-stroke);
+}
+
+[data-theme="light"] .table tbody tr,
+body:not([data-theme]) .table tbody tr {
+    background: var(--w11-bg-primary);
+    border-bottom: 1px solid var(--w11-surface-stroke);
+}
+
+[data-theme="light"] .table tbody tr:hover,
+body:not([data-theme]) .table tbody tr:hover {
+    background: var(--w11-bg-secondary) !important;
+}
+
+[data-theme="light"] .table td,
+[data-theme="light"] .table th,
+body:not([data-theme]) .table td,
+body:not([data-theme]) .table th {
+    color: var(--w11-text-primary);
+    border-bottom: 1px solid var(--w11-surface-stroke);
+    background: transparent;
+}
+
+/* Dark Mode Table Styles */
+[data-theme="dark"] .table {
+    background: var(--w11-bg-primary) !important;
+}
+
+[data-theme="dark"] .table thead th {
+    background: var(--w11-bg-secondary) !important;
+    color: var(--w11-text-secondary) !important;
+    border-bottom: 1px solid var(--w11-surface-stroke) !important;
+}
+
+[data-theme="dark"] .table tbody tr {
+    background: var(--w11-bg-primary) !important;
+    border-bottom: 1px solid var(--w11-surface-stroke) !important;
+}
+
+[data-theme="dark"] .table tbody tr:hover {
+    background: var(--w11-bg-secondary) !important;
+}
+
+[data-theme="dark"] .table td,
+[data-theme="dark"] .table th {
+    color: var(--w11-text-primary) !important;
+    border-bottom: 1px solid var(--w11-surface-stroke) !important;
+    background: transparent !important;
+}
+
+/* Force remove any striping in dark mode */
+[data-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd),
+[data-theme="dark"] .table-striped > tbody > tr:nth-of-type(even) {
+    background: var(--w11-bg-primary) !important;
+}
+
+[data-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) > td,
+[data-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) > th,
+[data-theme="dark"] .table-striped > tbody > tr:nth-of-type(even) > td,
+[data-theme="dark"] .table-striped > tbody > tr:nth-of-type(even) > th {
+    background: var(--w11-bg-primary) !important;
+    color: var(--w11-text-primary) !important;
+}
+
+/* Table variants for different states */
+.table .table-success {
+    background: rgba(16, 124, 16, 0.1) !important;
+}
+
+.table .table-danger {
+    background: rgba(196, 43, 28, 0.1) !important;
+}
+
+.table .table-warning {
+    background: rgba(255, 185, 0, 0.1) !important;
+}
+
+.table .table-info {
+    background: rgba(0, 120, 212, 0.1) !important;
+}
+
+/* Dark mode table variants */
+[data-theme="dark"] .table .table-success {
+    background: rgba(16, 124, 16, 0.2) !important;
+    color: var(--w11-text-primary) !important;
+}
+
+[data-theme="dark"] .table .table-danger {
+    background: rgba(196, 43, 28, 0.2) !important;
+    color: var(--w11-text-primary) !important;
+}
+
+[data-theme="dark"] .table .table-warning {
+    background: rgba(255, 185, 0, 0.2) !important;
+    color: var(--w11-text-primary) !important;
+}
+
+[data-theme="dark"] .table .table-info {
+    background: rgba(0, 120, 212, 0.2) !important;
+    color: var(--w11-text-primary) !important;
+}
+
+/* Table responsive wrapper */
+.table-responsive {
+    border-radius: var(--w11-radius-large);
+    border: 1px solid var(--w11-card-stroke);
+    overflow: hidden;
+}
+
+[data-theme="dark"] .table-responsive {
+    border: 1px solid var(--w11-card-stroke);
+}
+
+/* Table hover effects */
+.table-hover tbody tr:hover {
+    background: var(--w11-bg-secondary) !important;
+}
+
+[data-theme="dark"] .table-hover tbody tr:hover {
+    background: var(--w11-bg-tertiary) !important;
+}
+
+/* Remove borders on last elements */
+.table tbody tr:last-child td {
+    border-bottom: none !important;
+}
+
+.table thead tr:first-child th:first-child {
+    border-top-left-radius: var(--w11-radius-large);
+}
+
+.table thead tr:first-child th:last-child {
+    border-top-right-radius: var(--w11-radius-large);
+}
+
+/* Custom table classes for specific modules */
+.w11-modules-table,
+.w11-session-table,
+.w11-table-card .table {
+    background: transparent;
+}
+
+.w11-modules-table tbody tr,
+.w11-session-table .w11-session-row,
+.w11-table-card .table tbody tr {
+    background: transparent !important;
+}
+
+.w11-modules-table tbody tr:hover,
+.w11-session-table .w11-session-row:hover,
+.w11-table-card .table tbody tr:hover {
+    background: var(--w11-bg-secondary) !important;
+}
+
+[data-theme="dark"] .w11-modules-table tbody tr,
+[data-theme="dark"] .w11-session-table .w11-session-row,
+[data-theme="dark"] .w11-table-card .table tbody tr {
+    background: transparent !important;
+}
+
+[data-theme="dark"] .w11-modules-table tbody tr:hover,
+[data-theme="dark"] .w11-session-table .w11-session-row:hover,
+[data-theme="dark"] .w11-table-card .table tbody tr:hover {
+    background: var(--w11-bg-tertiary) !important;
+}
+
+/* Ensure all text in tables follows theme */
+[data-theme="dark"] .table * {
+    color: var(--w11-text-primary) !important;
+}
+
+[data-theme="light"] .table *,
+body:not([data-theme]) .table * {
+    color: var(--w11-text-primary);
+}
+
+/* Small tables */
+.table-sm td, .table-sm th {
+    padding: 12px 16px;
+}
+
+/* Borderless tables */
+.table-borderless td,
+.table-borderless th {
+    border: none !important;
+}
+
+.table-borderless tbody tr {
+    border-bottom: none !important;
 }
 
 /* Alerts */
@@ -629,4 +853,54 @@ footer {
         padding-left: 16px;
         padding-right: 16px;
     }
+}
+
+/* Override Bootstrap's table striping completely */
+.table-striped {
+    --bs-table-striped-bg: transparent !important;
+    --bs-table-striped-color: var(--w11-text-primary) !important;
+}
+
+/* Force consistent backgrounds */
+.table tbody tr,
+.table-striped tbody tr:nth-of-type(odd),
+.table-striped tbody tr:nth-of-type(even) {
+    background: var(--w11-bg-primary) !important;
+}
+
+[data-theme="dark"] .table tbody tr,
+[data-theme="dark"] .table-striped tbody tr:nth-of-type(odd),
+[data-theme="dark"] .table-striped tbody tr:nth-of-type(even) {
+    background: var(--w11-bg-primary) !important;
+}
+
+/* Ensure hover works consistently */
+.table tbody tr:hover,
+.table-striped tbody tr:hover,
+.table-hover tbody tr:hover {
+    background: var(--w11-bg-secondary) !important;
+}
+
+[data-theme="dark"] .table tbody tr:hover,
+[data-theme="dark"] .table-striped tbody tr:hover,
+[data-theme="dark"] .table-hover tbody tr:hover {
+    background: var(--w11-bg-tertiary) !important;
+}
+
+/* Table cell text colors */
+.table td, .table th {
+    color: var(--w11-text-primary) !important;
+}
+
+.table thead th {
+    color: var(--w11-text-secondary) !important;
+}
+
+[data-theme="dark"] .table td,
+[data-theme="dark"] .table th {
+    color: var(--w11-text-primary) !important;
+}
+
+[data-theme="dark"] .table thead th {
+    color: var(--w11-text-secondary) !important;
 }

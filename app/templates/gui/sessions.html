@@ -36,7 +36,7 @@
             <div class="card-body text-center">
                 <i class="bi bi-layers text-primary mb-2" style="font-size: 2rem;"></i>
                 <h3 class="mb-1">{{ total_sessions }}</h3>
-                <p class="text-muted mb-0 small">Total Sessions</p>
+                <p class="w11-stat-tile-label">Total Sessions</p>
             </div>
         </div>
     </div>
@@ -45,7 +45,7 @@
             <div class="card-body text-center">
                 <i class="bi bi-play-circle text-success mb-2" style="font-size: 2rem;"></i>
                 <h3 class="mb-1">{{ active_sessions }}</h3>
-                <p class="text-muted mb-0 small">Active Now</p>
+                <p class="w11-stat-tile-label">Active Now</p>
             </div>
         </div>
     </div>
@@ -54,7 +54,7 @@
             <div class="card-body text-center">
                 <i class="bi bi-pause-circle text-secondary mb-2" style="font-size: 2rem;"></i>
                 <h3 class="mb-1">{{ total_sessions - active_sessions }}</h3>
-                <p class="text-muted mb-0 small">Closed</p>
+                <p class="w11-stat-tile-label">Closed</p>
             </div>
         </div>
     </div>
@@ -63,7 +63,7 @@
             <div class="card-body text-center">
                 <i class="bi bi-clock-history text-info mb-2" style="font-size: 2rem;"></i>
                 <h3 class="mb-1">{{ sessions_pagination.total }}</h3>
-                <p class="text-muted mb-0 small">This Page</p>
+                <p class="w11-stat-tile-label">This Page</p>
             </div>
         </div>
     </div>
@@ -188,7 +188,7 @@
                                                 class="session-status-indicator {{ 'session-status-active' if session.active else 'session-status-inactive' }} me-2"></span>
                                             <div>
                                                 <strong>{{ session.name }}</strong>
-                                                <div class="small text-muted">{{ session.session_id[:8] }}...</div>
+                                                <div class="w11-stat-tile-label">{{ session.session_id[:8] }}...</div>
                                             </div>
                                         </div>
                                     </td>
@@ -203,7 +203,7 @@
                                             {% endif %}
                                             <div>
                                                 <div>{{ session.application.display_name }}</div>
-                                                <div class="small text-muted">{{ session.application.category or
+                                                <div class="w11-stat-tile-label">{{ session.application.category or
                                                     'Uncategorized' }}</div>
                                             </div>
                                         </div>
@@ -236,7 +236,7 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <span class="badge bg-light text-dark">{{ session.get_duration() }}</span>
+                                        <span class="badge w11-stat-tile-label">{{ session.get_duration() }}</span>
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm" role="group">
@@ -284,7 +284,7 @@
                                             class="session-status-indicator {{ 'session-status-active' if session.active else 'session-status-inactive' }} me-2"></span>
                                         <div>
                                             <h6 class="mb-1">{{ session.name }}</h6>
-                                            <p class="text-muted small mb-0">{{ session.application.display_name }}</p>
+                                            <p class="w11-stat-tile-label">{{ session.application.display_name }}</p>
                                         </div>
                                     </div>
                                     {% if session.active %}
@@ -295,7 +295,7 @@
                                 </div>
 
                                 {% if session.active %}
-                                <div class="row text-center mb-3">
+                                <div class="row w11-stat-tile-label">
                                     <div class="col-4">
                                         <small class="text-muted d-block">Display</small>
                                         <strong>:{{ session.display_number }}</strong>
@@ -310,7 +310,7 @@
                                     </div>
                                 </div>
                                 {% else %}
-                                <div class="text-center mb-3">
+                                <div class="w11-stat-tile-label">
                                     <small class="text-muted">Closed {{ session.get_duration() }} ago</small>
                                 </div>
                                 {% endif %}
