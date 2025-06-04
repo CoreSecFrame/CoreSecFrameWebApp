@@ -5,7 +5,18 @@
 <div class="row mb-4">
     <div class="col-md-12">
         <h1><i class="bi bi-folder me-2"></i>File Manager</h1>
-        <p class="lead">Manage your files and folders</p>
+        <p class="lead">System file manager with full access</p>
+        {% if is_admin %}
+        <div class="alert alert-info">
+            <i class="bi bi-shield-check me-2"></i>
+            <strong>Administrator Mode:</strong> You have full system access.
+        </div>
+        {% else %}
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <strong>User Mode:</strong> Access limited to your home directory and safe locations.
+        </div>
+        {% endif %}
     </div>
 </div>
 
@@ -19,11 +30,32 @@
 <!-- Current Path and Controls -->
 <div class="card mb-4">
     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-        <div class="d-flex align-items-center">
+        <div class="d-flex align-items-center flex-grow-1">
             <i class="bi bi-folder-fill me-2"></i>
-            <span>Current Path: /{{ current_path if current_path != '.' else '' }}</span>
+            <span class="me-3">Path:</span>
+            <div class="file-path flex-grow-1 me-3">{{ current_path }}</div>
+            <!-- Quick navigation shortcuts -->
+            <div class="dropdown me-2">
+                <button class="btn btn-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="bi bi-bookmark"></i> Quick
+                </button>
+                <ul class="dropdown-menu" id="quickNavMenu">
+                    <li><a class="dropdown-item" href="#" onclick="navigateToPath('{{ current_path }}')">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Refresh
+                    </a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <!-- Quick shortcuts will be loaded here -->
+                </ul>
+            </div>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 align-items-center">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="showHidden" 
+                       {{ 'checked' if show_hidden else '' }} onchange="toggleHiddenFiles()">
+                <label class="form-check-label text-white" for="showHidden">
+                    Hidden
+                </label>
+            </div>
             <button type="button" class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#createFolderModal">
                 <i class="bi bi-folder-plus me-1"></i> New Folder
             </button>
@@ -46,17 +78,19 @@
                         <th width="50"><i class="bi bi-type"></i></th>
                         <th>Name</th>
                         <th width="100">Type</th>
-                        <th width="150">Size</th>
+                        <th width="120">Size</th>
                         <th width="180">Modified</th>
-                        <th width="120">Actions</th>
+                        <th width="120">Permissions</th>
+                        <th width="120">Owner</th>
+                        <th width="180">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% if parent_dir is not none %}
-                    <tr class="table-secondary">
+                    <tr class="table-secondary parent-directory">
                         <td><i class="bi bi-arrow-up-circle text-primary"></i></td>
                         <td>
-                            <a href="{{ url_for('file_manager.list_files_route', path=parent_dir) }}" 
+                            <a href="{{ url_for('file_manager.list_files_route', path=parent_dir, show_hidden=show_hidden) }}" 
                                class="text-decoration-none">
                                 <strong>.. (Parent Directory)</strong>
                             </a>
@@ -64,40 +98,65 @@
                         <td><span class="badge bg-secondary">Directory</span></td>
                         <td>-</td>
                         <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
                         <td></td>
                     </tr>
                     {% endif %}
                     
                     {% for item in items %}
-                    <tr>
+                    <tr class="{{ 'table-warning' if not item.is_readable else '' }}">
                         <td>
                             {% if item.is_dir %}
                                 <i class="bi bi-folder-fill text-warning"></i>
                             {% else %}
                                 {% set ext = item.name.split('.')[-1].lower() %}
-                                {% if ext in ['txt', 'md', 'readme'] %}
+                                {% if ext in ['txt', 'md', 'readme', 'log'] %}
                                     <i class="bi bi-file-text text-info"></i>
-                                {% elif ext in ['py', 'js', 'html', 'css', 'json'] %}
+                                {% elif ext in ['py', 'js', 'html', 'css', 'json', 'xml', 'yaml', 'yml', 'sh', 'bash'] %}
                                     <i class="bi bi-file-code text-success"></i>
-                                {% elif ext in ['jpg', 'jpeg', 'png', 'gif', 'svg'] %}
+                                {% elif ext in ['jpg', 'jpeg', 'png', 'gif', 'svg', 'bmp', 'webp'] %}
                                     <i class="bi bi-file-image text-danger"></i>
                                 {% elif ext in ['pdf'] %}
                                     <i class="bi bi-file-pdf text-danger"></i>
-                                {% elif ext in ['zip', 'tar', 'gz', 'rar'] %}
+                                {% elif ext in ['zip', 'tar', 'gz', 'rar', '7z', 'bz2', 'xz'] %}
                                     <i class="bi bi-file-zip text-warning"></i>
+                                {% elif ext in ['mp3', 'wav', 'flac', 'ogg', 'aac'] %}
+                                    <i class="bi bi-file-music text-purple"></i>
+                                {% elif ext in ['mp4', 'avi', 'mkv', 'mov', 'wmv', 'flv'] %}
+                                    <i class="bi bi-file-play text-danger"></i>
+                                {% elif ext in ['doc', 'docx', 'odt'] %}
+                                    <i class="bi bi-file-word text-primary"></i>
+                                {% elif ext in ['xls', 'xlsx', 'ods'] %}
+                                    <i class="bi bi-file-excel text-success"></i>
+                                {% elif ext in ['ppt', 'pptx', 'odp'] %}
+                                    <i class="bi bi-file-ppt text-warning"></i>
+                                {% elif item.is_executable %}
+                                    <i class="bi bi-file-binary text-danger"></i>
                                 {% else %}
                                     <i class="bi bi-file text-secondary"></i>
                                 {% endif %}
                             {% endif %}
                         </td>
                         <td>
-                            {% if item.is_dir %}
-                                <a href="{{ url_for('file_manager.list_files_route', path=item.path) }}" 
-                                   class="text-decoration-none fw-bold">
+                            {% if item.is_dir and item.is_readable %}
+                                <a href="{{ url_for('file_manager.list_files_route', path=item.full_path, show_hidden=show_hidden) }}" 
+                                   class="folder-name">
+                                    {% if item.is_hidden %}<i class="bi bi-eye-slash me-1 text-muted"></i>{% endif %}
                                     {{ item.name }}
                                 </a>
+                            {% elif item.is_dir %}
+                                <span class="folder-name text-muted">
+                                    <i class="bi bi-lock me-1"></i>
+                                    {% if item.is_hidden %}<i class="bi bi-eye-slash me-1"></i>{% endif %}
+                                    {{ item.name }}
+                                </span>
                             {% else %}
-                                <span class="fw-normal">{{ item.name }}</span>
+                                <span class="file-name {% if not item.is_readable %}text-muted{% endif %}">
+                                    {% if not item.is_readable %}<i class="bi bi-lock me-1"></i>{% endif %}
+                                    {% if item.is_hidden %}<i class="bi bi-eye-slash me-1 text-muted"></i>{% endif %}
+                                    {{ item.name }}
+                                </span>
                             {% endif %}
                         </td>
                         <td>
@@ -106,49 +165,75 @@
                             {% else %}
                                 <span class="badge bg-info">File</span>
                             {% endif %}
+                            {% if item.is_executable and not item.is_dir %}
+                                <span class="badge bg-danger ms-1">Exec</span>
+                            {% endif %}
                         </td>
                         <td>
-                            {% if not item.is_dir %}
-                                <small class="text-muted">{{ item.size or '-' }}</small>
+                            {% if not item.is_dir and item.size %}
+                                <span class="file-size">{{ item.size }}</span>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.modified %}
+                                <small class="file-modified">{{ item.modified }}</small>
                             {% else %}
                                 <small class="text-muted">-</small>
                             {% endif %}
                         </td>
                         <td>
-                            <small class="text-muted">{{ item.modified or '-' }}</small>
+                            <code class="small">{{ item.permissions }}</code>
                         </td>
                         <td>
-                            <div class="btn-group btn-group-sm" role="group">
-                                {% if not item.is_dir %}
-                                <button type="button" class="btn btn-outline-primary btn-sm" 
-                                        onclick="viewFile('{{ item.name }}', '{{ item.path }}')"
+                            <small class="text-muted">{{ item.owner }}</small>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm file-actions-group" role="group">
+                                {% if item.is_readable and not item.is_dir %}
+                                <button type="button" class="btn btn-outline-primary btn-sm file-action-btn" 
+                                        onclick="viewFile('{{ item.name }}', '{{ item.full_path }}')"
                                         data-bs-toggle="tooltip" title="View">
                                     <i class="bi bi-eye"></i>
                                 </button>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" 
-                                        onclick="downloadFile('{{ item.path }}')"
+                                <button type="button" class="btn btn-outline-secondary btn-sm file-action-btn" 
+                                        onclick="downloadFile('{{ item.full_path }}')"
                                         data-bs-toggle="tooltip" title="Download">
                                     <i class="bi bi-download"></i>
                                 </button>
                                 {% endif %}
-                                <button type="button" class="btn btn-outline-warning btn-sm" 
-                                        onclick="showRenameModal('{{ item.name }}', '{{ item.path }}')"
+                                {% if item.is_writable %}
+                                <button type="button" class="btn btn-outline-warning btn-sm file-action-btn" 
+                                        onclick="showRenameModal('{{ item.name }}', '{{ item.full_path }}')"
                                         data-bs-toggle="tooltip" title="Rename">
                                     <i class="bi bi-pencil"></i>
                                 </button>
-                                <button type="button" class="btn btn-outline-danger btn-sm" 
-                                        onclick="deleteItem('{{ item.name }}', {{ 'true' if item.is_dir else 'false' }})"
+                                <button type="button" class="btn btn-outline-danger btn-sm file-action-btn danger" 
+                                        onclick="deleteItem('{{ item.name }}', {{ 'true' if item.is_dir else 'false' }}, '{{ item.full_path }}')"
                                         data-bs-toggle="tooltip" title="Delete">
                                     <i class="bi bi-trash"></i>
                                 </button>
+                                {% endif %}
+                                {% if not item.is_readable or not item.is_writable %}
+                                <span class="badge bg-secondary" data-bs-toggle="tooltip" title="Limited access">
+                                    <i class="bi bi-lock"></i>
+                                </span>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="6" class="text-center py-5">
-                            <i class="bi bi-folder-x display-1 text-muted"></i>
-                            <p class="text-muted mt-3">No items found in this directory</p>
+                        <td colspan="8" class="text-center py-5 empty-directory">
+                            <i class="bi bi-folder-x empty-icon"></i>
+                            <p class="mt-3">No items found in this directory</p>
+                            {% if not show_hidden %}
+                            <small class="text-muted">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Hidden files are not shown. Use the "Hidden" toggle to display them.
+                            </small>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -157,9 +242,6 @@
         </div>
     </div>
 </div>
-
-<!-- Hidden input for current path -->
-<input type="hidden" id="current_path_input" value="{{ current_path }}">
 
 <!-- Create Folder Modal -->
 <div class="modal fade" id="createFolderModal" tabindex="-1">
@@ -335,9 +417,50 @@ document.addEventListener('DOMContentLoaded', function() {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
     
+    // Load quick navigation shortcuts
+    loadQuickNavigation();
+    
     // Set up CSRF protection
     setupCSRFProtection();
 });
+
+async function loadQuickNavigation() {
+    try {
+        const response = await fetch('{{ url_for("file_manager.quick_navigate") }}');
+        const data = await response.json();
+        
+        const menu = document.getElementById('quickNavMenu');
+        const existingItems = menu.querySelectorAll('.quick-nav-item');
+        existingItems.forEach(item => item.remove());
+        
+        data.shortcuts.forEach(shortcut => {
+            const li = document.createElement('li');
+            li.className = 'quick-nav-item';
+            li.innerHTML = `
+                <a class="dropdown-item" href="#" onclick="navigateToPath('${shortcut.path}')">
+                    <i class="bi bi-${shortcut.icon} me-2"></i>${shortcut.name}
+                </a>
+            `;
+            menu.appendChild(li);
+        });
+        
+    } catch (error) {
+        console.error('Error loading quick navigation:', error);
+    }
+}
+
+function navigateToPath(path) {
+    const currentShowHidden = document.getElementById('showHidden').checked;
+    const url = `{{ url_for('file_manager.list_files_route') }}?path=${encodeURIComponent(path)}&show_hidden=${currentShowHidden}`;
+    window.location.href = url;
+}
+
+function toggleHiddenFiles() {
+    const showHidden = document.getElementById('showHidden').checked;
+    const currentPath = '{{ current_path }}';
+    const url = `{{ url_for('file_manager.list_files_route') }}?path=${encodeURIComponent(currentPath)}&show_hidden=${showHidden}`;
+    window.location.href = url;
+}
 
 function setupCSRFProtection() {
     // Get CSRF token from meta tag
@@ -402,7 +525,7 @@ function showAlert(message, type = 'info') {
 async function createFile() {
     try {
         const fileName = document.getElementById('file_name').value.trim();
-        const currentPath = document.getElementById('current_path_input').value;
+        const currentPath = '{{ current_path }}';
         
         if (!fileName) {
             showAlert('Please enter a file name.', 'warning');
@@ -421,7 +544,6 @@ async function createFile() {
             showAlert('Error: ' + data.error, 'danger');
         }
         
-        // Hide modal
         bootstrap.Modal.getInstance(document.getElementById('createFileModal')).hide();
         document.getElementById('file_name').value = '';
         
@@ -434,7 +556,7 @@ async function createFile() {
 async function createFolder() {
     try {
         const folderName = document.getElementById('folder_name').value.trim();
-        const currentPath = document.getElementById('current_path_input').value;
+        const currentPath = '{{ current_path }}';
         
         if (!folderName) {
             showAlert('Please enter a folder name.', 'warning');
@@ -453,7 +575,6 @@ async function createFolder() {
             showAlert('Error: ' + data.error, 'danger');
         }
         
-        // Hide modal
         bootstrap.Modal.getInstance(document.getElementById('createFolderModal')).hide();
         document.getElementById('folder_name').value = '';
         
@@ -463,7 +584,7 @@ async function createFolder() {
     }
 }
 
-async function deleteItem(itemName, isDir) {
+async function deleteItem(itemName, isDir, fullPath) {
     const itemType = isDir ? 'folder' : 'file';
     
     if (!confirm(`Are you sure you want to delete this ${itemType}: "${itemName}"?\n\nThis action cannot be undone.`)) {
@@ -471,11 +592,8 @@ async function deleteItem(itemName, isDir) {
     }
     
     try {
-        const currentPath = document.getElementById('current_path_input').value;
-        const itemFullPath = currentPath === '.' ? itemName : currentPath + '/' + itemName;
-        
         const data = await postData('{{ url_for("file_manager.delete_item") }}', { 
-            item_path: itemFullPath 
+            item_path: fullPath 
         });
         
         if (data.success) {
@@ -495,7 +613,6 @@ async function viewFile(fileName, filePath) {
     document.getElementById('viewerFileName').textContent = fileName;
     document.getElementById('fileContent').textContent = 'Loading file content...';
     
-    // Show modal
     const modal = new bootstrap.Modal(document.getElementById('fileViewerModal'));
     modal.show();
     
@@ -515,7 +632,6 @@ async function viewFile(fileName, filePath) {
 }
 
 function downloadFile(filePath) {
-    // Create a temporary link for download
     const link = document.createElement('a');
     link.href = `{{ url_for("file_manager.download_file") }}?path=${encodeURIComponent(filePath)}`;
     link.download = '';
@@ -529,11 +645,15 @@ async function showDiskUsage() {
     modal.show();
     
     try {
-        const response = await fetch('{{ url_for("file_manager.get_disk_usage") }}');
+        const currentPath = '{{ current_path }}';
+        const response = await fetch(`{{ url_for("file_manager.get_disk_usage") }}?path=${encodeURIComponent(currentPath)}`);
         const data = await response.json();
         
         if (data.success) {
             document.getElementById('diskUsageContent').innerHTML = `
+                <div class="mb-3">
+                    <h6>Directory: <code>${data.path}</code></h6>
+                </div>
                 <div class="row text-center">
                     <div class="col-md-4">
                         <h3 class="text-primary">${data.total_size}</h3>
@@ -547,6 +667,13 @@ async function showDiskUsage() {
                         <h3 class="text-warning">${data.folder_count}</h3>
                         <p class="text-muted">Folders</p>
                     </div>
+                </div>
+                <hr>
+                <div class="text-center">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Calculation includes all accessible subdirectories
+                    </small>
                 </div>
             `;
         } else {
@@ -598,7 +725,6 @@ async function renameItem() {
             showAlert('Error: ' + data.error, 'danger');
         }
         
-        // Hide modal
         bootstrap.Modal.getInstance(document.getElementById('renameItemModal')).hide();
         
     } catch (error) {
@@ -616,44 +742,47 @@ document.addEventListener('DOMContentLoaded', function() {
     const uploadArea = document.getElementById('uploadArea');
     const fileInput = document.getElementById('fileInput');
     
-    // Click to select files
-    uploadArea.addEventListener('click', function() {
-        fileInput.click();
-    });
-    
-    // Drag and drop functionality
-    uploadArea.addEventListener('dragover', function(e) {
-        e.preventDefault();
-        uploadArea.classList.add('drag-over');
-    });
-    
-    uploadArea.addEventListener('dragleave', function(e) {
-        e.preventDefault();
-        uploadArea.classList.remove('drag-over');
-    });
-    
-    uploadArea.addEventListener('drop', function(e) {
-        e.preventDefault();
-        uploadArea.classList.remove('drag-over');
+    if (uploadArea && fileInput) {
+        // Click to select files
+        uploadArea.addEventListener('click', function() {
+            fileInput.click();
+        });
         
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            uploadFiles(files);
-        }
-    });
-    
-    // File input change
-    fileInput.addEventListener('change', function(e) {
-        if (e.target.files.length > 0) {
-            uploadFiles(e.target.files);
-        }
-    });
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+        
+        uploadArea.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+        });
+        
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                uploadFiles(files);
+            }
+        });
+        
+        // File input change
+        fileInput.addEventListener('change', function(e) {
+            if (e.target.files.length > 0) {
+                uploadFiles(e.target.files);
+            }
+        });
+    }
 });
 
 async function uploadFiles(files) {
-    const currentPath = document.getElementById('current_path_input').value;
+    const currentPath = '{{ current_path }}';
     const progressDiv = document.getElementById('uploadProgress');
     const progressBar = progressDiv.querySelector('.progress-bar');
+    const fileInput = document.getElementById('fileInput');
     
     progressDiv.style.display = 'block';
     
@@ -706,24 +835,36 @@ async function uploadFiles(files) {
 }
 
 // Handle Enter key in forms
-document.getElementById('file_name').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        createFile();
+document.addEventListener('DOMContentLoaded', function() {
+    const fileName = document.getElementById('file_name');
+    const folderName = document.getElementById('folder_name');
+    const newItemName = document.getElementById('new_item_name');
+    
+    if (fileName) {
+        fileName.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                createFile();
+            }
+        });
     }
-});
-
-document.getElementById('folder_name').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        createFolder();
+    
+    if (folderName) {
+        folderName.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                createFolder();
+            }
+        });
     }
-});
-
-document.getElementById('new_item_name').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        renameItem();
+    
+    if (newItemName) {
+        newItemName.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                renameItem();
+            }
+        });
     }
 });
 
@@ -745,6 +886,20 @@ document.addEventListener('keydown', function(e) {
     if (e.ctrlKey && e.key === 'n') {
         e.preventDefault();
         bootstrap.Modal.getOrCreateInstance(document.getElementById('createFileModal')).show();
+    }
+    
+    // F5 for refresh
+    if (e.key === 'F5') {
+        e.preventDefault();
+        location.reload();
+    }
+    
+    // Escape to close modals
+    if (e.key === 'Escape') {
+        const openModals = document.querySelectorAll('.modal.show');
+        openModals.forEach(modal => {
+            bootstrap.Modal.getInstance(modal)?.hide();
+        });
     }
 });
 </script>
