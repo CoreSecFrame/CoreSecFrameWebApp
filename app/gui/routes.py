@@ -867,35 +867,53 @@ def add_application():
     """Add a new GUI application"""
     if request.method == 'POST':
         try:
-            # Handle JSON requests (from API)
+            # Manejo de datos del formulario y JSON
             if request.is_json:
                 data = request.get_json()
+                if not data:
+                    return jsonify({'success': False, 'error': 'No JSON data received'}), 400
             else:
-                # Handle form data
-                data = request.form.to_dict()
+                # Manejar datos del formulario
+                data = {}
                 
-                # Process environment variables
+                # Campos básicos
+                data['name'] = request.form.get('name', '').strip()
+                data['display_name'] = request.form.get('display_name', '').strip()
+                data['description'] = request.form.get('description', '').strip()
+                data['category'] = request.form.get('category', '').strip()
+                data['command'] = request.form.get('command', '').strip()
+                data['working_directory'] = request.form.get('working_directory', '').strip()
+                data['version'] = request.form.get('version', '').strip()
+                data['icon_path'] = request.form.get('icon_path', '').strip()
+                
+                # Procesar variables de entorno
                 env_keys = request.form.getlist('env_keys[]')
                 env_values = request.form.getlist('env_values[]')
                 env_dict = {}
                 
                 for i, key in enumerate(env_keys):
-                    if key.strip() and i < len(env_values):
+                    if key.strip() and i < len(env_values) and env_values[i].strip():
                         env_dict[key.strip()] = env_values[i].strip()
                 
                 if env_dict:
                     data['environment_vars'] = env_dict
             
-            # Validate required fields
+            # Validar campos requeridos
             required_fields = ['name', 'display_name', 'command']
+            missing_fields = []
+            
             for field in required_fields:
                 if not data.get(field, '').strip():
-                    if request.is_json:
-                        return jsonify({'success': False, 'error': f'{field} is required'}), 400
-                    flash(f'{field.replace("_", " ").title()} is required.', 'danger')
-                    return redirect(url_for('gui.add_application'))
+                    missing_fields.append(field.replace('_', ' ').title())
             
-            # Check if application name already exists
+            if missing_fields:
+                error_msg = f"Required fields missing: {', '.join(missing_fields)}"
+                if request.is_json:
+                    return jsonify({'success': False, 'error': error_msg}), 400
+                flash(error_msg, 'danger')
+                return redirect(url_for('gui.add_application'))
+            
+            # Validar nombre único
             existing_app = GUIApplication.query.filter_by(name=data['name'].strip()).first()
             if existing_app:
                 error_msg = f"Application with name '{data['name']}' already exists"
@@ -904,14 +922,23 @@ def add_application():
                 flash(error_msg, 'danger')
                 return redirect(url_for('gui.add_application'))
             
-            # Test if command is available
+            # Validar comando
+            command_parts = data['command'].strip().split()
+            if not command_parts:
+                error_msg = "Invalid command format"
+                if request.is_json:
+                    return jsonify({'success': False, 'error': error_msg}), 400
+                flash(error_msg, 'danger')
+                return redirect(url_for('gui.add_application'))
+            
+            # Verificar si el comando está disponible
             command_available = _test_command_availability(data['command'].strip())
             
-            # Create new application
+            # Crear nueva aplicación
             app = GUIApplication(
                 name=data['name'].strip(),
                 display_name=data['display_name'].strip(),
-                description=data.get('description', '').strip(),
+                description=data.get('description', '').strip() or None,
                 category=data.get('category', '').strip() or None,
                 command=data['command'].strip(),
                 working_directory=data.get('working_directory', '').strip() or None,
@@ -921,23 +948,30 @@ def add_application():
                 enabled=True
             )
             
-            # Set environment variables if provided
+            # Establecer variables de entorno si se proporcionan
             if 'environment_vars' in data and data['environment_vars']:
                 app.set_environment_dict(data['environment_vars'])
             
+            # Guardar en base de datos
             db.session.add(app)
             db.session.commit()
             
             current_app.logger.info(f"User {current_user.username} added GUI application: {app.name}")
             
-            if request.is_json:
-                return jsonify({
-                    'success': True,
-                    'message': 'Application added successfully',
-                    'application': app.to_dict()
-                })
+            success_msg = f'Application "{app.display_name}" added successfully!'
+            if not command_available:
+                success_msg += f' (Command "{command_parts[0]}" not found - marked as not installed)'
             
-            flash(f'Application "{app.display_name}" added successfully!', 'success')
+            if request.is_json:
+                response_data = {
+                    'success': True,
+                    'message': success_msg,
+                    'application': app.to_dict(),
+                    'command_available': command_available
+                }
+                return jsonify(response_data), 200
+            
+            flash(success_msg, 'success')
             return redirect(url_for('gui.application_detail', app_id=app.id))
             
         except Exception as e:
@@ -949,36 +983,79 @@ def add_application():
             if request.is_json:
                 return jsonify({'success': False, 'error': error_msg}), 500
             flash(error_msg, 'danger')
+            return redirect(url_for('gui.add_application'))
     
-    # GET request - show form
-    categories = GUICategory.query.order_by(GUICategory.sort_order, GUICategory.name).all()
-    return render_template(
-        'gui/add_application.html',
-        title='Add GUI Application',
-        categories=categories
-    )
+    # GET request - mostrar formulario
+    try:
+        categories = GUICategory.query.order_by(GUICategory.sort_order, GUICategory.name).all()
+        return render_template(
+            'gui/add_application.html',
+            title='Add GUI Application',
+            categories=categories
+        )
+    except Exception as e:
+        current_app.logger.error(f"Error loading add application form: {e}")
+        flash('Error loading form', 'danger')
+        return redirect(url_for('gui.index'))
 
 @gui_bp.route('/api/test-command', methods=['POST'])
 @login_required
 def api_test_command():
     """Test if a command is available on the system"""
     try:
-        data = request.get_json()
+        # Validar request JSON
+        data, error_response, status_code = validate_json_request(['command'])
+        if error_response:
+            return error_response, status_code
+        
         command = data.get('command', '').strip()
         
         if not command:
-            return jsonify({'available': False, 'error': 'No command provided'})
+            return jsonify({
+                'success': False, 
+                'available': False, 
+                'error': 'Command cannot be empty'
+            }), 400
         
+        # Extraer el comando base (primera palabra)
+        command_parts = command.split()
+        base_command = command_parts[0] if command_parts else command
+        
+        # Log para debugging
+        current_app.logger.debug(f"Testing command: '{command}' (base: '{base_command}')")
+        
+        # Verificar disponibilidad
         available = _test_command_availability(command)
         
-        return jsonify({
+        response_data = {
+            'success': True,
             'available': available,
-            'command': command
-        })
+            'command': command,
+            'base_command': base_command
+        }
+        
+        if available:
+            # Intentar obtener información adicional del comando
+            try:
+                which_result = shutil.which(base_command)
+                if which_result:
+                    response_data['path'] = which_result
+                    current_app.logger.debug(f"Command found at: {which_result}")
+            except Exception as e:
+                current_app.logger.warning(f"Error getting command path: {e}")
+        else:
+            current_app.logger.debug(f"Command '{base_command}' not found in PATH")
+        
+        return jsonify(response_data), 200
         
     except Exception as e:
         current_app.logger.error(f"Error testing command: {e}")
-        return jsonify({'available': False, 'error': str(e)})
+        current_app.logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'available': False, 
+            'error': f'Server error: {str(e)}'
+        }), 500
 
 @gui_bp.route('/api/scan-applications', methods=['POST'])
 @login_required
@@ -1107,15 +1184,28 @@ def api_system_info():
 def _test_command_availability(command):
     """Test if a command is available on the system"""
     try:
-        # shutil is already imported at the module level
-        # Extract the base command (first word)
-        base_command = command.split()[0]
+        if not command or not command.strip():
+            return False
         
-        # Check if command exists
-        return shutil.which(base_command) is not None
+        # Extraer el comando base (primera palabra)
+        command_parts = command.strip().split()
+        if not command_parts:
+            return False
         
+        base_command = command_parts[0]
+        
+        # Verificar si el comando existe usando shutil.which
+        result = shutil.which(base_command)
+        
+        if result:
+            current_app.logger.debug(f"Command '{base_command}' found at: {result}")
+            return True
+        else:
+            current_app.logger.debug(f"Command '{base_command}' not found in PATH")
+            return False
+            
     except Exception as e:
-        current_app.logger.error(f"Error testing command availability: {e}")
+        current_app.logger.error(f"Error testing command availability for '{command}': {e}")
         return False
 
 def _scan_system_applications():
@@ -1145,3 +1235,106 @@ def _scan_system_applications():
     except Exception as e:
         current_app.logger.error(f"Error scanning system applications: {e}")
         return []
+
+# Manejadores de error mejorados
+@gui_bp.errorhandler(400)
+def bad_request(error):
+    if request.is_json or request.path.startswith('/gui/api/'):
+        return jsonify({
+            'success': False,
+            'error': 'Bad request',
+            'message': str(error.description) if hasattr(error, 'description') else 'Invalid request'
+        }), 400
+    return render_template('gui/error.html', 
+                         title='Bad Request',
+                         error_code=400,
+                         error_message='Invalid request.'), 400
+
+@gui_bp.errorhandler(404)
+def gui_not_found(error):
+    if request.is_json or request.path.startswith('/gui/api/'):
+        return jsonify({
+            'success': False,
+            'error': 'Not found',
+            'message': 'The requested resource was not found'
+        }), 404
+    return render_template('gui/error.html', 
+                         title='Page Not Found',
+                         error_code=404,
+                         error_message='The requested GUI resource was not found.'), 404
+
+@gui_bp.errorhandler(500)
+def gui_server_error(error):
+    db.session.rollback()
+    current_app.logger.error(f"GUI module server error: {error}")
+    
+    if request.is_json or request.path.startswith('/gui/api/'):
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error',
+            'message': 'An unexpected error occurred on the server'
+        }), 500
+    return render_template('gui/error.html',
+                         title='Server Error', 
+                         error_code=500,
+                         error_message='An internal server error occurred.'), 500
+
+@gui_bp.errorhandler(405)
+def method_not_allowed(error):
+    if request.is_json or request.path.startswith('/gui/api/'):
+        return jsonify({
+            'success': False,
+            'error': 'Method not allowed',
+            'message': f'Method {request.method} not allowed for this endpoint'
+        }), 405
+    return render_template('gui/error.html',
+                         title='Method Not Allowed', 
+                         error_code=405,
+                         error_message='This method is not allowed for this resource.'), 405
+
+# Middleware para debugging de requests JSON
+@gui_bp.before_request
+def log_request_info():
+    """Log request details for debugging"""
+    if current_app.debug and request.path.startswith('/gui/api/'):
+        current_app.logger.debug(f"GUI API Request: {request.method} {request.path}")
+        current_app.logger.debug(f"Content-Type: {request.content_type}")
+        current_app.logger.debug(f"Is JSON: {request.is_json}")
+        if request.is_json:
+            try:
+                data = request.get_json()
+                current_app.logger.debug(f"JSON Data: {data}")
+            except Exception as e:
+                current_app.logger.error(f"Error parsing JSON: {e}")
+
+# Función auxiliar para validar datos JSON
+def validate_json_request(required_fields=None):
+    """Validate JSON request and return data"""
+    if not request.is_json:
+        return None, jsonify({
+            'success': False,
+            'error': 'Content-Type must be application/json'
+        }), 400
+    
+    try:
+        data = request.get_json()
+        if data is None:
+            return None, jsonify({
+                'success': False,
+                'error': 'No JSON data received'
+            }), 400
+    except Exception as e:
+        return None, jsonify({
+            'success': False,
+            'error': f'Invalid JSON: {str(e)}'
+        }), 400
+    
+    if required_fields:
+        missing_fields = [field for field in required_fields if not data.get(field)]
+        if missing_fields:
+            return None, jsonify({
+                'success': False,
+                'error': f'Missing required fields: {", ".join(missing_fields)}'
+            }), 400
+    
+    return data, None, None
