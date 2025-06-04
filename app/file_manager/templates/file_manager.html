@@ -1,136 +1,751 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>File Manager</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/file_manager.css') }}">
-    <script>
-        async function postData(url = '', data = {}) {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    // Include CSRF token if your app uses them globally
-                    // 'X-CSRFToken': '{{ csrf_token() }}' // Example if using Flask-WTF CSRF
-                },
-                body: new URLSearchParams(data)
-            });
-            return response.json();
-        }
+<!-- app/file_manager/templates/file_manager.html -->
+{% extends "base.html" %}
 
-        function createFile() {
-            const fileName = document.getElementById('file_name').value;
-            const currentPath = document.getElementById('current_path_input').value;
-            if (!fileName) {
-                alert('Please enter a file name.');
-                return;
-            }
-            postData('{{ url_for("file_manager.create_file") }}', { file_name: fileName, path: currentPath })
-                .then(data => {
-                    if (data.success) {
-                        location.reload();
-                    } else {
-                        alert('Error: ' + data.error);
-                    }
-                });
-        }
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h1><i class="bi bi-folder me-2"></i>File Manager</h1>
+        <p class="lead">Manage your files and folders</p>
+    </div>
+</div>
 
-        function createFolder() {
-            const folderName = document.getElementById('folder_name').value;
-            const currentPath = document.getElementById('current_path_input').value;
-            if (!folderName) {
-                alert('Please enter a folder name.');
-                return;
-            }
-            postData('{{ url_for("file_manager.create_folder") }}', { folder_name: folderName, path: currentPath })
-                .then(data => {
-                    if (data.success) {
-                        location.reload();
-                    } else {
-                        alert('Error: ' + data.error);
-                    }
-                });
-        }
+{% if error %}
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <i class="bi bi-exclamation-circle me-2"></i>{{ error }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
 
-        function deleteItem(itemName, isDir) {
-            if (!confirm(`Are you sure you want to delete ${isDir ? 'folder' : 'file'}: ${itemName}?`)) {
-                return;
-            }
-            const currentPath = document.getElementById('current_path_input').value;
-            // item_path for delete_item should be relative to the base_dir, so join currentPath and itemName
-            const itemFullPath = currentPath === '.' ? itemName : currentPath + '/' + itemName;
+<!-- Current Path and Controls -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-folder-fill me-2"></i>
+            <span>Current Path: /{{ current_path if current_path != '.' else '' }}</span>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#createFolderModal">
+                <i class="bi bi-folder-plus me-1"></i> New Folder
+            </button>
+            <button type="button" class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#createFileModal">
+                <i class="bi bi-file-plus me-1"></i> New File
+            </button>
+            <button type="button" class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#uploadFileModal">
+                <i class="bi bi-cloud-upload me-1"></i> Upload
+            </button>
+            <button type="button" class="btn btn-light btn-sm" onclick="showDiskUsage()">
+                <i class="bi bi-pie-chart me-1"></i> Usage
+            </button>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th width="50"><i class="bi bi-type"></i></th>
+                        <th>Name</th>
+                        <th width="100">Type</th>
+                        <th width="150">Size</th>
+                        <th width="180">Modified</th>
+                        <th width="120">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if parent_dir is not none %}
+                    <tr class="table-secondary">
+                        <td><i class="bi bi-arrow-up-circle text-primary"></i></td>
+                        <td>
+                            <a href="{{ url_for('file_manager.list_files_route', path=parent_dir) }}" 
+                               class="text-decoration-none">
+                                <strong>.. (Parent Directory)</strong>
+                            </a>
+                        </td>
+                        <td><span class="badge bg-secondary">Directory</span></td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td></td>
+                    </tr>
+                    {% endif %}
+                    
+                    {% for item in items %}
+                    <tr>
+                        <td>
+                            {% if item.is_dir %}
+                                <i class="bi bi-folder-fill text-warning"></i>
+                            {% else %}
+                                {% set ext = item.name.split('.')[-1].lower() %}
+                                {% if ext in ['txt', 'md', 'readme'] %}
+                                    <i class="bi bi-file-text text-info"></i>
+                                {% elif ext in ['py', 'js', 'html', 'css', 'json'] %}
+                                    <i class="bi bi-file-code text-success"></i>
+                                {% elif ext in ['jpg', 'jpeg', 'png', 'gif', 'svg'] %}
+                                    <i class="bi bi-file-image text-danger"></i>
+                                {% elif ext in ['pdf'] %}
+                                    <i class="bi bi-file-pdf text-danger"></i>
+                                {% elif ext in ['zip', 'tar', 'gz', 'rar'] %}
+                                    <i class="bi bi-file-zip text-warning"></i>
+                                {% else %}
+                                    <i class="bi bi-file text-secondary"></i>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.is_dir %}
+                                <a href="{{ url_for('file_manager.list_files_route', path=item.path) }}" 
+                                   class="text-decoration-none fw-bold">
+                                    {{ item.name }}
+                                </a>
+                            {% else %}
+                                <span class="fw-normal">{{ item.name }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.is_dir %}
+                                <span class="badge bg-warning text-dark">Folder</span>
+                            {% else %}
+                                <span class="badge bg-info">File</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if not item.is_dir %}
+                                <small class="text-muted">{{ item.size or '-' }}</small>
+                            {% else %}
+                                <small class="text-muted">-</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small class="text-muted">{{ item.modified or '-' }}</small>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                {% if not item.is_dir %}
+                                <button type="button" class="btn btn-outline-primary btn-sm" 
+                                        onclick="viewFile('{{ item.name }}', '{{ item.path }}')"
+                                        data-bs-toggle="tooltip" title="View">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" 
+                                        onclick="downloadFile('{{ item.path }}')"
+                                        data-bs-toggle="tooltip" title="Download">
+                                    <i class="bi bi-download"></i>
+                                </button>
+                                {% endif %}
+                                <button type="button" class="btn btn-outline-warning btn-sm" 
+                                        onclick="showRenameModal('{{ item.name }}', '{{ item.path }}')"
+                                        data-bs-toggle="tooltip" title="Rename">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-danger btn-sm" 
+                                        onclick="deleteItem('{{ item.name }}', {{ 'true' if item.is_dir else 'false' }})"
+                                        data-bs-toggle="tooltip" title="Delete">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5">
+                            <i class="bi bi-folder-x display-1 text-muted"></i>
+                            <p class="text-muted mt-3">No items found in this directory</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
-            postData('{{ url_for("file_manager.delete_item") }}', { item_path: itemFullPath })
-                .then(data => {
-                    if (data.success) {
-                        location.reload();
-                    } else {
-                        alert('Error: ' + data.error);
-                    }
-                });
-        }
-    </script>
-</head>
-<body>
-    <div class="container">
-        <h1>File Manager</h1>
+<!-- Hidden input for current path -->
+<input type="hidden" id="current_path_input" value="{{ current_path }}">
 
-        {% if error %}
-            <p class="error">Error: {{ error }}</p>
-        {% endif %}
-
-        <p>Current Path: /{{ current_path if current_path != '.' else '' }}</p>
-        <input type="hidden" id="current_path_input" value="{{ current_path }}">
-
-        <div class="controls">
-            <div>
-                <input type="text" id="folder_name" placeholder="New folder name">
-                <button onclick="createFolder()">Create Folder</button>
+<!-- Create Folder Modal -->
+<div class="modal fade" id="createFolderModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-folder-plus me-2"></i>Create New Folder
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div>
-                <input type="text" id="file_name" placeholder="New file name">
-                <button onclick="createFile()">Create File</button>
+            <div class="modal-body">
+                <form id="createFolderForm">
+                    <div class="mb-3">
+                        <label for="folder_name" class="form-label">Folder Name</label>
+                        <input type="text" class="form-control" id="folder_name" required 
+                               placeholder="Enter folder name">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createFolder()">
+                    <i class="bi bi-folder-plus me-1"></i>Create Folder
+                </button>
             </div>
         </div>
-
-        <table>
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Type</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% if parent_dir is not none %}
-                <tr>
-                    <td><a href="{{ url_for('file_manager.list_files_route', path=parent_dir) }}">.. (Parent Directory)</a></td>
-                    <td></td>
-                    <td></td>
-                </tr>
-                {% endif %}
-                {% for item in items %}
-                <tr>
-                    <td>
-                        {% if item.is_dir %}
-                            <a href="{{ url_for('file_manager.list_files_route', path=item.path) }}">{{ item.name }}</a>
-                        {% else %}
-                            {{ item.name }}
-                        {% endif %}
-                    </td>
-                    <td>{{ 'Folder' if item.is_dir else 'File' }}</td>
-                    <td>
-                        <button class="delete-btn" onclick="deleteItem('{{ item.name }}', {{ 'true' if item.is_dir else 'false' }})">Delete</button>
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="3">No items found.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
     </div>
-</body>
-</html>
+</div>
+
+<!-- Create File Modal -->
+<div class="modal fade" id="createFileModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-file-plus me-2"></i>Create New File
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createFileForm">
+                    <div class="mb-3">
+                        <label for="file_name" class="form-label">File Name</label>
+                        <input type="text" class="form-control" id="file_name" required 
+                               placeholder="Enter file name with extension">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createFile()">
+                    <i class="bi bi-file-plus me-1"></i>Create File
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- File Viewer Modal -->
+<div class="modal fade" id="fileViewerModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-file-text me-2"></i>File Viewer: <span id="viewerFileName"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="fileContent" class="file-content-viewer"></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload File Modal -->
+<div class="modal fade" id="uploadFileModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-cloud-upload me-2"></i>Upload File
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="upload-area" id="uploadArea">
+                    <i class="bi bi-cloud-upload upload-icon"></i>
+                    <p>Drag and drop files here or click to select</p>
+                    <input type="file" id="fileInput" multiple style="display: none;">
+                </div>
+                <div id="uploadProgress" style="display: none;">
+                    <div class="progress mt-3">
+                        <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <small class="text-muted mt-1 d-block">Uploading files...</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="selectFiles()">
+                    <i class="bi bi-folder2-open me-1"></i>Select Files
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rename Item Modal -->
+<div class="modal fade" id="renameItemModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil me-2"></i>Rename Item
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="renameItemForm">
+                    <div class="mb-3">
+                        <label for="new_item_name" class="form-label">New Name</label>
+                        <input type="text" class="form-control" id="new_item_name" required>
+                        <input type="hidden" id="old_item_path">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="renameItem()">
+                    <i class="bi bi-check-lg me-1"></i>Rename
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Disk Usage Info Modal -->
+<div class="modal fade" id="diskUsageModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-pie-chart me-2"></i>Disk Usage
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="diskUsageContent">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Calculating disk usage...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Set up CSRF protection
+    setupCSRFProtection();
+});
+
+function setupCSRFProtection() {
+    // Get CSRF token from meta tag
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    
+    // Set up CSRF for all fetch requests
+    const originalFetch = window.fetch;
+    window.fetch = function() {
+        let [resource, config] = arguments;
+        
+        config = config || {};
+        config.headers = config.headers || {};
+        
+        if (config.method === 'POST' || config.method === 'PUT' || config.method === 'DELETE') {
+            config.headers['X-CSRFToken'] = csrfToken;
+        }
+        
+        return originalFetch.apply(this, arguments);
+    };
+}
+
+async function postData(url = '', data = {}) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken
+        },
+        body: new URLSearchParams(data)
+    });
+    
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return response.json();
+}
+
+function showAlert(message, type = 'info') {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            <i class="bi bi-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    const alertContainer = document.querySelector('.container-fluid');
+    alertContainer.insertAdjacentHTML('afterbegin', alertHtml);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        const alert = alertContainer.querySelector('.alert');
+        if (alert) {
+            alert.remove();
+        }
+    }, 5000);
+}
+
+async function createFile() {
+    try {
+        const fileName = document.getElementById('file_name').value.trim();
+        const currentPath = document.getElementById('current_path_input').value;
+        
+        if (!fileName) {
+            showAlert('Please enter a file name.', 'warning');
+            return;
+        }
+        
+        const data = await postData('{{ url_for("file_manager.create_file") }}', { 
+            file_name: fileName, 
+            path: currentPath 
+        });
+        
+        if (data.success) {
+            showAlert('File created successfully!', 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showAlert('Error: ' + data.error, 'danger');
+        }
+        
+        // Hide modal
+        bootstrap.Modal.getInstance(document.getElementById('createFileModal')).hide();
+        document.getElementById('file_name').value = '';
+        
+    } catch (error) {
+        console.error('Error creating file:', error);
+        showAlert('An error occurred while creating the file.', 'danger');
+    }
+}
+
+async function createFolder() {
+    try {
+        const folderName = document.getElementById('folder_name').value.trim();
+        const currentPath = document.getElementById('current_path_input').value;
+        
+        if (!folderName) {
+            showAlert('Please enter a folder name.', 'warning');
+            return;
+        }
+        
+        const data = await postData('{{ url_for("file_manager.create_folder") }}', { 
+            folder_name: folderName, 
+            path: currentPath 
+        });
+        
+        if (data.success) {
+            showAlert('Folder created successfully!', 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showAlert('Error: ' + data.error, 'danger');
+        }
+        
+        // Hide modal
+        bootstrap.Modal.getInstance(document.getElementById('createFolderModal')).hide();
+        document.getElementById('folder_name').value = '';
+        
+    } catch (error) {
+        console.error('Error creating folder:', error);
+        showAlert('An error occurred while creating the folder.', 'danger');
+    }
+}
+
+async function deleteItem(itemName, isDir) {
+    const itemType = isDir ? 'folder' : 'file';
+    
+    if (!confirm(`Are you sure you want to delete this ${itemType}: "${itemName}"?\n\nThis action cannot be undone.`)) {
+        return;
+    }
+    
+    try {
+        const currentPath = document.getElementById('current_path_input').value;
+        const itemFullPath = currentPath === '.' ? itemName : currentPath + '/' + itemName;
+        
+        const data = await postData('{{ url_for("file_manager.delete_item") }}', { 
+            item_path: itemFullPath 
+        });
+        
+        if (data.success) {
+            showAlert(`${itemType.charAt(0).toUpperCase() + itemType.slice(1)} deleted successfully!`, 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showAlert('Error: ' + data.error, 'danger');
+        }
+        
+    } catch (error) {
+        console.error('Error deleting item:', error);
+        showAlert(`An error occurred while deleting the ${itemType}.`, 'danger');
+    }
+}
+
+async function viewFile(fileName, filePath) {
+    document.getElementById('viewerFileName').textContent = fileName;
+    document.getElementById('fileContent').textContent = 'Loading file content...';
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('fileViewerModal'));
+    modal.show();
+    
+    try {
+        const response = await fetch(`{{ url_for("file_manager.view_file") }}?path=${encodeURIComponent(filePath)}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('fileContent').textContent = data.content;
+        } else {
+            document.getElementById('fileContent').textContent = `Error loading file: ${data.error}`;
+        }
+    } catch (error) {
+        console.error('Error viewing file:', error);
+        document.getElementById('fileContent').textContent = 'Error loading file content.';
+    }
+}
+
+function downloadFile(filePath) {
+    // Create a temporary link for download
+    const link = document.createElement('a');
+    link.href = `{{ url_for("file_manager.download_file") }}?path=${encodeURIComponent(filePath)}`;
+    link.download = '';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+async function showDiskUsage() {
+    const modal = new bootstrap.Modal(document.getElementById('diskUsageModal'));
+    modal.show();
+    
+    try {
+        const response = await fetch('{{ url_for("file_manager.get_disk_usage") }}');
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('diskUsageContent').innerHTML = `
+                <div class="row text-center">
+                    <div class="col-md-4">
+                        <h3 class="text-primary">${data.total_size}</h3>
+                        <p class="text-muted">Total Size</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h3 class="text-success">${data.file_count}</h3>
+                        <p class="text-muted">Files</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h3 class="text-warning">${data.folder_count}</h3>
+                        <p class="text-muted">Folders</p>
+                    </div>
+                </div>
+            `;
+        } else {
+            document.getElementById('diskUsageContent').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-circle me-2"></i>
+                    Error: ${data.error}
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error getting disk usage:', error);
+        document.getElementById('diskUsageContent').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-circle me-2"></i>
+                Error loading disk usage information.
+            </div>
+        `;
+    }
+}
+
+function showRenameModal(itemName, itemPath) {
+    document.getElementById('new_item_name').value = itemName;
+    document.getElementById('old_item_path').value = itemPath;
+    
+    const modal = new bootstrap.Modal(document.getElementById('renameItemModal'));
+    modal.show();
+}
+
+async function renameItem() {
+    try {
+        const oldPath = document.getElementById('old_item_path').value;
+        const newName = document.getElementById('new_item_name').value.trim();
+        
+        if (!newName) {
+            showAlert('Please enter a new name.', 'warning');
+            return;
+        }
+        
+        const data = await postData('{{ url_for("file_manager.rename_item") }}', {
+            old_path: oldPath,
+            new_name: newName
+        });
+        
+        if (data.success) {
+            showAlert('Item renamed successfully!', 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showAlert('Error: ' + data.error, 'danger');
+        }
+        
+        // Hide modal
+        bootstrap.Modal.getInstance(document.getElementById('renameItemModal')).hide();
+        
+    } catch (error) {
+        console.error('Error renaming item:', error);
+        showAlert('An error occurred while renaming the item.', 'danger');
+    }
+}
+
+function selectFiles() {
+    document.getElementById('fileInput').click();
+}
+
+// Upload functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    
+    // Click to select files
+    uploadArea.addEventListener('click', function() {
+        fileInput.click();
+    });
+    
+    // Drag and drop functionality
+    uploadArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        uploadArea.classList.add('drag-over');
+    });
+    
+    uploadArea.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        uploadArea.classList.remove('drag-over');
+    });
+    
+    uploadArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        uploadArea.classList.remove('drag-over');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            uploadFiles(files);
+        }
+    });
+    
+    // File input change
+    fileInput.addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+            uploadFiles(e.target.files);
+        }
+    });
+});
+
+async function uploadFiles(files) {
+    const currentPath = document.getElementById('current_path_input').value;
+    const progressDiv = document.getElementById('uploadProgress');
+    const progressBar = progressDiv.querySelector('.progress-bar');
+    
+    progressDiv.style.display = 'block';
+    
+    let completed = 0;
+    const total = files.length;
+    
+    for (let file of files) {
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('path', currentPath);
+            
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            
+            const response = await fetch('{{ url_for("file_manager.upload_file") }}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken
+                },
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (!data.success) {
+                showAlert(`Error uploading ${file.name}: ${data.error}`, 'danger');
+            }
+            
+        } catch (error) {
+            console.error(`Error uploading ${file.name}:`, error);
+            showAlert(`Error uploading ${file.name}`, 'danger');
+        }
+        
+        completed++;
+        const percent = (completed / total) * 100;
+        progressBar.style.width = percent + '%';
+    }
+    
+    // Hide modal and refresh page
+    setTimeout(() => {
+        bootstrap.Modal.getInstance(document.getElementById('uploadFileModal')).hide();
+        showAlert(`${completed} file(s) uploaded successfully!`, 'success');
+        setTimeout(() => location.reload(), 1000);
+    }, 500);
+    
+    // Reset
+    progressDiv.style.display = 'none';
+    progressBar.style.width = '0%';
+    fileInput.value = '';
+}
+
+// Handle Enter key in forms
+document.getElementById('file_name').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        createFile();
+    }
+});
+
+document.getElementById('folder_name').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        createFolder();
+    }
+});
+
+document.getElementById('new_item_name').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        renameItem();
+    }
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    // Ctrl+U for upload
+    if (e.ctrlKey && e.key === 'u') {
+        e.preventDefault();
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('uploadFileModal')).show();
+    }
+    
+    // Ctrl+Shift+N for new folder
+    if (e.ctrlKey && e.shiftKey && e.key === 'N') {
+        e.preventDefault();
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('createFolderModal')).show();
+    }
+    
+    // Ctrl+N for new file
+    if (e.ctrlKey && e.key === 'n') {
+        e.preventDefault();
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('createFileModal')).show();
+    }
+});
+</script>
+{% endblock %}
