@@ -642,7 +642,7 @@ class VNCGUIManager:
     
     @staticmethod
     def _start_vnc_application(application, display_number):
-        """Start application in VNC session"""
+        """Start application in VNC session with enhanced error handling"""
         env = os.environ.copy()
         env.update({
             'DISPLAY': f':{display_number}',
@@ -654,48 +654,202 @@ class VNCGUIManager:
         app_env = application.get_environment_dict()
         env.update(app_env)
         
-        cmd = application.command.split()
+        # Parse command properly
+        cmd_string = application.command.strip()
         cwd = application.working_directory
         
+        current_app.logger.info(f"Starting VNC application '{application.name}' with command: {cmd_string}")
+        
         try:
-            # Note: stdout and stderr are DEVNULL. For better debugging, these could be captured.
-            process = subprocess.Popen(cmd, env=env, cwd=cwd,
-                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                                     preexec_fn=os.setsid) # Start in new session to manage as a group if needed
+            # First, let's validate the command
+            cmd_parts = cmd_string.split()
+            if not cmd_parts:
+                raise ValueError("Empty command")
+            
+            base_command = cmd_parts[0]
+            
+            # Check if the base command exists and is executable
+            command_path = shutil.which(base_command)
+            if not command_path:
+                # Try to find it with absolute path
+                if os.path.isabs(base_command):
+                    if not os.path.exists(base_command):
+                        raise FileNotFoundError(f"Command file not found: {base_command}")
+                    if not os.access(base_command, os.X_OK):
+                        raise PermissionError(f"Command file is not executable: {base_command}")
+                    command_path = base_command
+                else:
+                    raise FileNotFoundError(f"Command '{base_command}' not found in PATH")
+            
+            current_app.logger.info(f"Using command path: {command_path}")
+            
+            # Create the command list with full path
+            if len(cmd_parts) > 1:
+                cmd = [command_path] + cmd_parts[1:]
+            else:
+                cmd = [command_path]
+            
+            # Log the final command
+            current_app.logger.info(f"Final command: {' '.join(cmd)}")
+            
+            # Check if it's a script that needs special handling
+            if command_path.endswith(('.sh', '.py', '.pl', '.rb')):
+                current_app.logger.info(f"Detected script file: {command_path}")
+                
+                # For shell scripts
+                if command_path.endswith('.sh'):
+                    cmd = ['bash'] + cmd
+                # For Python scripts
+                elif command_path.endswith('.py'):
+                    cmd = ['python3'] + cmd
+                # For Perl scripts
+                elif command_path.endswith('.pl'):
+                    cmd = ['perl'] + cmd
+                # For Ruby scripts
+                elif command_path.endswith('.rb'):
+                    cmd = ['ruby'] + cmd
+                
+                current_app.logger.info(f"Modified command for script: {' '.join(cmd)}")
+            
+            # Try to detect if it's a Java application (common for security tools)
+            if 'java' in cmd_string.lower() or base_command.endswith('.jar'):
+                current_app.logger.info("Detected Java application")
+                if not cmd_string.startswith('java'):
+                    # If it's a .jar file, prepend java -jar
+                    if base_command.endswith('.jar'):
+                        cmd = ['java', '-jar'] + cmd
+                    else:
+                        # Try to find if there's a wrapper script
+                        wrapper_script = f"{base_command}.sh"
+                        if os.path.exists(wrapper_script):
+                            cmd = ['bash', wrapper_script] + cmd_parts[1:]
+                            current_app.logger.info(f"Using wrapper script: {wrapper_script}")
+            
+            # Special handling for common security tools
+            if base_command == 'burpsuitepro':
+                current_app.logger.info("Detected Burp Suite Pro - looking for proper launcher")
+                
+                # Common Burp Suite Pro locations
+                burp_locations = [
+                    '/opt/BurpSuitePro/BurpSuitePro',
+                    '/usr/local/bin/burpsuitepro',
+                    '/home/*/BurpSuitePro/BurpSuitePro',
+                    os.path.expanduser('~/BurpSuitePro/BurpSuitePro'),
+                    '/opt/burpsuite_pro/BurpSuitePro'
+                ]
+                
+                found_burp = None
+                for location in burp_locations:
+                    expanded_location = os.path.expanduser(location)
+                    if '*' in expanded_location:
+                        # Handle wildcard in home directory
+                        import glob
+                        matches = glob.glob(expanded_location)
+                        for match in matches:
+                            if os.path.exists(match) and os.access(match, os.X_OK):
+                                found_burp = match
+                                break
+                        if found_burp:
+                            break
+                    elif os.path.exists(expanded_location) and os.access(expanded_location, os.X_OK):
+                        found_burp = expanded_location
+                        break
+                
+                if found_burp:
+                    current_app.logger.info(f"Found Burp Suite Pro at: {found_burp}")
+                    cmd = [found_burp] + cmd_parts[1:]
+                else:
+                    # Try to find burp jar files
+                    jar_locations = [
+                        '/opt/burpsuite_pro/burpsuite_pro.jar',
+                        os.path.expanduser('~/burpsuite_pro.jar'),
+                        '/usr/local/share/burpsuite_pro/burpsuite_pro.jar'
+                    ]
+                    
+                    for jar_location in jar_locations:
+                        if os.path.exists(jar_location):
+                            current_app.logger.info(f"Found Burp Suite Pro JAR at: {jar_location}")
+                            cmd = ['java', '-jar', jar_location] + cmd_parts[1:]
+                            break
+                    else:
+                        raise FileNotFoundError(
+                            "Burp Suite Pro not found. Please ensure it's installed in one of the standard locations:\n" +
+                            "\n".join(burp_locations + jar_locations)
+                        )
+            
+            current_app.logger.info(f"Final command to execute: {' '.join(cmd)}")
+            
+            # Start the process
+            process = subprocess.Popen(
+                cmd, 
+                env=env, 
+                cwd=cwd,
+                stdout=subprocess.PIPE,  # Capture output for debugging
+                stderr=subprocess.PIPE,
+                preexec_fn=os.setsid
+            )
 
-            # Wait for a very short moment to let the process start or fail quickly
-            initial_wait = 0.5 # seconds
+            # Wait for a short moment to let the process start or fail quickly
+            initial_wait = 2.0  # Increased wait time for complex applications
             time.sleep(initial_wait)
 
             if process.poll() is None:
-                # Process started and is running after initial_wait
+                # Process started and is running
                 current_app.logger.info(f"VNC application '{application.name}' (PID: {process.pid}) started successfully.")
                 return process.pid
             else:
-                # Process terminated quickly, indicating an error
-                # If stderr/stdout were captured, they could be logged here.
-                current_app.logger.error(
-                    f"VNC application '{application.name}' (PID: {process.pid}) failed to start or exited prematurely. "
-                    f"Exit code: {process.returncode}."
-                )
-                return None
+                # Process terminated quickly, capture error output
+                try:
+                    stdout, stderr = process.communicate(timeout=5)
+                    stdout_text = stdout.decode('utf-8', errors='ignore') if stdout else ''
+                    stderr_text = stderr.decode('utf-8', errors='ignore') if stderr else ''
+                    
+                    error_msg = f"Application exited with code {process.returncode}"
+                    if stderr_text:
+                        error_msg += f"\nStderr: {stderr_text[:500]}"
+                    if stdout_text:
+                        error_msg += f"\nStdout: {stdout_text[:500]}"
+                    
+                    current_app.logger.error(f"VNC application '{application.name}' failed: {error_msg}")
+                    
+                except subprocess.TimeoutExpired:
+                    error_msg = f"Application exited with code {process.returncode} (output timeout)"
+                    current_app.logger.error(f"VNC application '{application.name}' failed: {error_msg}")
                 
-        except FileNotFoundError:
-            current_app.logger.error(f"Command for VNC application '{application.name}' not found: {cmd[0]}. Is it installed and in PATH?")
-            return None
+                return None
+                    
+        except FileNotFoundError as e:
+            current_app.logger.error(f"Command not found for VNC application '{application.name}': {e}")
+            raise
+        except PermissionError as e:
+            current_app.logger.error(f"Permission error for VNC application '{application.name}': {e}")
+            raise
+        except OSError as e:
+            if e.errno == 8:  # Exec format error
+                current_app.logger.error(f"Exec format error for '{application.name}': {e}")
+                current_app.logger.error(f"This usually means:")
+                current_app.logger.error(f"1. The file is not executable")
+                current_app.logger.error(f"2. The file is a script without proper shebang")
+                current_app.logger.error(f"3. The file is corrupted or wrong architecture")
+                current_app.logger.error(f"4. The file needs a specific interpreter")
+                
+                # Try to provide helpful information
+                try:
+                    file_info = subprocess.run(['file', base_command], 
+                                            capture_output=True, text=True, timeout=5)
+                    if file_info.returncode == 0:
+                        current_app.logger.error(f"File type: {file_info.stdout.strip()}")
+                except:
+                    pass
+                
+                raise OSError(f"Cannot execute '{base_command}': {e}. Check if the file is executable and has proper format.")
+            else:
+                current_app.logger.error(f"OS error starting VNC application '{application.name}': {e}")
+                raise
         except Exception as e:
-            current_app.logger.error(f"Error starting VNC application '{application.name}': {e}\n{traceback.format_exc()}")
-            # Ensure cleanup if Popen object 'process' exists and is running
-            if 'process' in locals() and process.poll() is None:
-                 try:
-                     # Attempt to terminate the process group if setsid was used
-                     os.killpg(os.getpgid(process.pid), signal.SIGTERM)
-                     time.sleep(0.5) # Give it a moment to terminate
-                     if process.poll() is None: # Check if still running
-                         os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-                 except Exception as term_exc: # Broad exception for cleanup
-                     current_app.logger.error(f"Error during cleanup of VNC application (PID: {process.pid if hasattr(process, 'pid') else 'unknown'}): {term_exc}")
-            return None
+            current_app.logger.error(f"Unexpected error starting VNC application '{application.name}': {e}")
+            current_app.logger.error(traceback.format_exc())
+            raise
     
     @staticmethod
     def _test_display(display_number):

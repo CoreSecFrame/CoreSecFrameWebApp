@@ -1182,30 +1182,157 @@ def api_system_info():
 # Helper functions
 
 def _test_command_availability(command):
-    """Test if a command is available on the system"""
+    """Test if a command is available and executable on the system"""
     try:
         if not command or not command.strip():
             return False
         
-        # Extraer el comando base (primera palabra)
+        # Extract base command (first word)
         command_parts = command.strip().split()
         if not command_parts:
             return False
         
         base_command = command_parts[0]
+        current_app.logger.debug(f"Testing command availability: '{base_command}'")
         
-        # Verificar si el comando existe usando shutil.which
-        result = shutil.which(base_command)
+        # First check with shutil.which
+        command_path = shutil.which(base_command)
         
-        if result:
-            current_app.logger.debug(f"Command '{base_command}' found at: {result}")
-            return True
-        else:
-            current_app.logger.debug(f"Command '{base_command}' not found in PATH")
-            return False
+        if command_path:
+            current_app.logger.debug(f"Command '{base_command}' found at: {command_path}")
+            
+            # Additional checks for the found command
+            try:
+                # Check if it's actually executable
+                if not os.access(command_path, os.X_OK):
+                    current_app.logger.debug(f"Command '{base_command}' found but not executable")
+                    return False
+                
+                # Get file information
+                try:
+                    file_info = subprocess.run(['file', command_path], 
+                                             capture_output=True, text=True, timeout=5)
+                    if file_info.returncode == 0:
+                        file_type = file_info.stdout.strip().lower()
+                        current_app.logger.debug(f"File type for '{base_command}': {file_type}")
+                        
+                        # Check for common problematic file types
+                        if 'cannot execute binary file' in file_type:
+                            current_app.logger.debug(f"Binary file architecture mismatch: {base_command}")
+                            return False
+                        
+                        # For scripts, check if they have proper shebang or interpreter
+                        if 'script' in file_type or command_path.endswith(('.sh', '.py', '.pl', '.rb')):
+                            current_app.logger.debug(f"Detected script: {base_command}")
+                            
+                            # For shell scripts, check if they have shebang
+                            if command_path.endswith('.sh'):
+                                try:
+                                    with open(command_path, 'r', encoding='utf-8', errors='ignore') as f:
+                                        first_line = f.readline().strip()
+                                        if not first_line.startswith('#!'):
+                                            current_app.logger.debug(f"Shell script without shebang: {base_command}")
+                                            # Still consider it available, bash can handle it
+                                except:
+                                    pass
+                            
+                            return True
+                        
+                        # For Java applications
+                        if 'java' in file_type or command_path.endswith('.jar'):
+                            current_app.logger.debug(f"Detected Java application: {base_command}")
+                            # Check if java is available
+                            if shutil.which('java'):
+                                return True
+                            else:
+                                current_app.logger.debug(f"Java application found but java runtime not available")
+                                return False
+                        
+                        return True
+                        
+                except subprocess.TimeoutExpired:
+                    current_app.logger.debug(f"File command timeout for: {base_command}")
+                    # If file command times out, assume it's available if other checks passed
+                    return True
+                except Exception as e:
+                    current_app.logger.debug(f"Error running file command: {e}")
+                    # If we can't get file info, assume it's available if other checks passed
+                    return True
+                
+            except Exception as e:
+                current_app.logger.debug(f"Error checking executable status: {e}")
+                return False
+        
+        # If not found with which, try absolute path
+        if os.path.isabs(base_command):
+            current_app.logger.debug(f"Checking absolute path: {base_command}")
+            if os.path.exists(base_command):
+                if os.access(base_command, os.X_OK):
+                    current_app.logger.debug(f"Absolute path executable: {base_command}")
+                    return True
+                else:
+                    current_app.logger.debug(f"Absolute path exists but not executable: {base_command}")
+                    return False
+            else:
+                current_app.logger.debug(f"Absolute path does not exist: {base_command}")
+                return False
+        
+        # Special handling for common applications that might need special treatment
+        if base_command in ['burpsuitepro', 'burp', 'burpsuite']:
+            current_app.logger.debug(f"Checking special application: {base_command}")
+            return _check_burpsuite_availability()
+        
+        current_app.logger.debug(f"Command '{base_command}' not found in PATH")
+        return False
             
     except Exception as e:
         current_app.logger.error(f"Error testing command availability for '{command}': {e}")
+        return False
+
+def _check_burpsuite_availability():
+    """Special check for Burp Suite Pro availability"""
+    try:
+        # Common Burp Suite Pro locations
+        burp_locations = [
+            '/opt/BurpSuitePro/BurpSuitePro',
+            '/usr/local/bin/burpsuitepro',
+            os.path.expanduser('~/BurpSuitePro/BurpSuitePro'),
+            '/opt/burpsuite_pro/BurpSuitePro'
+        ]
+        
+        jar_locations = [
+            '/opt/burpsuite_pro/burpsuite_pro.jar',
+            os.path.expanduser('~/burpsuite_pro.jar'),
+            '/usr/local/share/burpsuite_pro/burpsuite_pro.jar'
+        ]
+        
+        # Check executable locations
+        for location in burp_locations:
+            if os.path.exists(location) and os.access(location, os.X_OK):
+                current_app.logger.debug(f"Found Burp Suite Pro executable at: {location}")
+                return True
+        
+        # Check JAR locations (if java is available)
+        if shutil.which('java'):
+            for jar_location in jar_locations:
+                if os.path.exists(jar_location):
+                    current_app.logger.debug(f"Found Burp Suite Pro JAR at: {jar_location}")
+                    return True
+        
+        # Check in home directory with wildcard
+        import glob
+        home_pattern = os.path.expanduser('~/*/BurpSuitePro')
+        matches = glob.glob(home_pattern)
+        for match in matches:
+            if os.path.exists(match) and os.access(match, os.X_OK):
+                current_app.logger.debug(f"Found Burp Suite Pro in home directory: {match}")
+                return True
+        
+        current_app.logger.debug("Burp Suite Pro not found in common locations")
+        return False
+        
+    except Exception as e:
+        current_app.logger.error(f"Error checking Burp Suite availability: {e}")
         return False
 
 def _scan_system_applications():
