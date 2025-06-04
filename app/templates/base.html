@@ -75,6 +75,12 @@
                                 <i class="bi bi-display me-1"></i> GUI Apps
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint and 'file_manager' in request.endpoint %}active{% endif %}"
+                                href="{{ url_for('file_manager.index') }}">
+                                <i class="bi bi-folder me-1"></i> File Manager
+                            </a>
+                        </li>
                         {% endif %}
                     </ul>
 

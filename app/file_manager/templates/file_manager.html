@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>File Manager</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/file_manager.css') }}">
+    <script>
+        async function postData(url = '', data = {}) {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    // Include CSRF token if your app uses them globally
+                    // 'X-CSRFToken': '{{ csrf_token() }}' // Example if using Flask-WTF CSRF
+                },
+                body: new URLSearchParams(data)
+            });
+            return response.json();
+        }
+
+        function createFile() {
+            const fileName = document.getElementById('file_name').value;
+            const currentPath = document.getElementById('current_path_input').value;
+            if (!fileName) {
+                alert('Please enter a file name.');
+                return;
+            }
+            postData('{{ url_for("file_manager.create_file") }}', { file_name: fileName, path: currentPath })
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                });
+        }
+
+        function createFolder() {
+            const folderName = document.getElementById('folder_name').value;
+            const currentPath = document.getElementById('current_path_input').value;
+            if (!folderName) {
+                alert('Please enter a folder name.');
+                return;
+            }
+            postData('{{ url_for("file_manager.create_folder") }}', { folder_name: folderName, path: currentPath })
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                });
+        }
+
+        function deleteItem(itemName, isDir) {
+            if (!confirm(`Are you sure you want to delete ${isDir ? 'folder' : 'file'}: ${itemName}?`)) {
+                return;
+            }
+            const currentPath = document.getElementById('current_path_input').value;
+            // item_path for delete_item should be relative to the base_dir, so join currentPath and itemName
+            const itemFullPath = currentPath === '.' ? itemName : currentPath + '/' + itemName;
+
+            postData('{{ url_for("file_manager.delete_item") }}', { item_path: itemFullPath })
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                });
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>File Manager</h1>
+
+        {% if error %}
+            <p class="error">Error: {{ error }}</p>
+        {% endif %}
+
+        <p>Current Path: /{{ current_path if current_path != '.' else '' }}</p>
+        <input type="hidden" id="current_path_input" value="{{ current_path }}">
+
+        <div class="controls">
+            <div>
+                <input type="text" id="folder_name" placeholder="New folder name">
+                <button onclick="createFolder()">Create Folder</button>
+            </div>
+            <div>
+                <input type="text" id="file_name" placeholder="New file name">
+                <button onclick="createFile()">Create File</button>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if parent_dir is not none %}
+                <tr>
+                    <td><a href="{{ url_for('file_manager.list_files_route', path=parent_dir) }}">.. (Parent Directory)</a></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                {% endif %}
+                {% for item in items %}
+                <tr>
+                    <td>
+                        {% if item.is_dir %}
+                            <a href="{{ url_for('file_manager.list_files_route', path=item.path) }}">{{ item.name }}</a>
+                        {% else %}
+                            {{ item.name }}
+                        {% endif %}
+                    </td>
+                    <td>{{ 'Folder' if item.is_dir else 'File' }}</td>
+                    <td>
+                        <button class="delete-btn" onclick="deleteItem('{{ item.name }}', {{ 'true' if item.is_dir else 'false' }})">Delete</button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="3">No items found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
