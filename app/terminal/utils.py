@@ -25,6 +25,9 @@ def create_terminal_process(session):
         if check_session.returncode == 0:
             # Session already exists
             return True
+        
+        # Get user's home directory
+        user_home = os.path.expanduser('~')
             
         # Create a new session
         if session.session_type == 'terminal':
@@ -34,6 +37,7 @@ def create_terminal_process(session):
                 '-d',  # Start detached
                 '-s', session.session_id,  # Session name
                 '-n', 'main',  # Window name
+                '-c', user_home,  # Set working directory to user's home
                 'bash'  # Command to run
             ], check=True)
         elif session.session_type in ['guided', 'direct']:
@@ -52,6 +56,7 @@ def create_terminal_process(session):
                 '-d',  # Start detached
                 '-s', session.session_id,  # Session name
                 '-n', session.module_name,  # Window name
+                '-c', user_home,  # Set working directory to user's home
                 module_cmd  # Command to run
             ], check=True)
             
