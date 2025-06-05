@@ -364,10 +364,6 @@ class ThemeManager {
                     </div>
                 </div>
             </div>
-            
-            <button class="accent-picker-toggle" id="accentPickerToggle" title="Customize Accent Color">
-                <i class="bi bi-palette"></i>
-            </button>
         `;
 
         document.body.insertAdjacentHTML('beforeend', pickerHTML);
@@ -394,8 +390,8 @@ class ThemeManager {
             themeToggle.addEventListener('click', () => this.toggleTheme());
         }
 
-        // Accent picker toggle
-        const accentToggle = document.getElementById('accentPickerToggle');
+        // Accent picker toggle - Updated to use the new ID
+        const accentToggle = document.getElementById('accent-color-toggle');
         if (accentToggle) {
             accentToggle.addEventListener('click', () => this.toggleAccentPicker());
         }
@@ -452,7 +448,7 @@ class ThemeManager {
         // Close picker when clicking outside
         document.addEventListener('click', (e) => {
             const picker = document.getElementById('accentColorPicker');
-            const toggle = document.getElementById('accentPickerToggle');
+            const toggle = document.getElementById('accent-color-toggle'); // Updated ID
             
             if (this.accentPickerVisible && 
                 !picker.contains(e.target) && 
@@ -511,24 +507,18 @@ class ThemeManager {
 
     showAccentPicker() {
         const picker = document.getElementById('accentColorPicker');
-        const toggle = document.getElementById('accentPickerToggle');
         
-        if (picker && toggle) {
+        if (picker) {
             picker.classList.add('show');
-            toggle.classList.add('active');
-            toggle.innerHTML = '<i class="bi bi-x"></i>';
             this.accentPickerVisible = true;
         }
     }
 
     hideAccentPicker() {
         const picker = document.getElementById('accentColorPicker');
-        const toggle = document.getElementById('accentPickerToggle');
         
-        if (picker && toggle) {
+        if (picker) {
             picker.classList.remove('show');
-            toggle.classList.remove('active');
-            toggle.innerHTML = '<i class="bi bi-palette"></i>';
             this.accentPickerVisible = false;
         }
     }

@@ -1,4 +1,4 @@
-<!-- app/templates/base.html - Fixed Template Structure -->
+<!-- app/templates/base.html - Enhanced with Theme System - Clean Version -->
 <!DOCTYPE html>
 <html lang="en">
 
@@ -8,7 +8,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="theme-color" content="#0078d4">
     <meta name="color-scheme" content="light dark">
-    
+
     <title>{{ title if title else 'Dashboard' }} - CoreSecFrame</title>
     <meta name="description" content="Professional Cybersecurity Framework for Security Experts">
 
@@ -28,21 +28,22 @@
     {% block css %}{% endblock %}
 
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🛡️</text></svg>">
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🛡️</text></svg>">
 
     <!-- Theme initialization to prevent flash -->
     <script>
-        (function() {
-            const theme = localStorage.getItem('theme') || 
-                         (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        (function () {
+            const theme = localStorage.getItem('theme') ||
+                (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
             document.documentElement.setAttribute('data-theme', theme);
-            
+
             const accentColor = localStorage.getItem('accent-color') || '#0078d4';
             const { h, s, l } = hexToHsl(accentColor);
             document.documentElement.style.setProperty('--w11-accent-hue', h);
             document.documentElement.style.setProperty('--w11-accent-saturation', s + '%');
             document.documentElement.style.setProperty('--w11-accent-lightness', l + '%');
-            
+
             function hexToHsl(hex) {
                 hex = hex.replace('#', '');
                 const r = parseInt(hex.substr(0, 2), 16) / 255;
@@ -139,12 +140,20 @@
                     <ul class="navbar-nav ms-auto">
                         <!-- Theme Toggle -->
                         <li class="nav-item">
-                            <button class="nav-link btn btn-link" id="theme-toggle" 
-                                    title="Toggle theme (Ctrl+Shift+T)" aria-label="Toggle between light and dark theme">
+                            <button class="nav-link btn btn-link" id="theme-toggle" title="Toggle theme (Ctrl+Shift+T)"
+                                aria-label="Toggle between light and dark theme">
                                 <i class="bi bi-moon-fill" id="theme-icon" aria-hidden="true"></i>
                             </button>
                         </li>
                         
+                        <!-- Accent Color Picker -->
+                        <li class="nav-item">
+                            <button class="nav-link btn btn-link" id="accent-color-toggle" title="Change accent color (Ctrl+Shift+C)"
+                                aria-label="Open accent color picker">
+                                <i class="bi bi-palette" aria-hidden="true"></i>
+                            </button>
+                        </li>
+
                         {% if current_user.is_authenticated %}
                         <!-- User Dropdown -->
                         <li class="nav-item dropdown">
@@ -159,7 +168,9 @@
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                                 <li class="dropdown-header">Signed in as</li>
                                 <li class="dropdown-header"><strong>{{ current_user.username }}</strong></li>
-                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
                                 <li>
                                     <a class="dropdown-item" href="{{ url_for('auth.profile') }}">
                                         <i class="bi bi-person me-2" aria-hidden="true"></i> Profile
@@ -172,7 +183,9 @@
                                     </a>
                                 </li>
                                 {% endif %}
-                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
                                 <li>
                                     <a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}">
                                         <i class="bi bi-box-arrow-right me-2" aria-hidden="true"></i> Logout
@@ -198,6 +211,44 @@
         </nav>
     </header>
 
+    <!-- Accent Color Picker Panel -->
+    <div id="accent-color-picker" class="accent-color-panel hidden">
+        <div class="panel-header">
+            <h6><i class="bi bi-palette me-2"></i>Accent Color</h6>
+            <button type="button" class="btn-close btn-sm" id="close-accent-picker"
+                aria-label="Close accent color picker"></button>
+        </div>
+        <div class="panel-content">
+            <div class="preset-colors">
+                <button class="color-preset" data-color="#0078d4" style="background: #0078d4;" title="Default Blue"
+                    aria-label="Set accent color to blue"></button>
+                <button class="color-preset" data-color="#107c10" style="background: #107c10;" title="Green"
+                    aria-label="Set accent color to green"></button>
+                <button class="color-preset" data-color="#881798" style="background: #881798;" title="Purple"
+                    aria-label="Set accent color to purple"></button>
+                <button class="color-preset" data-color="#ff8c00" style="background: #ff8c00;" title="Orange"
+                    aria-label="Set accent color to orange"></button>
+                <button class="color-preset" data-color="#e74856" style="background: #e74856;" title="Red"
+                    aria-label="Set accent color to red"></button>
+                <button class="color-preset" data-color="#0099bc" style="background: #0099bc;" title="Teal"
+                    aria-label="Set accent color to teal"></button>
+                <button class="color-preset" data-color="#8764b8" style="background: #8764b8;" title="Lavender"
+                    aria-label="Set accent color to lavender"></button>
+                <button class="color-preset" data-color="#00b7c3" style="background: #00b7c3;" title="Cyan"
+                    aria-label="Set accent color to cyan"></button>
+            </div>
+            <div class="custom-color-section">
+                <label for="custom-color-input">Custom Color:</label>
+                <div class="custom-color-input-group">
+                    <input type="color" id="custom-color-input" value="#0078d4" class="custom-color-input"
+                        aria-label="Pick custom accent color">
+                    <input type="text" id="hex-color-input" value="#0078d4" class="hex-color-input" placeholder="#0078d4"
+                        pattern="^#[0-9A-Fa-f]{6}$" aria-label="Enter hex color code">
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Content -->
     <main class="flex-grow-1" id="main-content" role="main">
         <div class="container-fluid py-4">
@@ -207,7 +258,8 @@
             <div class="flash-messages animate-fade-in" role="alert" aria-live="polite">
                 {% for category, message in messages %}
                 <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                    <i class="bi bi-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-circle{% elif category == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %} me-2" aria-hidden="true"></i>
+                    <i class="bi bi-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-circle{% elif category == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"
+                        aria-hidden="true"></i>
                     <span>{{ message }}</span>
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close alert"></button>
                 </div>
@@ -231,16 +283,16 @@
                     <span>&copy; 2025 CoreSecFrame. All rights reserved.</span>
                 </div>
                 <div class="col-md-6 text-md-end">
-                    <div class="d-flex justify-content-md-end align-items-center gap-3">
+                    <div class="footer-controls">
                         <span>Version 1.0.0</span>
-                        <span>|</span>
-                        <button type="button" class="btn btn-link btn-sm p-0" id="system-info-toggle" 
-                                title="System Performance" aria-label="View system performance information">
+                        <span class="footer-separator">|</span>
+                        <button type="button" class="footer-btn" id="system-info-toggle"
+                            title="System Performance" aria-label="View system performance information">
                             <i class="bi bi-cpu" aria-hidden="true"></i>
                         </button>
-                        <span>|</span>
-                        <button type="button" class="btn btn-link btn-sm p-0" id="accessibility-toggle"
-                                title="Accessibility Options" aria-label="Toggle accessibility options">
+                        <span class="footer-separator">|</span>
+                        <button type="button" class="footer-btn" id="accessibility-toggle"
+                            title="Accessibility Options" aria-label="Toggle accessibility options">
                             <i class="bi bi-universal-access" aria-hidden="true"></i>
                         </button>
                     </div>
@@ -250,10 +302,11 @@
     </footer>
 
     <!-- System Performance Widget -->
-    <div id="system-performance-widget" class="system-widget" style="display: none;">
+    <div id="system-performance-widget" class="system-widget hidden">
         <div class="widget-header">
             <h6><i class="bi bi-cpu me-2"></i>System Performance</h6>
-            <button type="button" class="btn-close btn-sm" id="close-performance-widget" aria-label="Close performance widget"></button>
+            <button type="button" class="btn-close btn-sm" id="close-performance-widget"
+                aria-label="Close performance widget"></button>
         </div>
         <div class="widget-content">
             <div class="performance-metrics">
@@ -278,10 +331,11 @@
     </div>
 
     <!-- Accessibility Options Panel -->
-    <div id="accessibility-panel" class="accessibility-panel" style="display: none;">
+    <div id="accessibility-panel" class="accessibility-panel hidden">
         <div class="panel-header">
             <h6><i class="bi bi-universal-access me-2"></i>Accessibility Options</h6>
-            <button type="button" class="btn-close btn-sm" id="close-accessibility-panel" aria-label="Close accessibility panel"></button>
+            <button type="button" class="btn-close btn-sm" id="close-accessibility-panel"
+                aria-label="Close accessibility panel"></button>
         </div>
         <div class="panel-content">
             <div class="accessibility-options">
@@ -318,9 +372,7 @@
     </div>
 
     <!-- Toast Container for Notifications -->
-    <div class="toast-container position-fixed top-0 end-0 p-3" id="toast-container" style="z-index: 11000;">
-        <!-- Toasts will be dynamically inserted here -->
-    </div>
+    <div class="toast-container position-fixed top-0 end-0 p-3" id="toast-container"></div>
 
     <!-- Screen Reader Only Content -->
     <div id="aria-live-region" aria-live="polite" aria-atomic="true" class="visually-hidden"></div>
@@ -329,43 +381,146 @@
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/socket.io/client-dist/socket.io.min.js"></script>
-    
+
     <!-- Core Scripts -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script src="{{ url_for('static', filename='js/csrf_protection.js') }}"></script>
 
     <!-- Enhanced Initialization Script -->
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize system widgets
+        document.addEventListener('DOMContentLoaded', function () {
+            // Initialize all components
+            initializeThemeSystem();
+            initializeAccentColorPicker();
             initializeSystemWidgets();
-            
-            // Initialize accessibility panel
             initializeAccessibilityPanel();
-            
-            // Initialize keyboard shortcuts
             initializeKeyboardShortcuts();
-            
-            // Initialize tooltips for all elements
-            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]:not([data-bs-toggle])'));
-            tooltipTriggerList.map(function (tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl, {
-                    delay: { show: 500, hide: 100 }
-                });
-            });
-            
-            // Update performance metrics
+            initializeTooltips();
             updatePerformanceMetrics();
-            
-            // Auto-hide flash messages after 5 seconds
-            setTimeout(() => {
-                const alerts = document.querySelectorAll('.flash-messages .alert');
-                alerts.forEach(alert => {
-                    const alertInstance = bootstrap.Alert.getOrCreateInstance(alert);
-                    alertInstance.close();
-                });
-            }, 5000);
+            autoHideFlashMessages();
         });
+
+        function initializeThemeSystem() {
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeIcon = document.getElementById('theme-icon');
+            
+            if (themeToggle && themeIcon) {
+                function updateThemeIcon() {
+                    const currentTheme = document.documentElement.getAttribute('data-theme');
+                    themeIcon.className = currentTheme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-fill';
+                }
+
+                themeToggle.addEventListener('click', function() {
+                    const currentTheme = document.documentElement.getAttribute('data-theme');
+                    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                    
+                    document.documentElement.setAttribute('data-theme', newTheme);
+                    localStorage.setItem('theme', newTheme);
+                    updateThemeIcon();
+                    
+                    window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: newTheme } }));
+                });
+
+                updateThemeIcon();
+            }
+        }
+
+        function initializeAccentColorPicker() {
+            const accentToggle = document.getElementById('accent-color-toggle');
+            const accentPicker = document.getElementById('accent-color-picker');
+            const closeAccentPicker = document.getElementById('close-accent-picker');
+            const customColorInput = document.getElementById('custom-color-input');
+            const hexColorInput = document.getElementById('hex-color-input');
+            const colorPresets = document.querySelectorAll('.color-preset');
+
+            if (accentToggle && accentPicker) {
+                accentToggle.addEventListener('click', function() {
+                    accentPicker.classList.toggle('hidden');
+                });
+
+                closeAccentPicker.addEventListener('click', function() {
+                    accentPicker.classList.add('hidden');
+                });
+
+                colorPresets.forEach(button => {
+                    button.addEventListener('click', function() {
+                        const color = this.getAttribute('data-color');
+                        setAccentColor(color);
+                        customColorInput.value = color;
+                        hexColorInput.value = color;
+                        updateActivePreset(color);
+                    });
+                });
+
+                customColorInput.addEventListener('change', function() {
+                    const color = this.value;
+                    setAccentColor(color);
+                    hexColorInput.value = color;
+                    updateActivePreset(color);
+                });
+
+                hexColorInput.addEventListener('change', function() {
+                    const color = this.value;
+                    if (/^#[0-9A-F]{6}$/i.test(color)) {
+                        setAccentColor(color);
+                        customColorInput.value = color;
+                        updateActivePreset(color);
+                    }
+                });
+
+                // Initialize with current accent color
+                const currentAccent = localStorage.getItem('accent-color') || '#0078d4';
+                customColorInput.value = currentAccent;
+                hexColorInput.value = currentAccent;
+                updateActivePreset(currentAccent);
+            }
+        }
+
+        function setAccentColor(color) {
+            const { h, s, l } = hexToHsl(color);
+            document.documentElement.style.setProperty('--w11-accent-hue', h);
+            document.documentElement.style.setProperty('--w11-accent-saturation', s + '%');
+            document.documentElement.style.setProperty('--w11-accent-lightness', l + '%');
+            localStorage.setItem('accent-color', color);
+            
+            const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+            if (metaThemeColor) {
+                metaThemeColor.setAttribute('content', color);
+            }
+        }
+
+        function updateActivePreset(color) {
+            const colorPresets = document.querySelectorAll('.color-preset');
+            colorPresets.forEach(preset => {
+                preset.classList.remove('active');
+                if (preset.getAttribute('data-color') === color) {
+                    preset.classList.add('active');
+                }
+            });
+        }
+
+        function hexToHsl(hex) {
+            hex = hex.replace('#', '');
+            const r = parseInt(hex.substr(0, 2), 16) / 255;
+            const g = parseInt(hex.substr(2, 2), 16) / 255;
+            const b = parseInt(hex.substr(4, 2), 16) / 255;
+            const max = Math.max(r, g, b);
+            const min = Math.min(r, g, b);
+            let h, s, l = (max + min) / 2;
+            if (max === min) {
+                h = s = 0;
+            } else {
+                const d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                switch (max) {
+                    case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                    case g: h = (b - r) / d + 2; break;
+                    case b: h = (r - g) / d + 4; break;
+                }
+                h /= 6;
+            }
+            return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+        }
 
         function initializeSystemWidgets() {
             const systemInfoToggle = document.getElementById('system-info-toggle');
@@ -373,14 +528,15 @@
             const closePerformanceWidget = document.getElementById('close-performance-widget');
 
             if (systemInfoToggle && performanceWidget) {
-                systemInfoToggle.addEventListener('click', () => {
-                    const isVisible = performanceWidget.style.display !== 'none';
-                    performanceWidget.style.display = isVisible ? 'none' : 'block';
-                    if (!isVisible) updatePerformanceMetrics();
+                systemInfoToggle.addEventListener('click', function() {
+                    performanceWidget.classList.toggle('hidden');
+                    if (!performanceWidget.classList.contains('hidden')) {
+                        updatePerformanceMetrics();
+                    }
                 });
 
-                closePerformanceWidget.addEventListener('click', () => {
-                    performanceWidget.style.display = 'none';
+                closePerformanceWidget.addEventListener('click', function() {
+                    performanceWidget.classList.add('hidden');
                 });
             }
         }
@@ -391,16 +547,14 @@
             const closeAccessibilityPanel = document.getElementById('close-accessibility-panel');
 
             if (accessibilityToggle && accessibilityPanel) {
-                accessibilityToggle.addEventListener('click', () => {
-                    const isVisible = accessibilityPanel.style.display !== 'none';
-                    accessibilityPanel.style.display = isVisible ? 'none' : 'block';
+                accessibilityToggle.addEventListener('click', function() {
+                    accessibilityPanel.classList.toggle('hidden');
                 });
 
-                closeAccessibilityPanel.addEventListener('click', () => {
-                    accessibilityPanel.style.display = 'none';
+                closeAccessibilityPanel.addEventListener('click', function() {
+                    accessibilityPanel.classList.add('hidden');
                 });
 
-                // Initialize accessibility options
                 setupAccessibilityOptions();
             }
         }
@@ -480,7 +634,24 @@
         }
 
         function initializeKeyboardShortcuts() {
-            document.addEventListener('keydown', (e) => {
+            document.addEventListener('keydown', function(e) {
+                // Theme toggle shortcut
+                if (e.ctrlKey && e.shiftKey && e.key === 'T') {
+                    e.preventDefault();
+                    document.getElementById('theme-toggle').click();
+                }
+
+                // Accent color picker shortcut
+                if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+                    e.preventDefault();
+                    document.getElementById('accent-color-toggle').click();
+                }
+
+                // Escape to close all panels
+                if (e.key === 'Escape') {
+                    closeAllPanels();
+                }
+
                 // Alt + 1-9 for quick navigation
                 if (e.altKey && e.key >= '1' && e.key <= '9') {
                     e.preventDefault();
@@ -490,236 +661,143 @@
                         navLinks[index].click();
                     }
                 }
+            });
+        }
 
-                // Ctrl + / for help/shortcuts
-                if (e.ctrlKey && e.key === '/') {
-                    e.preventDefault();
-                    showKeyboardShortcuts();
-                }
-
-                // Escape to close modals/panels
-                if (e.key === 'Escape') {
-                    closeAllPanels();
-                }
+        function initializeTooltips() {
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]:not([data-bs-toggle])'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl, {
+                    delay: { show: 500, hide: 100 }
+                });
             });
         }
 
         function updatePerformanceMetrics() {
-            if (window.performanceMonitor) {
-                const metrics = window.performanceMonitor.getMetrics();
-                
-                const loadTimeEl = document.getElementById('load-time');
-                const memoryUsageEl = document.getElementById('memory-usage');
-                const currentThemeEl = document.getElementById('current-theme');
-                const currentAccentEl = document.getElementById('current-accent');
+            const loadTimeEl = document.getElementById('load-time');
+            const memoryUsageEl = document.getElementById('memory-usage');
+            const currentThemeEl = document.getElementById('current-theme');
+            const currentAccentEl = document.getElementById('current-accent');
 
-                if (loadTimeEl) loadTimeEl.textContent = metrics.loadTime + 'ms';
-                if (memoryUsageEl) memoryUsageEl.textContent = metrics.memoryUsage + 'MB';
-                if (currentThemeEl) currentThemeEl.textContent = document.documentElement.getAttribute('data-theme');
-                if (currentAccentEl) currentAccentEl.textContent = localStorage.getItem('accent-color') || '#0078d4';
+            if (loadTimeEl) {
+                const loadTime = Math.round(performance.now());
+                loadTimeEl.textContent = loadTime + 'ms';
+            }
+
+            if (memoryUsageEl && performance.memory) {
+                const memoryUsage = Math.round(performance.memory.usedJSHeapSize / 1024 / 1024);
+                memoryUsageEl.textContent = memoryUsage + 'MB';
+            } else if (memoryUsageEl) {
+                memoryUsageEl.textContent = 'N/A';
+            }
+
+            if (currentThemeEl) {
+                currentThemeEl.textContent = document.documentElement.getAttribute('data-theme');
+            }
+
+            if (currentAccentEl) {
+                currentAccentEl.textContent = localStorage.getItem('accent-color') || '#0078d4';
             }
         }
 
-        function showKeyboardShortcuts() {
-            const shortcuts = `
-                <div class="keyboard-shortcuts">
-                    <h6>Keyboard Shortcuts</h6>
-                    <div class="shortcut-list">
-                        <div class="shortcut"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>T</kbd> - Toggle Theme</div>
-                        <div class="shortcut"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>C</kbd> - Color Picker</div>
-                        <div class="shortcut"><kbd>Alt</kbd> + <kbd>1-9</kbd> - Quick Navigation</div>
-                        <div class="shortcut"><kbd>Ctrl</kbd> + <kbd>/</kbd> - Show Shortcuts</div>
-                        <div class="shortcut"><kbd>Esc</kbd> - Close Panels</div>
-                        <div class="shortcut"><kbd>Tab</kbd> - Navigate Elements</div>
-                    </div>
-                </div>
-            `;
-            
-            if (window.modalManager) {
-                window.modalManager.create('shortcuts-modal', shortcuts, {
-                    title: 'Keyboard Shortcuts',
-                    size: 'sm'
-                }).show();
-            }
+        function autoHideFlashMessages() {
+            setTimeout(() => {
+                const alerts = document.querySelectorAll('.flash-messages .alert');
+                alerts.forEach(alert => {
+                    const alertInstance = bootstrap.Alert.getOrCreateInstance(alert);
+                    alertInstance.close();
+                });
+            }, 5000);
         }
 
         function closeAllPanels() {
-            document.getElementById('system-performance-widget').style.display = 'none';
-            document.getElementById('accessibility-panel').style.display = 'none';
+            document.getElementById('accent-color-picker').classList.add('hidden');
+            document.getElementById('system-performance-widget').classList.add('hidden');
+            document.getElementById('accessibility-panel').classList.add('hidden');
+        }
+
+        // Click outside to close panels
+        document.addEventListener('click', function(e) {
+            const accentPicker = document.getElementById('accent-color-picker');
+            const accentToggle = document.getElementById('accent-color-toggle');
             
-            if (window.themeManager && window.themeManager.accentPickerVisible) {
-                window.themeManager.hideAccentPicker();
+            if (!accentPicker.contains(e.target) && !accentToggle.contains(e.target)) {
+                accentPicker.classList.add('hidden');
             }
-        }
+        });
 
-        // Add error boundary for JavaScript errors
-        window.addEventListener('error', (e) => {
+        // Error handling
+        window.addEventListener('error', function(e) {
             console.error('JavaScript Error:', e.error);
-            if (window.notificationManager) {
-                window.notificationManager.show(
-                    'An unexpected error occurred. Please refresh the page if problems persist.',
-                    'danger',
-                    8000
-                );
-            }
         });
 
-        // Add unhandled promise rejection handler
-        window.addEventListener('unhandledrejection', (e) => {
+        window.addEventListener('unhandledrejection', function(e) {
             console.error('Unhandled Promise Rejection:', e.reason);
-            if (window.notificationManager) {
-                window.notificationManager.show(
-                    'A network or processing error occurred.',
-                    'warning',
-                    5000
-                );
-            }
         });
+
+        // Global utility functions
+        window.CoreSecFrame = {
+            setTheme: function(theme) {
+                if (['light', 'dark'].includes(theme)) {
+                    document.documentElement.setAttribute('data-theme', theme);
+                    localStorage.setItem('theme', theme);
+                    const themeIcon = document.getElementById('theme-icon');
+                    if (themeIcon) {
+                        themeIcon.className = theme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-fill';
+                    }
+                }
+            },
+            
+            setAccentColor: function(color) {
+                if (/^#[0-9A-F]{6}$/i.test(color)) {
+                    setAccentColor(color);
+                    const customColorInput = document.getElementById('custom-color-input');
+                    const hexColorInput = document.getElementById('hex-color-input');
+                    if (customColorInput) customColorInput.value = color;
+                    if (hexColorInput) hexColorInput.value = color;
+                    updateActivePreset(color);
+                }
+            },
+            
+            showNotification: function(message, type = 'info', duration = 5000) {
+                const alertTypes = {
+                    'success': 'success',
+                    'error': 'danger',
+                    'danger': 'danger',
+                    'warning': 'warning',
+                    'info': 'info'
+                };
+                
+                const alertClass = alertTypes[type] || 'info';
+                const icons = {
+                    'success': 'check-circle',
+                    'danger': 'exclamation-circle',
+                    'warning': 'exclamation-triangle',
+                    'info': 'info-circle'
+                };
+                
+                const alertId = 'alert-' + Date.now();
+                const alertHTML = `
+                    <div id="${alertId}" class="alert alert-${alertClass} alert-dismissible fade show position-fixed" 
+                         style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;" role="alert">
+                        <i class="bi bi-${icons[alertClass] || icons.info} me-2"></i>
+                        ${message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                `;
+                
+                document.body.insertAdjacentHTML('beforeend', alertHTML);
+                
+                setTimeout(() => {
+                    const alert = document.getElementById(alertId);
+                    if (alert) {
+                        const bsAlert = new bootstrap.Alert(alert);
+                        bsAlert.close();
+                    }
+                }, duration);
+            }
+        };
     </script>
-
-    <!-- Additional CSS for enhanced features -->
-    <style>
-        /* System Widgets */
-        .system-widget, .accessibility-panel {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: var(--w11-card-bg);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--w11-card-stroke);
-            border-radius: var(--w11-radius-large);
-            box-shadow: var(--w11-shadow-16);
-            z-index: 1000;
-            width: 280px;
-            font-size: 12px;
-        }
-
-        .widget-header, .panel-header {
-            background: var(--w11-bg-secondary);
-            border-bottom: 1px solid var(--w11-surface-stroke);
-            padding: 12px 16px;
-            border-radius: var(--w11-radius-large) var(--w11-radius-large) 0 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .widget-content, .panel-content {
-            padding: 16px;
-        }
-
-        .performance-metrics .metric,
-        .accessibility-options .option {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-
-        .metric-label {
-            color: var(--w11-text-secondary);
-        }
-
-        .metric-value {
-            font-weight: 600;
-            color: var(--w11-text-primary);
-            font-family: monospace;
-        }
-
-        /* Accessibility Classes */
-        .high-contrast {
-            --w11-surface-stroke: #666666;
-            --w11-text-secondary: #333333;
-        }
-
-        [data-theme="dark"].high-contrast {
-            --w11-surface-stroke: #999999;
-            --w11-text-secondary: #cccccc;
-        }
-
-        .large-text {
-            font-size: 16px !important;
-        }
-
-        .large-text h1 { font-size: 32px !important; }
-        .large-text h2 { font-size: 28px !important; }
-        .large-text h3 { font-size: 24px !important; }
-        .large-text h4 { font-size: 20px !important; }
-        .large-text h5 { font-size: 18px !important; }
-        .large-text h6 { font-size: 16px !important; }
-
-        .reduce-motion * {
-            animation-duration: 0.01ms !important;
-            animation-iteration-count: 1 !important;
-            transition-duration: 0.01ms !important;
-        }
-
-        /* Enhanced Focus Indicators */
-        .keyboard-navigation *:focus {
-            outline: 2px solid var(--w11-accent) !important;
-            outline-offset: 2px !important;
-        }
-
-        /* Skip Link */
-        .skip-link {
-            position: absolute;
-            top: -40px;
-            left: 6px;
-            background: var(--w11-accent);
-            color: white;
-            padding: 8px 12px;
-            text-decoration: none;
-            border-radius: 4px;
-            z-index: 10001;
-            transition: top 0.3s;
-            font-weight: 600;
-        }
-
-        .skip-link:focus {
-            top: 6px;
-            color: white;
-        }
-
-        /* Keyboard Shortcuts Modal Content */
-        .keyboard-shortcuts .shortcut-list {
-            display: grid;
-            gap: 8px;
-        }
-
-        .keyboard-shortcuts .shortcut {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 4px 0;
-        }
-
-        .keyboard-shortcuts kbd {
-            background: var(--w11-bg-tertiary);
-            border: 1px solid var(--w11-surface-stroke);
-            border-radius: 3px;
-            padding: 2px 6px;
-            font-family: monospace;
-            font-size: 11px;
-            font-weight: 600;
-        }
-
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            .system-widget, .accessibility-panel {
-                right: 10px;
-                bottom: 10px;
-                width: 260px;
-            }
-        }
-
-        @media (max-width: 576px) {
-            .system-widget, .accessibility-panel {
-                left: 10px;
-                right: 10px;
-                width: auto;
-            }
-        }
-    </style>
 
     {% block scripts %}{% endblock %}
 </body>
