@@ -9,6 +9,12 @@ import traceback
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
+def _handle_auth_exception(e, operation_name):
+    """Helper function to log and flash authentication errors."""
+    current_app.logger.error(f"{operation_name} error: {str(e)}")
+    current_app.logger.error(traceback.format_exc())
+    flash(f'An error occurred during {operation_name.lower()}. Please try again.', 'danger')
+
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -29,9 +35,7 @@ def login():
                 next_page = url_for('core.index')
             return redirect(next_page)
         except Exception as e:
-            current_app.logger.error(f"Login error: {str(e)}")
-            current_app.logger.error(traceback.format_exc())
-            flash('An error occurred during login. Please try again.', 'danger')
+            _handle_auth_exception(e, "Login")
     return render_template('auth/login.html', title='Sign In', form=form)
 
 @auth_bp.route('/logout')
@@ -59,10 +63,8 @@ def register():
             flash('Congratulations, you are now a registered user!', 'success')
             return redirect(url_for('auth.login'))
         except Exception as e:
-            db.session.rollback()
-            current_app.logger.error(f"Registration error: {str(e)}")
-            current_app.logger.error(traceback.format_exc())
-            flash('An error occurred during registration. Please try again.', 'danger')
+            db.session.rollback() # Keep rollback here as it's specific to DB operations
+            _handle_auth_exception(e, "Registration")
     return render_template('auth/register.html', title='Register', form=form)
 
 @auth_bp.route('/profile')
