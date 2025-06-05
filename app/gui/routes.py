@@ -7,6 +7,7 @@ from datetime import datetime
 import traceback
 import shutil # For _test_command_availability and _scan_system_applications
 import os # For _scan_system_applications
+import subprocess
 
 # Module-level constant for default applications to scan
 DEFAULT_SCAN_APPLICATIONS = [
@@ -1170,84 +1171,115 @@ def _test_command_availability(command):
     try:
         if not command or not command.strip():
             return False
-        
-        # Extract base command (first word)
+
         command_parts = command.strip().split()
         if not command_parts:
             return False
         
         base_command = command_parts[0]
-        current_app.logger.debug(f"Testing command availability: '{base_command}'")
+        current_app.logger.debug(f"Testing command availability for: '{base_command}' (full command: '{command}')")
+
+        command_path = None
         
-        # First check with shutil.which
-        command_path = shutil.which(base_command)
-        
+        # Try to find command using 'command -v'
+        try:
+            current_app.logger.debug(f"Attempting to find '{base_command}' using 'command -v'")
+            command_v_result = subprocess.run(['command', '-v', base_command], 
+                                              capture_output=True, text=True, check=False, timeout=5)
+            if command_v_result.returncode == 0 and command_v_result.stdout.strip():
+                command_path = command_v_result.stdout.strip()
+                current_app.logger.info(f"Command '{base_command}' found using 'command -v': {command_path}")
+            else:
+                current_app.logger.debug(f"'command -v {base_command}' failed or returned empty. RC: {command_v_result.returncode}, Stdout: '{command_v_result.stdout.strip()}'")
+        except FileNotFoundError:
+            current_app.logger.warning("Utility 'command' not found. Falling back to shutil.which for command lookup.")
+            command_path = None # Ensure fallback to shutil.which occurs
+        except subprocess.TimeoutExpired:
+            current_app.logger.warning(f"'command -v {base_command}' timed out.")
+        except Exception as e: # General exception for other subprocess errors
+            current_app.logger.warning(f"Error running 'command -v {base_command}': {e}")
+
+        # If 'command -v' fails (or 'command' utility not found), try shutil.which
+        if not command_path:
+            current_app.logger.debug(f"Attempting to find '{base_command}' using 'shutil.which'")
+            command_path_shutil = shutil.which(base_command)
+            if command_path_shutil:
+                command_path = command_path_shutil
+                current_app.logger.info(f"Command '{base_command}' found using 'shutil.which': {command_path}")
+            else:
+                current_app.logger.debug(f"'shutil.which({base_command})' did not find the command.")
+
         if command_path:
-            current_app.logger.debug(f"Command '{base_command}' found at: {command_path}")
+            current_app.logger.debug(f"Command '{base_command}' resolved to path: {command_path}")
             
             # Additional checks for the found command
             try:
                 # Check if it's actually executable
                 if not os.access(command_path, os.X_OK):
-                    current_app.logger.debug(f"Command '{base_command}' found but not executable")
+                    current_app.logger.warning(f"Command path '{command_path}' for '{base_command}' found but not executable.")
                     return False
                 
+                current_app.logger.debug(f"Command path '{command_path}' is executable. Checking file type.")
                 # Get file information
                 try:
-                    file_info = subprocess.run(['file', command_path], 
-                                             capture_output=True, text=True, timeout=5)
-                    if file_info.returncode == 0:
-                        file_type = file_info.stdout.strip().lower()
-                        current_app.logger.debug(f"File type for '{base_command}': {file_type}")
+                    # Run 'file' command without check=True, handle errors manually
+                    file_info_process = subprocess.run(['file', command_path], 
+                                                       capture_output=True, text=True, timeout=5, check=False)
+                    
+                    if file_info_process.returncode != 0:
+                        current_app.logger.warning(f"'file {command_path}' failed with RC {file_info_process.returncode}: {file_info_process.stderr.strip()}")
+                        # If 'file' command fails, we might still consider it available if it's executable
+                        # but log a warning. This behavior is similar to previous logic.
+                        return True
+
+                    file_type = file_info_process.stdout.strip().lower()
+                    current_app.logger.debug(f"File type for '{command_path}': {file_type}")
                         
-                        # Check for common problematic file types
-                        if 'cannot execute binary file' in file_type:
-                            current_app.logger.debug(f"Binary file architecture mismatch: {base_command}")
-                            return False
+                    if 'cannot execute binary file' in file_type:
+                        current_app.logger.warning(f"Binary file architecture mismatch for '{command_path}': {file_type}")
+                        return False
                         
-                        # For scripts, check if they have proper shebang or interpreter
-                        if 'script' in file_type or command_path.endswith(('.sh', '.py', '.pl', '.rb')):
-                            current_app.logger.debug(f"Detected script: {base_command}")
-                            
-                            # For shell scripts, check if they have shebang
-                            if command_path.endswith('.sh'):
-                                try:
-                                    with open(command_path, 'r', encoding='utf-8', errors='ignore') as f:
-                                        first_line = f.readline().strip()
-                                        if not first_line.startswith('#!'):
-                                            current_app.logger.debug(f"Shell script without shebang: {base_command}")
-                                            # Still consider it available, bash can handle it
-                                except:
-                                    pass
-                            
-                            return True
-                        
-                        # For Java applications
-                        if 'java' in file_type or command_path.endswith('.jar'):
-                            current_app.logger.debug(f"Detected Java application: {base_command}")
-                            # Check if java is available
-                            if shutil.which('java'):
-                                return True
-                            else:
-                                current_app.logger.debug(f"Java application found but java runtime not available")
-                                return False
-                        
+                    if 'script' in file_type or command_path.endswith(('.sh', '.py', '.pl', '.rb')):
+                        current_app.logger.debug(f"Detected script: '{command_path}'")
+                        if command_path.endswith('.sh'):
+                            try:
+                                with open(command_path, 'r', encoding='utf-8', errors='ignore') as f:
+                                    first_line = f.readline().strip()
+                                    if not first_line.startswith('#!'):
+                                        current_app.logger.debug(f"Shell script '{command_path}' without shebang. Assuming bash can handle.")
+                            except Exception as e_script:
+                                current_app.logger.warning(f"Could not read script '{command_path}' to check shebang: {e_script}")
                         return True
                         
+                    if 'java' in file_type or command_path.endswith('.jar'):
+                        current_app.logger.debug(f"Detected Java application: '{command_path}'")
+                        if shutil.which('java'):
+                            return True
+                        else:
+                            current_app.logger.warning(f"Java application '{command_path}' found, but 'java' runtime is not available in PATH.")
+                            return False
+                        
+                    return True # Default to available if file type is recognized and not problematic
+                        
                 except subprocess.TimeoutExpired:
-                    current_app.logger.debug(f"File command timeout for: {base_command}")
-                    # If file command times out, assume it's available if other checks passed
-                    return True
-                except Exception as e:
-                    current_app.logger.debug(f"Error running file command: {e}")
-                    # If we can't get file info, assume it's available if other checks passed
+                    current_app.logger.warning(f"'file {command_path}' timed out. Assuming available as it's executable.")
+                    return True # If file command times out, assume it's available
+                except FileNotFoundError:
+                    current_app.logger.warning(f"Utility 'file' not found. Skipping file type check for {command_path}.")
+                    return True # Proceed as if file check was inconclusive but command is executable
+                except Exception as e_file:
+                    current_app.logger.error(f"Error running 'file {command_path}': {e_file}", exc_info=True)
+                    # If 'file' command has other issues, but path was found and executable, cautiously return True
                     return True
                 
-            except Exception as e:
-                current_app.logger.debug(f"Error checking executable status: {e}")
-                return False
-        
-        # If not found with which, try absolute path
+            except Exception as e_access:
+                current_app.logger.error(f"Error during access or file checks for '{command_path}': {e_access}", exc_info=True)
+                return False # If any other unexpected error occurs during these checks
+        else:
+            # This block is reached if both 'command -v' and 'shutil.which' failed
+            current_app.logger.warning(f"Command '{base_command}' not found using 'command -v' or 'shutil.which'.")
+
+        # If not found with 'command -v' or 'shutil.which', try absolute path (existing logic)
         if os.path.isabs(base_command):
             current_app.logger.debug(f"Checking absolute path: {base_command}")
             if os.path.exists(base_command):
