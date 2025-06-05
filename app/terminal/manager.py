@@ -55,7 +55,10 @@ class TerminalManager:
             env = os.environ.copy()
             env['TERM'] = 'xterm-256color'
             env['BASH_COMPLETION_ENABLED'] = '1'
-            
+
+            # Get user's home directory
+            user_home = os.path.expanduser('~')
+
             # Start bash with completion enabled
             process = subprocess.Popen(
                 ['/bin/bash', '--login'],
@@ -64,6 +67,7 @@ class TerminalManager:
                 stderr=slave,
                 start_new_session=True,
                 env=env,
+                cwd=user_home,  # Agregar esta línea
                 close_fds=True
             )
             

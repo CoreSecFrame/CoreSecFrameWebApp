@@ -21,6 +21,9 @@ class Config:
     # Modules repository URL
     MODULES_REPOSITORY_URL = os.environ.get('MODULES_REPOSITORY_URL') or \
         'https://github.com/CoreSecFrame/CoreSecFrame-Modules'
+
+    # Log retention settings
+    SECURITY_LOG_RETENTION_DAYS = int(os.environ.get('SECURITY_LOG_RETENTION_DAYS', 90))
     
     # Security settings
     SESSION_COOKIE_SECURE = False  # Set to True in production

@@ -1,6 +1,7 @@
 # app/core/models.py
+from flask import current_app
 from app import db
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy import Index
 
 class SystemLog(db.Model):
@@ -102,6 +103,20 @@ class SystemLog(db.Model):
     def is_warning(self):
         """Check if this is a warning log"""
         return self.level == 'WARNING'
+
+    @classmethod
+    def _count_logs_since(cls, since_hours, levels=None, is_security_event=None):
+        """Helper method to count logs within a time window with optional filters."""
+        since = datetime.utcnow() - timedelta(hours=since_hours)
+        query = cls.query.filter(cls.timestamp >= since)
+
+        if levels:
+            query = query.filter(cls.level.in_(levels))
+        
+        if is_security_event is not None:
+            query = query.filter(cls.is_security_event == is_security_event)
+            
+        return query.count()
     
     @classmethod
     def get_recent_logs(cls, limit=50, level=None, is_security=None, user_id=None):
@@ -122,31 +137,16 @@ class SystemLog(db.Model):
     @classmethod
     def get_error_count_last_24h(cls):
         """Get count of errors in the last 24 hours"""
-        from datetime import datetime, timedelta
-        
-        since = datetime.utcnow() - timedelta(hours=24)
-        
-        return cls.query.filter(
-            cls.timestamp >= since,
-            cls.level.in_(['ERROR', 'CRITICAL'])
-        ).count()
+        return cls._count_logs_since(since_hours=24, levels=['ERROR', 'CRITICAL'])
     
     @classmethod
     def get_security_events_count_last_24h(cls):
         """Get count of security events in the last 24 hours"""
-        from datetime import datetime, timedelta
-        
-        since = datetime.utcnow() - timedelta(hours=24)
-        
-        return cls.query.filter(
-            cls.timestamp >= since,
-            cls.is_security_event == True
-        ).count()
+        return cls._count_logs_since(since_hours=24, is_security_event=True)
     
     @classmethod
     def get_log_level_stats(cls, hours=24):
         """Get statistics by log level for the specified time period"""
-        from datetime import datetime, timedelta
         from sqlalchemy import func
         
         since = datetime.utcnow() - timedelta(hours=hours)
@@ -163,7 +163,6 @@ class SystemLog(db.Model):
     @classmethod
     def get_module_stats(cls, hours=24, limit=10):
         """Get top modules by log count"""
-        from datetime import datetime, timedelta
         from sqlalchemy import func
         
         since = datetime.utcnow() - timedelta(hours=hours)
@@ -182,12 +181,11 @@ class SystemLog(db.Model):
     @classmethod
     def cleanup_old_logs(cls, days_to_keep=30):
         """Clean up old log entries"""
-        from datetime import datetime, timedelta
-        
         cutoff_date = datetime.utcnow() - timedelta(days=days_to_keep)
         
-        # Keep security events longer (90 days)
-        security_cutoff = datetime.utcnow() - timedelta(days=90)
+        # Keep security events longer, based on config
+        security_retention_days = current_app.config['SECURITY_LOG_RETENTION_DAYS']
+        security_cutoff = datetime.utcnow() - timedelta(days=security_retention_days)
         
         # Delete old non-security logs
         deleted_count = cls.query.filter(
@@ -227,7 +225,10 @@ class LogSearchQuery(db.Model):
     use_count = db.Column(db.Integer, default=0)
     
     def to_dict(self):
-        """Convert to dictionary for API"""
+        """
+        Returns a dictionary representation of the log search query, 
+        suitable for API responses.
+        """
         return {
             'id': self.id,
             'name': self.name,
