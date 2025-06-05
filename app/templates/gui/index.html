@@ -385,16 +385,6 @@
                     <i class="bi bi-app-indicator text-muted" style="font-size: 4rem;"></i>
                     <h4 class="mt-3">No GUI Applications Available</h4>
                     <p class="text-muted mb-4">No GUI applications have been configured yet.</p>
-                    {% if current_user.is_admin() %}
-                    <div class="alert alert-info">
-                        <h6><i class="bi bi-info-circle me-1"></i>Administrator Note</h6>
-                        <p class="mb-2">You can initialize default applications using the CLI command:</p>
-                        <code>flask gui-init</code>
-                        {% if gui_uses_wslg %}
-                        <br><small class="text-muted mt-2">WSLg-optimized applications will be created automatically!</small>
-                        {% endif %}
-                    </div>
-                    {% endif %}
                 </div>
                 {% endif %}
             </div>
