@@ -1,25 +1,22 @@
-<!-- app/templates/terminal/view.html - Windows 11 Style -->
+<!-- app/templates/terminal/view.html - Fixed version -->
 {% extends "base.html" %}
 
-{% block head %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.1.0/css/xterm.min.css" />
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.7.0/lib/xterm-addon-fit.css" />
 {% block css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.1.0/css/xterm.min.css" />
 <link rel="stylesheet" href="{{ url_for('static', filename='css/terminal.css') }}">
-{% endblock %}
 {% endblock %}
 
 {% block content %}
 <!-- Page Header -->
-<div class="w11-page-header">
+<div class="terminal-page-header">
     <div>
-        <h1 class="w11-page-title">
-            {{ session.name }}
+        <h1 class="terminal-page-title">
+            <i class="bi bi-terminal me-2"></i>{{ session.name }}
             {% if not session.active %}
             <span class="badge bg-danger ms-2">Inactive</span>
             {% endif %}
         </h1>
-        <p class="w11-page-subtitle">
+        <p class="terminal-page-subtitle">
             Terminal Session ID: <code>{{ session.session_id }}</code>
         </p>
     </div>
@@ -36,83 +33,94 @@
 </div>
 
 <!-- Terminal Container -->
-<div class="w11-terminal-container">
-    <div class="w11-terminal-header">
-        <h5 class="w11-terminal-title">
-            <i class="bi bi-terminal"></i>Terminal
+<div class="terminal-container" id="terminalContainer">
+    <div class="terminal-header">
+        <h5 class="terminal-title">
+            <i class="bi bi-terminal"></i>
+            Terminal
             {% if not session.active %}
             <span class="badge bg-danger ms-2">Read-Only</span>
             {% endif %}
         </h5>
-        <div class="w11-terminal-controls">
-            <div class="d-flex align-items-center">
-                <span
-                    class="w11-status-indicator {{ 'w11-status-active' if session.active else 'w11-status-inactive' }}"></span>
+        <div class="terminal-controls">
+            <div class="d-flex align-items-center me-3">
+                <span class="status-indicator {{ 'status-active' if session.active else 'status-inactive' }}"></span>
                 <span>{{ 'Active' if session.active else 'Inactive' }}</span>
             </div>
             <div class="btn-group btn-group-sm" role="group">
-                <button id="btn-clear" class="w11-terminal-btn" title="Clear Terminal">
+                <button id="btn-clear" class="terminal-btn" title="Clear Terminal">
                     <i class="bi bi-eraser"></i>
                 </button>
-                <button id="btn-fullscreen" class="w11-terminal-btn" title="Fullscreen">
+                <button id="btn-fullscreen" class="terminal-btn" title="Fullscreen">
                     <i class="bi bi-arrows-fullscreen"></i>
                 </button>
-                <button id="btn-copy" class="w11-terminal-btn" title="Copy">
+                <button id="btn-copy" class="terminal-btn" title="Copy">
                     <i class="bi bi-clipboard"></i>
                 </button>
-                <button id="btn-paste" class="w11-terminal-btn" title="Paste" {% if not session.active %}disabled{%
-                    endif %}>
+                <button id="btn-paste" class="terminal-btn" title="Paste" {% if not session.active %}disabled{% endif %}>
                     <i class="bi bi-clipboard-plus"></i>
                 </button>
             </div>
         </div>
     </div>
 
-    <div class="w11-terminal-display">
-        <div id="terminal"></div>
+    <div class="terminal-display">
+        {% if current_user.id == session.user_id %}
+            <div id="terminal"></div>
+        {% else %}
+            <div class="terminal-access-denied">
+                <div>
+                    <i class="bi bi-lock-fill display-1 text-muted"></i>
+                    <h3 class="mt-3">Access Denied</h3>
+                    <p>You don't have permission to access this terminal session.</p>
+                </div>
+            </div>
+        {% endif %}
     </div>
 
-    <div class="w11-terminal-footer">
-        <div class="w11-terminal-info">
+    <div class="terminal-footer">
+        <div class="terminal-info">
             <div>Session Type: <strong>{{ session.session_type|title }}</strong></div>
             {% if session.module_name %}
             <div>Module: <strong>{{ session.module_name }}</strong></div>
             {% endif %}
+            <div>Last Activity: <strong>{{ session.last_activity.strftime('%Y-%m-%d %H:%M:%S') }}</strong></div>
         </div>
-        <div class="w11-terminal-actions">
-            <button id="btn-shortcuts" class="w11-terminal-btn">
+        <div class="terminal-actions">
+            <button id="btn-shortcuts" class="terminal-btn">
                 <i class="bi bi-keyboard"></i> Shortcuts
             </button>
         </div>
     </div>
 </div>
 
-<!-- Keyboard Shortcuts (Hidden by default) -->
-<div class="w11-shortcuts-card hidden" id="shortcuts-panel">
-    <div class="w11-shortcuts-header">
+<!-- Keyboard Shortcuts Panel -->
+<div class="shortcuts-card hidden" id="shortcuts-panel">
+    <div class="shortcuts-header">
         <i class="bi bi-keyboard me-2"></i>Keyboard Shortcuts
+        <button type="button" class="btn-close ms-auto" onclick="toggleShortcuts()"></button>
     </div>
-    <div class="w11-shortcuts-content">
+    <div class="shortcuts-content">
         <div class="row">
             <div class="col-md-6">
-                <div class="w11-shortcut-section">
-                    <div class="w11-shortcut-title">Navigation</div>
-                    <table class="w11-shortcut-table">
+                <div class="shortcut-section">
+                    <div class="shortcut-title">Navigation</div>
+                    <table class="shortcut-table">
                         <tbody>
                             <tr>
-                                <td><span class="w11-kbd">Tab</span></td>
+                                <td><span class="kbd">Tab</span></td>
                                 <td>Command completion</td>
                             </tr>
                             <tr>
-                                <td><span class="w11-kbd">↑</span> / <span class="w11-kbd">↓</span></td>
+                                <td><span class="kbd">↑</span> / <span class="kbd">↓</span></td>
                                 <td>Navigate command history</td>
                             </tr>
                             <tr>
-                                <td><span class="w11-kbd">Ctrl</span> + <span class="w11-kbd">A</span></td>
+                                <td><span class="kbd">Ctrl</span> + <span class="kbd">A</span></td>
                                 <td>Move to beginning of line</td>
                             </tr>
                             <tr>
-                                <td><span class="w11-kbd">Ctrl</span> + <span class="w11-kbd">E</span></td>
+                                <td><span class="kbd">Ctrl</span> + <span class="kbd">E</span></td>
                                 <td>Move to end of line</td>
                             </tr>
                         </tbody>
@@ -120,25 +128,69 @@
                 </div>
             </div>
             <div class="col-md-6">
-                <div class="w11-shortcut-section">
-                    <div class="w11-shortcut-title">Control</div>
-                    <table class="w11-shortcut-table">
+                <div class="shortcut-section">
+                    <div class="shortcut-title">Control</div>
+                    <table class="shortcut-table">
                         <tbody>
                             <tr>
-                                <td><span class="w11-kbd">Ctrl</span> + <span class="w11-kbd">C</span></td>
+                                <td><span class="kbd">Ctrl</span> + <span class="kbd">C</span></td>
                                 <td>Interrupt current process</td>
                             </tr>
                             <tr>
-                                <td><span class="w11-kbd">Ctrl</span> + <span class="w11-kbd">D</span></td>
+                                <td><span class="kbd">Ctrl</span> + <span class="kbd">D</span></td>
                                 <td>End of file/Exit</td>
                             </tr>
                             <tr>
-                                <td><span class="w11-kbd">Ctrl</span> + <span class="w11-kbd">L</span></td>
+                                <td><span class="kbd">Ctrl</span> + <span class="kbd">L</span></td>
                                 <td>Clear screen</td>
                             </tr>
                             <tr>
-                                <td><span class="w11-kbd">Ctrl</span> + <span class="w11-kbd">U</span></td>
+                                <td><span class="kbd">Ctrl</span> + <span class="kbd">U</span></td>
                                 <td>Clear line before cursor</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-md-6">
+                <div class="shortcut-section">
+                    <div class="shortcut-title">Terminal Controls</div>
+                    <table class="shortcut-table">
+                        <tbody>
+                            <tr>
+                                <td><span class="kbd">F11</span></td>
+                                <td>Toggle fullscreen</td>
+                            </tr>
+                            <tr>
+                                <td><span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">C</span></td>
+                                <td>Copy selection</td>
+                            </tr>
+                            <tr>
+                                <td><span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">V</span></td>
+                                <td>Paste</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="shortcut-section">
+                    <div class="shortcut-title">Window Management</div>
+                    <table class="shortcut-table">
+                        <tbody>
+                            <tr>
+                                <td><span class="kbd">Ctrl</span> + <span class="kbd">+</span></td>
+                                <td>Increase font size</td>
+                            </tr>
+                            <tr>
+                                <td><span class="kbd">Ctrl</span> + <span class="kbd">-</span></td>
+                                <td>Decrease font size</td>
+                            </tr>
+                            <tr>
+                                <td><span class="kbd">Ctrl</span> + <span class="kbd">0</span></td>
+                                <td>Reset font size</td>
                             </tr>
                         </tbody>
                     </table>
@@ -150,24 +202,23 @@
 
 {% if session.active %}
 <!-- Close Modal -->
-<div class="modal fade w11-modal" id="closeModal" tabindex="-1">
+<div class="modal fade" id="closeModal" tabindex="-1">
     <div class="modal-dialog">
-        <div class="modal-content w11-modal-content">
-            <div class="modal-header w11-modal-header">
+        <div class="modal-content">
+            <div class="modal-header">
                 <h5 class="modal-title">Close Terminal Session</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body w11-modal-body">
+            <div class="modal-body">
                 <p>Are you sure you want to close this terminal session?</p>
-                <div class="alert alert-warning"
-                    style="background: rgba(255, 185, 0, 0.1); border-left: 4px solid #ffb900; color: #8a6c00;">
+                <div class="alert alert-warning">
                     <i class="bi bi-exclamation-triangle me-2"></i>
                     This will terminate all processes running in this session.
                 </div>
             </div>
-            <div class="modal-footer w11-modal-footer">
+            <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form action="{{ url_for('terminal.close', session_id=session.session_id) }}" method="post">
+                <form action="{{ url_for('terminal.close', session_id=session.session_id) }}" method="post" style="display: inline;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-danger">
                         <i class="bi bi-x-circle me-1"></i>Close Session
@@ -185,268 +236,365 @@
 <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.7.0/lib/xterm-addon-fit.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.8.0/lib/xterm-addon-web-links.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xterm-addon-search@0.11.0/lib/xterm-addon-search.min.js"></script>
+
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // Terminal configuration with Windows 11 inspired theme
-        const terminal = new Terminal({
-            cursorBlink: true,
-            fontFamily: 'Cascadia Code, Consolas, Monaco, "Courier New", monospace',
-            fontSize: 14,
-            lineHeight: 1.2,
-            theme: {
-                background: '#0c0c0c',
-                foreground: '#cccccc',
-                cursor: '#ffffff',
-                cursorAccent: '#0c0c0c',
-                selectionBackground: '#264f78',
-                selectionForeground: '#ffffff',
-                black: '#0c0c0c',
-                red: '#c50f1f',
-                green: '#13a10e',
-                yellow: '#c19c00',
-                blue: '#0078d4',
-                magenta: '#881798',
-                cyan: '#3a96dd',
-                white: '#cccccc',
-                brightBlack: '#767676',
-                brightRed: '#e74856',
-                brightGreen: '#16c60c',
-                brightYellow: '#f9f1a5',
-                brightBlue: '#3b78ff',
-                brightMagenta: '#b4009e',
-                brightCyan: '#61d6d6',
-                brightWhite: '#f2f2f2'
-            },
-            allowTransparency: false,
-            scrollback: 5000,
-            convertEol: true
-        });
+document.addEventListener('DOMContentLoaded', function () {
+    // Only initialize terminal if user has access
+    {% if current_user.id == session.user_id %}
+    
+    // Terminal configuration
+    const terminal = new Terminal({
+        cursorBlink: true,
+        fontFamily: 'Cascadia Code, Consolas, Monaco, "Courier New", monospace',
+        fontSize: 14,
+        lineHeight: 1.2,
+        theme: {
+            background: '#0c0c0c',
+            foreground: '#cccccc',
+            cursor: '#ffffff',
+            cursorAccent: '#0c0c0c',
+            selectionBackground: '#264f78',
+            selectionForeground: '#ffffff',
+            black: '#0c0c0c',
+            red: '#c50f1f',
+            green: '#13a10e',
+            yellow: '#c19c00',
+            blue: '#0078d4',
+            magenta: '#881798',
+            cyan: '#3a96dd',
+            white: '#cccccc',
+            brightBlack: '#767676',
+            brightRed: '#e74856',
+            brightGreen: '#16c60c',
+            brightYellow: '#f9f1a5',
+            brightBlue: '#3b78ff',
+            brightMagenta: '#b4009e',
+            brightCyan: '#61d6d6',
+            brightWhite: '#f2f2f2'
+        },
+        allowTransparency: false,
+        scrollback: 5000,
+        convertEol: true,
+        cols: 80,
+        rows: 24
+    });
 
-        // Load addons
-        const fitAddon = new FitAddon.FitAddon();
-        const webLinksAddon = new WebLinksAddon.WebLinksAddon();
-        const searchAddon = new SearchAddon.SearchAddon();
+    // Load addons
+    const fitAddon = new FitAddon.FitAddon();
+    const webLinksAddon = new WebLinksAddon.WebLinksAddon();
+    const searchAddon = new SearchAddon.SearchAddon();
 
-        terminal.loadAddon(fitAddon);
-        terminal.loadAddon(webLinksAddon);
-        terminal.loadAddon(searchAddon);
+    terminal.loadAddon(fitAddon);
+    terminal.loadAddon(webLinksAddon);
+    terminal.loadAddon(searchAddon);
 
-        // Open terminal
-        terminal.open(document.getElementById('terminal'));
-        fitAddon.fit();
-
-        // Handle terminal resize
-        window.addEventListener('resize', () => {
+    // Open terminal in the container
+    const terminalElement = document.getElementById('terminal');
+    if (terminalElement) {
+        terminal.open(terminalElement);
+        
+        // Fit terminal to container
+        setTimeout(() => {
             fitAddon.fit();
+        }, 100);
+    }
 
+    // Handle window resize
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            fitAddon.fit();
+            
             const dimensions = fitAddon.proposeDimensions();
-            if (dimensions) {
+            if (dimensions && socket && socket.connected) {
                 socket.emit('terminal_resize', {
                     session_id: '{{ session.session_id }}',
                     rows: dimensions.rows,
                     cols: dimensions.cols
                 });
             }
+        }, 250);
+    });
+
+    // Socket connection
+    const socket = io();
+    let isConnected = false;
+
+    socket.on('connect', () => {
+        console.log('Socket connected');
+        isConnected = true;
+        
+        // Join terminal session
+        socket.emit('terminal_connect', {
+            session_id: '{{ session.session_id }}'
         });
 
-        // Socket connection
-        const socket = io();
+        // Request terminal buffer
+        socket.emit('terminal_get_buffer', {
+            session_id: '{{ session.session_id }}'
+        });
 
-        socket.on('connect', () => {
-            console.log('Socket connected');
-
-            socket.emit('terminal_connect', {
-                session_id: '{{ session.session_id }}'
+        // Send terminal dimensions
+        const dimensions = fitAddon.proposeDimensions();
+        if (dimensions) {
+            socket.emit('terminal_resize', {
+                session_id: '{{ session.session_id }}',
+                rows: dimensions.rows,
+                cols: dimensions.cols
             });
+        }
+    });
 
-            socket.emit('terminal_get_buffer', {
-                session_id: '{{ session.session_id }}'
-            });
+    socket.on('disconnect', () => {
+        console.log('Socket disconnected');
+        isConnected = false;
+        terminal.write('\r\n\x1b[31m[Disconnected from server. Attempting to reconnect...]\x1b[0m\r\n');
+    });
 
-            const dimensions = fitAddon.proposeDimensions();
-            if (dimensions) {
-                socket.emit('terminal_resize', {
-                    session_id: '{{ session.session_id }}',
-                    rows: dimensions.rows,
-                    cols: dimensions.cols
-                });
-            }
-        });
+    socket.on('terminal_buffer', (data) => {
+        terminal.clear();
+        if (data.buffer) {
+            terminal.write(data.buffer);
+        }
+        
+        if (data.read_only) {
+            terminal.options.disableStdin = true;
+            const pasteBtn = document.getElementById('btn-paste');
+            if (pasteBtn) pasteBtn.disabled = true;
+        } else {
+            terminal.focus();
+        }
+    });
 
-        socket.on('terminal_buffer', (data) => {
-            terminal.clear();
-            if (data.buffer) {
-                terminal.write(data.buffer);
-            }
-            if (data.read_only) {
-                terminal.options.disableStdin = true;
-                document.getElementById('btn-paste').disabled = true;
-            } else {
-                terminal.focus();
-            }
-        });
-
-        socket.on('terminal_output', (data) => {
+    socket.on('terminal_output', (data) => {
+        if (data && typeof data === 'string') {
             terminal.write(data);
-        });
+        }
+    });
 
-        socket.on('terminal_error', (data) => {
-            console.error('Terminal error:', data.error);
-            terminal.write('\r\n\x1b[31mError: ' + data.error + '\x1b[0m\r\n');
-        });
+    socket.on('terminal_error', (data) => {
+        console.error('Terminal error:', data.error);
+        terminal.write('\r\n\x1b[31m[Error: ' + data.error + ']\x1b[0m\r\n');
+    });
 
-        {% if session.active %}
-        terminal.onData((data) => {
+    // Handle terminal input (only if session is active)
+    {% if session.active %}
+    terminal.onData((data) => {
+        if (socket && socket.connected) {
             socket.emit('terminal_input', {
                 session_id: '{{ session.session_id }}',
                 data: data
             });
-        });
-        {% else %}
-        terminal.options.disableStdin = true;
-        {% endif %}
+        }
+    });
+    {% else %}
+    // Disable input for inactive sessions
+    terminal.options.disableStdin = true;
+    {% endif %}
 
-        // Button handlers
-        document.getElementById('btn-clear').addEventListener('click', () => {
+    // Button event handlers
+    const clearBtn = document.getElementById('btn-clear');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
             terminal.clear();
         });
+    }
 
-        document.getElementById('btn-fullscreen').addEventListener('click', () => {
-            const terminalWrapper = document.querySelector('.w11-terminal-container');
-
+    const fullscreenBtn = document.getElementById('btn-fullscreen');
+    if (fullscreenBtn) {
+        fullscreenBtn.addEventListener('click', () => {
+            const container = document.getElementById('terminalContainer');
+            
             if (!document.fullscreenElement) {
-                terminalWrapper.requestFullscreen().catch(err => {
-                    console.error('Error attempting to enable fullscreen:', err);
+                container.requestFullscreen().then(() => {
+                    container.classList.add('fullscreen-active');
+                    setTimeout(() => fitAddon.fit(), 100);
+                }).catch(err => {
+                    console.error('Error entering fullscreen:', err);
                 });
             } else {
-                document.exitFullscreen();
+                document.exitFullscreen().then(() => {
+                    container.classList.remove('fullscreen-active');
+                    setTimeout(() => fitAddon.fit(), 100);
+                });
             }
         });
+    }
 
-        document.getElementById('btn-copy').addEventListener('click', () => {
+    const copyBtn = document.getElementById('btn-copy');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', () => {
             const selection = terminal.getSelection();
             if (selection) {
                 navigator.clipboard.writeText(selection).then(() => {
                     showNotification('Copied to clipboard', 'success');
                 }).catch(err => {
-                    console.error('Failed to copy text: ', err);
+                    console.error('Failed to copy:', err);
+                    showNotification('Failed to copy text', 'danger');
                 });
+            } else {
+                showNotification('No text selected', 'warning');
             }
         });
-
-        document.getElementById('btn-paste').addEventListener('click', () => {
-            if ('{{ session.active }}' === 'True') {
-                navigator.clipboard.readText().then(text => {
-                    for (let i = 0; i < text.length; i++) {
-                        socket.emit('terminal_input', {
-                            session_id: '{{ session.session_id }}',
-                            data: text[i]
-                        });
-                    }
-                }).catch(err => {
-                    console.error('Failed to read clipboard: ', err);
-                });
-            }
-        });
-
-        // Toggle shortcuts panel
-        document.getElementById('btn-shortcuts').addEventListener('click', () => {
-            const shortcutsPanel = document.getElementById('shortcuts-panel');
-            shortcutsPanel.classList.toggle('hidden');
-        });
-
-        socket.on('disconnect', () => {
-            console.log('Socket disconnected');
-            terminal.write('\r\n\x1b[31mDisconnected from server. Trying to reconnect...\x1b[0m\r\n');
-        });
-
-        {% if session.active %}
-        terminal.focus();
-        {% endif %}
-    });
-
-    // Notification helper
-    function showNotification(message, type = 'info') {
-        // Create a Windows 11 style notification
-        const notification = document.createElement('div');
-        notification.className = `alert alert-${type} position-fixed top-0 start-50 translate-middle-x mt-3`;
-        notification.style.cssText = `
-            z-index: 9999;
-            background: var(--w11-card-bg);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--w11-card-stroke);
-            border-radius: var(--w11-radius-large);
-            box-shadow: var(--w11-shadow-16);
-            animation: slideInDown 0.3s ease-out;
-        `;
-        notification.innerHTML = `
-            <i class="bi bi-check-circle me-2"></i>${message}
-        `;
-        document.body.appendChild(notification);
-
-        setTimeout(() => {
-            notification.style.animation = 'slideOutUp 0.3s ease-in';
-            setTimeout(() => notification.remove(), 300);
-        }, 3000);
     }
 
-    // Add slide animations
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes slideInDown {
-            from {
-                transform: translate(-50%, -100%);
-                opacity: 0;
-            }
-            to {
-                transform: translate(-50%, 0);
-                opacity: 1;
-            }
+    const pasteBtn = document.getElementById('btn-paste');
+    if (pasteBtn && {{ 'true' if session.active else 'false' }}) {
+        pasteBtn.addEventListener('click', () => {
+            navigator.clipboard.readText().then(text => {
+                if (socket && socket.connected) {
+                    socket.emit('terminal_input', {
+                        session_id: '{{ session.session_id }}',
+                        data: text
+                    });
+                }
+            }).catch(err => {
+                console.error('Failed to paste:', err);
+                showNotification('Failed to paste text', 'danger');
+            });
+        });
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        // F11 for fullscreen
+        if (e.key === 'F11') {
+            e.preventDefault();
+            fullscreenBtn.click();
         }
         
-        @keyframes slideOutUp {
-            from {
-                transform: translate(-50%, 0);
-                opacity: 1;
-            }
-            to {
-                transform: translate(-50%, -100%);
-                opacity: 0;
-            }
+        // Ctrl+Shift+C for copy
+        if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+            e.preventDefault();
+            copyBtn.click();
         }
-    `;
-    document.head.appendChild(style);
-</script>
-{% if module_to_execute %}
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        setTimeout(function () {
-            console.log('Executing module: {{ module_to_execute.name }} in {{ module_to_execute.mode }} mode');
-
-            fetch('{{ url_for("terminal.execute_module", session_id=session.session_id) }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token() }}'
-                },
-                body: JSON.stringify({
-                    module_name: '{{ module_to_execute.name }}',
-                    mode: '{{ module_to_execute.mode }}'
-                })
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.success) {
-                        console.error('Error executing module:', data.message);
-                        terminal.write('\r\n\x1b[31mError executing module: ' + data.message + '\x1b[0m\r\n');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    terminal.write('\r\n\x1b[31mError: ' + error + '\x1b[0m\r\n');
-                });
-        }, 1500);
+        
+        // Ctrl+Shift+V for paste
+        if (e.ctrlKey && e.shiftKey && e.key === 'V' && {{ 'true' if session.active else 'false' }}) {
+            e.preventDefault();
+            pasteBtn.click();
+        }
+        
+        // Ctrl+L for clear (when terminal is focused)
+        if (e.ctrlKey && e.key === 'l' && document.activeElement === terminalElement) {
+            e.preventDefault();
+            clearBtn.click();
+        }
     });
-</script>
+
+    // Exit fullscreen on escape
+    document.addEventListener('fullscreenchange', () => {
+        const container = document.getElementById('terminalContainer');
+        if (!document.fullscreenElement) {
+            container.classList.remove('fullscreen-active');
+            setTimeout(() => fitAddon.fit(), 100);
+        }
+    });
+
+    // Focus terminal when clicking on it
+    if (terminalElement) {
+        terminalElement.addEventListener('click', () => {
+            terminal.focus();
+        });
+    }
+
+    // Initial focus
+    {% if session.active %}
+    setTimeout(() => {
+        terminal.focus();
+    }, 500);
+    {% endif %}
+
+    {% endif %} // End of user access check
+    
+    // Shortcuts panel toggle (available for all users)
+    const shortcutsBtn = document.getElementById('btn-shortcuts');
+    if (shortcutsBtn) {
+        shortcutsBtn.addEventListener('click', toggleShortcuts);
+    }
+});
+
+// Helper functions
+function toggleShortcuts() {
+    const panel = document.getElementById('shortcuts-panel');
+    if (panel) {
+        panel.classList.toggle('hidden');
+    }
+}
+
+function showNotification(message, type = 'info') {
+    const alertTypes = {
+        'success': 'success',
+        'danger': 'danger', 
+        'warning': 'warning',
+        'info': 'info'
+    };
+    
+    const alertClass = alertTypes[type] || 'info';
+    const icons = {
+        'success': 'check-circle',
+        'danger': 'exclamation-circle',
+        'warning': 'exclamation-triangle',
+        'info': 'info-circle'
+    };
+    
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${alertClass} position-fixed top-0 start-50 translate-middle-x mt-3`;
+    notification.style.cssText = `
+        z-index: 9999;
+        min-width: 300px;
+        text-align: center;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        animation: slideInDown 0.3s ease-out;
+    `;
+    notification.innerHTML = `
+        <i class="bi bi-${icons[type]} me-2"></i>${message}
+    `;
+    
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.style.animation = 'slideOutUp 0.3s ease-in';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 300);
+    }, 3000);
+}
+
+// Module execution script (if needed)
+{% if module_to_execute %}
+document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(function () {
+        console.log('Executing module: {{ module_to_execute.name }} in {{ module_to_execute.mode }} mode');
+
+        fetch('{{ url_for("terminal.execute_module", session_id=session.session_id) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                module_name: '{{ module_to_execute.name }}',
+                mode: '{{ module_to_execute.mode }}'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                console.error('Error executing module:', data.message);
+                showNotification('Error executing module: ' + data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Error: ' + error, 'danger');
+        });
+    }, 1500);
+});
 {% endif %}
+</script>
 {% endblock %}

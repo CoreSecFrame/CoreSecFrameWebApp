@@ -90,6 +90,7 @@ def create_app(config_class=Config):
         from app.terminal.routes import terminal_bp
         from app.admin.routes import admin_bp
         from app.gui.routes import gui_bp
+        from app.file_manager import bp as file_manager_bp # Import file_manager blueprint
         
         app.register_blueprint(auth_bp)
         app.register_blueprint(core_bp)
@@ -98,6 +99,7 @@ def create_app(config_class=Config):
         app.register_blueprint(terminal_bp)
         app.register_blueprint(admin_bp)
         app.register_blueprint(gui_bp)
+        app.register_blueprint(file_manager_bp, url_prefix='/file_manager') # Register file_manager blueprint
         
         try:
             from app.gui import init_gui_module, register_gui_commands, gui_context_processor
@@ -147,8 +149,8 @@ def create_app(config_class=Config):
             app.logger.warning(f"Could not register security handlers (blinker may be missing): {e}")
             # Continue without security event handlers if blinker is not available
         
-        # Log successful initialization
-        log_system_event('application_ready', 'CoreSecFrame application initialized successfully')
+        # Log successful initialization (This will be moved to run.py to ensure app context)
+        # log_system_event('application_ready', 'CoreSecFrame application initialized successfully')
         
         return app
         

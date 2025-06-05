@@ -1,0 +1,396 @@
+/* app/static/css/file_manager.css */
+
+/* File Manager Specific Styles */
+.file-manager-container {
+    background: var(--w11-surface);
+    border-radius: var(--w11-radius);
+    box-shadow: var(--w11-shadow);
+}
+
+.file-manager-header {
+    background: linear-gradient(135deg, var(--w11-accent) 0%, #004499 100%);
+    color: white;
+    border-radius: var(--w11-radius) var(--w11-radius) 0 0;
+    padding: 1rem 1.5rem;
+}
+
+.file-manager-toolbar {
+    background: var(--w11-surface-variant);
+    border-bottom: 1px solid var(--w11-border);
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.file-path {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    background: var(--w11-surface);
+    border: 1px solid var(--w11-border);
+    border-radius: var(--w11-radius-small);
+    padding: 0.5rem 0.75rem;
+    color: var(--w11-text);
+    font-size: 0.9rem;
+}
+
+.file-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.file-table {
+    background: var(--w11-surface);
+    border-radius: 0 0 var(--w11-radius) var(--w11-radius);
+}
+
+.file-table th {
+    background: var(--w11-surface-variant);
+    border-bottom: 2px solid var(--w11-border);
+    font-weight: 600;
+    color: var(--w11-text);
+    padding: 1rem 0.75rem;
+    font-size: 0.9rem;
+}
+
+.file-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--w11-border-light);
+    vertical-align: middle;
+}
+
+.file-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.file-table tbody tr:hover {
+    background: var(--w11-surface-variant);
+}
+
+.file-icon {
+    font-size: 1.2rem;
+    margin-right: 0.5rem;
+}
+
+.file-name {
+    font-weight: 500;
+    color: var(--w11-text);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+}
+
+.file-name:hover {
+    color: var(--w11-accent);
+    text-decoration: none;
+}
+
+.folder-name {
+    font-weight: 600;
+    color: var(--w11-text);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+}
+
+.folder-name:hover {
+    color: var(--w11-accent);
+    text-decoration: none;
+}
+
+.parent-directory {
+    background: rgba(var(--w11-accent-rgb), 0.05);
+    border-left: 3px solid var(--w11-accent);
+}
+
+.file-size {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.85rem;
+    color: var(--w11-text-secondary);
+}
+
+.file-modified {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.85rem;
+    color: var(--w11-text-secondary);
+}
+
+.file-type-badge {
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--w11-radius-small);
+}
+
+.file-actions-group {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.file-action-btn {
+    padding: 0.375rem 0.5rem;
+    border: 1px solid var(--w11-border);
+    border-radius: var(--w11-radius-small);
+    background: var(--w11-surface);
+    color: var(--w11-text-secondary);
+    transition: all 0.2s ease;
+    font-size: 0.85rem;
+}
+
+.file-action-btn:hover {
+    background: var(--w11-surface-variant);
+    color: var(--w11-text);
+    border-color: var(--w11-accent);
+}
+
+.file-action-btn.danger:hover {
+    background: #dc3545;
+    color: white;
+    border-color: #dc3545;
+}
+
+/* Empty state */
+.empty-directory {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--w11-text-secondary);
+}
+
+.empty-directory .empty-icon {
+    font-size: 4rem;
+    color: var(--w11-text-disabled);
+    margin-bottom: 1rem;
+}
+
+/* Modal customizations for file manager */
+.file-modal .modal-content {
+    border: none;
+    border-radius: var(--w11-radius);
+    box-shadow: var(--w11-shadow-lg);
+}
+
+.file-modal .modal-header {
+    background: var(--w11-accent);
+    color: white;
+    border-radius: var(--w11-radius) var(--w11-radius) 0 0;
+    border-bottom: none;
+}
+
+.file-modal .modal-header .btn-close {
+    filter: invert(1);
+}
+
+.file-modal .modal-body {
+    background: var(--w11-surface);
+    color: var(--w11-text);
+}
+
+.file-modal .modal-footer {
+    background: var(--w11-surface-variant);
+    border-top: 1px solid var(--w11-border);
+    border-radius: 0 0 var(--w11-radius) var(--w11-radius);
+}
+
+/* File content viewer */
+.file-content-viewer {
+    background: var(--w11-surface);
+    border: 1px solid var(--w11-border);
+    border-radius: var(--w11-radius-small);
+    max-height: 400px;
+    overflow: auto;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: var(--w11-text);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* Upload area */
+.upload-area {
+    border: 2px dashed var(--w11-border);
+    border-radius: var(--w11-radius);
+    padding: 2rem;
+    text-align: center;
+    background: var(--w11-surface-variant);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.upload-area:hover,
+.upload-area.drag-over {
+    border-color: var(--w11-accent);
+    background: rgba(var(--w11-accent-rgb), 0.05);
+}
+
+.upload-area .upload-icon {
+    font-size: 3rem;
+    color: var(--w11-text-secondary);
+    margin-bottom: 1rem;
+}
+
+.upload-area.drag-over .upload-icon {
+    color: var(--w11-accent);
+}
+
+/* Breadcrumb navigation */
+.file-breadcrumb {
+    background: var(--w11-surface-variant);
+    border-radius: var(--w11-radius-small);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.file-breadcrumb a {
+    color: var(--w11-accent);
+    text-decoration: none;
+}
+
+.file-breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.file-breadcrumb .breadcrumb-separator {
+    color: var(--w11-text-secondary);
+    margin: 0 0.5rem;
+}
+
+/* Loading states */
+.file-loading {
+    text-align: center;
+    padding: 2rem;
+    color: var(--w11-text-secondary);
+}
+
+.file-loading .spinner-border {
+    color: var(--w11-accent);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .file-manager-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+    
+    .file-actions {
+        justify-content: center;
+    }
+    
+    .file-table th:nth-child(4),
+    .file-table td:nth-child(4),
+    .file-table th:nth-child(5),
+    .file-table td:nth-child(5) {
+        display: none;
+    }
+    
+    .file-actions-group {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 576px) {
+    .file-table th:nth-child(3),
+    .file-table td:nth-child(3) {
+        display: none;
+    }
+    
+    .file-name {
+        font-size: 0.9rem;
+    }
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .file-table th {
+    background: var(--w11-surface-variant);
+    color: var(--w11-text);
+}
+
+[data-theme="dark"] .file-content-viewer {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    border-color: #404040;
+}
+
+[data-theme="dark"] .upload-area {
+    background: var(--w11-surface);
+    border-color: var(--w11-border);
+}
+
+[data-theme="dark"] .upload-area:hover,
+[data-theme="dark"] .upload-area.drag-over {
+    background: rgba(var(--w11-accent-rgb), 0.1);
+}
+
+/* Animation classes */
+.fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.scale-in {
+    animation: scaleIn 0.2s ease-out;
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Context menu styles */
+.context-menu {
+    position: fixed;
+    background: var(--w11-surface);
+    border: 1px solid var(--w11-border);
+    border-radius: var(--w11-radius);
+    box-shadow: var(--w11-shadow-lg);
+    padding: 0.5rem 0;
+    z-index: 1050;
+    min-width: 150px;
+}
+
+.context-menu-item {
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--w11-text);
+}
+
+.context-menu-item:hover {
+    background: var(--w11-surface-variant);
+}
+
+.context-menu-item.danger:hover {
+    background: #dc3545;
+    color: white;
+}
+
+.context-menu-separator {
+    height: 1px;
+    background: var(--w11-border);
+    margin: 0.5rem 0;
+}

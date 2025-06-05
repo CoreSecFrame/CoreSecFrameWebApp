@@ -523,6 +523,11 @@ setup_novnc_service() {
         return
     fi
 
+    if ! command -v systemctl &> /dev/null; then
+        print_error "systemctl command not found. Cannot set up noVNC systemd service."
+        return 1
+    fi
+
     print_status "Non-WSL environment detected - Proceeding with noVNC service setup"
 
     # Create systemd directory if it doesn't exist
@@ -547,6 +552,9 @@ setup_novnc_service() {
         install_novnc_manual
         NOVNC_PATH="$SCRIPT_DIR/novnc"
     fi
+    
+    print_warning "The noVNC systemd service will be configured to proxy VNC display :0 (port 5900) by default."
+    print_warning "If your VNC sessions use other displays/ports, you may need to adjust the noVNC client URL or start websockify manually for those specific sessions."
     
     # Create noVNC systemd service
     cat > "$SYSTEMD_DIR/novnc.service" << EOF
@@ -642,11 +650,32 @@ install_local() {
 
 # Function to setup systemd service
 setup_systemd_service() {
+    # Detect if we are in WSL
+    if grep -qiE "(microsoft|wsl)" /proc/sys/kernel/osrelease 2>/dev/null; then
+        print_warning "Detected WSL environment. Systemd services might not work as expected unless systemd is explicitly enabled in your WSL2 distribution."
+        local attempt_wsl_service_core # Use local to avoid conflicts
+        read -p "Still attempt to set up CoreSecFrame as a systemd service? (y/N): " attempt_wsl_service_core
+        if [[ ! $attempt_wsl_service_core =~ ^[Yy]$ ]]; then
+            print_status "Skipping systemd service setup for CoreSecFrame in WSL."
+            return
+        fi
+    fi
+
     print_header "=== System Service Setup ==="
     
     read -p "Would you like to set up CoreSecFrame to start automatically on system boot? (y/N): " auto_start
     
     if [[ $auto_start =~ ^[Yy]$ ]]; then
+        if ! command -v systemctl &> /dev/null; then
+            print_error "systemctl command not found. Cannot set up systemd service."
+            return 1 
+        fi
+
+        if [ ! -f "$SCRIPT_DIR/run.py" ]; then
+            print_error "$SCRIPT_DIR/run.py not found. Cannot set up service."
+            return 1 
+        fi
+        
         print_status "Creating systemd service..."
         
         # Create systemd directory
@@ -663,7 +692,7 @@ Type=simple
 User=$USER
 Group=$USER
 WorkingDirectory=$SCRIPT_DIR
-Environment=PATH=$VENV_PATH/bin
+Environment="PATH=\$VENV_PATH/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 ExecStart=$VENV_PATH/bin/python run.py
 Restart=always
 RestartSec=3

@@ -1,221 +1,168 @@
 <!-- app/templates/gui/add_application.html -->
-{% extends "gui/base_gui.html" %}
-{% block css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/gui.css') }}">
-{% endblock %}
+{% extends "base.html" %}
+
 {% block content %}
-<!-- Page Header -->
 <div class="row mb-4">
-    <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h1 class="h2 fw-bold mb-1">
-                    <i class="bi bi-plus-circle me-2"></i>Add GUI Application
-                </h1>
-                <p class="text-muted mb-0">Add a new GUI application to the system</p>
-            </div>
-            <div class="btn-group" role="group">
-                <a href="{{ url_for('gui.applications') }}" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-left me-1"></i>Back to Applications
-                </a>
-                <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#scanModal">
-                    <i class="bi bi-search me-1"></i>Auto-Scan
-                </button>
-            </div>
-        </div>
+    <div class="col-md-12">
+        <h1><i class="bi bi-plus-circle me-2"></i>Add GUI Application</h1>
+        <p class="lead">Add a new GUI application to the system</p>
     </div>
 </div>
 
 <div class="row">
-    <!-- Manual Add Form -->
-    <div class="col-lg-8 mb-4">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0 fw-semibold">
-                    <i class="bi bi-pencil me-2"></i>Manual Application Entry
-                </h5>
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Application Details</h5>
             </div>
             <div class="card-body">
-                <form method="post" id="addAppForm">
+                <form id="addApplicationForm" method="POST">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     
                     <!-- Basic Information -->
-                    <div class="row mb-4">
+                    <h6 class="text-muted mb-3">Basic Information</h6>
+                    
+                    <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="name" class="form-label">Internal Name *</label>
+                            <label for="name" class="form-label">Internal Name <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="name" name="name" required
-                                   placeholder="firefox" pattern="[a-zA-Z0-9_-]+"
-                                   title="Only letters, numbers, underscores and hyphens allowed">
-                            <div class="form-text">Unique identifier for the application (no spaces)</div>
+                                   placeholder="calculator" pattern="[a-zA-Z0-9_-]+"
+                                   title="Only letters, numbers, hyphens and underscores allowed">
+                            <div class="form-text">Used internally. Only letters, numbers, - and _ allowed.</div>
                         </div>
                         <div class="col-md-6">
-                            <label for="display_name" class="form-label">Display Name *</label>
+                            <label for="display_name" class="form-label">Display Name <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="display_name" name="display_name" required
-                                   placeholder="Firefox Web Browser">
-                            <div class="form-text">User-friendly name shown in the interface</div>
+                                   placeholder="Calculator">
+                            <div class="form-text">Name shown to users.</div>
                         </div>
                     </div>
                     
-                    <div class="mb-4">
+                    <div class="mb-3">
                         <label for="description" class="form-label">Description</label>
-                        <textarea class="form-control" id="description" name="description" rows="3"
-                                  placeholder="A free and open-source web browser developed by Mozilla"></textarea>
+                        <textarea class="form-control" id="description" name="description" rows="2"
+                                  placeholder="Desktop calculator application"></textarea>
                     </div>
                     
-                    <!-- Command and Execution -->
-                    <div class="row mb-4">
-                        <div class="col-md-8">
-                            <label for="command" class="form-label">Command *</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control" id="command" name="command" required
-                                       placeholder="firefox">
-                                <button type="button" class="btn btn-outline-secondary" onclick="testCommand()">
-                                    <i class="bi bi-play-circle"></i> Test
-                                </button>
-                            </div>
-                            <div class="form-text">Command to execute the application</div>
-                            <div id="commandStatus" class="mt-2"></div>
-                        </div>
-                        <div class="col-md-4">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
                             <label for="category" class="form-label">Category</label>
                             <select class="form-select" id="category" name="category">
-                                <option value="">Select Category</option>
-                                {% for category in categories %}
-                                <option value="{{ category.name }}">{{ category.display_name }}</option>
+                                <option value="">Select category...</option>
+                                {% for cat in categories %}
+                                <option value="{{ cat.name }}">{{ cat.display_name }}</option>
                                 {% endfor %}
+                                <option value="browsers">Web Browsers</option>
+                                <option value="editors">Text Editors</option>
+                                <option value="terminals">Terminal Emulators</option>
+                                <option value="utilities">Utilities</option>
+                                <option value="development">Development Tools</option>
+                                <option value="multimedia">Multimedia</option>
+                                <option value="games">Games</option>
+                                <option value="other">Other</option>
                             </select>
                         </div>
+                        <div class="col-md-6">
+                            <label for="version" class="form-label">Version</label>
+                            <input type="text" class="form-control" id="version" name="version"
+                                   placeholder="1.0.0">
+                        </div>
                     </div>
                     
-                    <div class="mb-4">
+                    <!-- Command Configuration -->
+                    <h6 class="text-muted mb-3 mt-4">Command Configuration</h6>
+                    
+                    <div class="mb-3">
+                        <label for="command" class="form-label">Command <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="command" name="command" required
+                                   placeholder="gnome-calculator">
+                            <button type="button" class="btn btn-outline-secondary" id="testCommandBtn">
+                                <i class="bi bi-search"></i> Test
+                            </button>
+                        </div>
+                        <div class="form-text">Full command to execute the application.</div>
+                        <div id="commandTestResult" class="mt-2"></div>
+                    </div>
+                    
+                    <div class="mb-3">
                         <label for="working_directory" class="form-label">Working Directory</label>
                         <input type="text" class="form-control" id="working_directory" name="working_directory"
-                               placeholder="/home/user/Documents">
-                        <div class="form-text">Optional: Directory to run the command from</div>
+                               placeholder="/home/user">
+                        <div class="form-text">Optional. Directory to run the command from.</div>
                     </div>
                     
-                    <!-- Advanced Options -->
-                    <div class="mb-4">
-                        <h6 class="text-muted">Advanced Options</h6>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <label for="version" class="form-label">Version</label>
-                                <input type="text" class="form-control" id="version" name="version"
-                                       placeholder="1.0.0">
-                            </div>
-                            <div class="col-md-6">
-                                <label for="icon_path" class="form-label">Icon Path</label>
-                                <input type="text" class="form-control" id="icon_path" name="icon_path"
-                                       placeholder="/usr/share/pixmaps/app.png">
-                            </div>
-                        </div>
+                    <div class="mb-3">
+                        <label for="icon_path" class="form-label">Icon Path</label>
+                        <input type="text" class="form-control" id="icon_path" name="icon_path"
+                               placeholder="/usr/share/pixmaps/calculator.png">
+                        <div class="form-text">Optional. Path to application icon.</div>
                     </div>
                     
                     <!-- Environment Variables -->
-                    <div class="mb-4">
-                        <label class="form-label">Environment Variables</label>
-                        <div id="envVars">
-                            <div class="row mb-2">
-                                <div class="col-5">
-                                    <input type="text" class="form-control form-control-sm" 
-                                           placeholder="Variable Name" name="env_keys[]">
-                                </div>
-                                <div class="col-5">
-                                    <input type="text" class="form-control form-control-sm" 
-                                           placeholder="Value" name="env_values[]">
-                                </div>
-                                <div class="col-2">
-                                    <button type="button" class="btn btn-sm btn-success" onclick="addEnvVar()">
-                                        <i class="bi bi-plus"></i>
-                                    </button>
-                                </div>
+                    <h6 class="text-muted mb-3 mt-4">Environment Variables</h6>
+                    
+                    <div id="environmentVariables">
+                        <div class="row mb-2 env-var-row">
+                            <div class="col-md-5">
+                                <input type="text" class="form-control" name="env_keys[]" placeholder="Variable name">
+                            </div>
+                            <div class="col-md-5">
+                                <input type="text" class="form-control" name="env_values[]" placeholder="Value">
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-outline-danger remove-env-var" disabled>
+                                    <i class="bi bi-trash"></i>
+                                </button>
                             </div>
                         </div>
-                        <small class="form-text text-muted">Additional environment variables for the application</small>
                     </div>
                     
-                    <!-- Submit -->
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-success btn-lg">
-                            <i class="bi bi-plus-circle me-2"></i>Add Application
+                    <button type="button" class="btn btn-outline-secondary btn-sm mb-3" id="addEnvVarBtn">
+                        <i class="bi bi-plus"></i> Add Environment Variable
+                    </button>
+                    
+                    <!-- Submit Buttons -->
+                    <hr>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            <i class="bi bi-plus-circle me-1"></i> Add Application
                         </button>
+                        <a href="{{ url_for('gui.index') }}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left me-1"></i> Cancel
+                        </a>
                     </div>
                 </form>
             </div>
         </div>
     </div>
     
-    <!-- Quick Templates -->
-    <div class="col-lg-4">
-        <div class="card border-0 shadow-sm sticky-top" style="top: 1rem;">
-            <div class="card-header bg-info text-white">
-                <h5 class="mb-0 fw-semibold">
-                    <i class="bi bi-lightning me-2"></i>Quick Templates
-                </h5>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Quick Scan</h5>
             </div>
             <div class="card-body">
-                <p class="small text-muted mb-3">Click to auto-fill common applications</p>
-                
-                <div class="d-grid gap-2">
-                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="fillTemplate('firefox')">
-                        <i class="bi bi-globe me-1"></i>Firefox Browser
-                    </button>
-                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="fillTemplate('chromium')">
-                        <i class="bi bi-browser-chrome me-1"></i>Chromium Browser
-                    </button>
-                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="fillTemplate('gedit')">
-                        <i class="bi bi-file-text me-1"></i>Text Editor (gedit)
-                    </button>
-                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="fillTemplate('xterm')">
-                        <i class="bi bi-terminal me-1"></i>XTerm Terminal
-                    </button>
-                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="fillTemplate('calculator')">
-                        <i class="bi bi-calculator me-1"></i>Calculator
-                    </button>
-                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="fillTemplate('libreoffice')">
-                        <i class="bi bi-file-earmark-text me-1"></i>LibreOffice Writer
-                    </button>
-                </div>
-                
-                <hr class="my-3">
-                
-                <h6 class="text-muted mb-2">System Information</h6>
-                <div class="small text-muted">
-                    <div>OS: <span id="osInfo">Loading...</span></div>
-                    <div>Desktop: <span id="desktopInfo">Loading...</span></div>
-                    <div>Available: <span id="availableApps">Scanning...</span></div>
-                </div>
+                <p class="small text-muted">Scan system for common GUI applications and add them automatically.</p>
+                <button type="button" class="btn btn-info w-100" id="scanSystemBtn">
+                    <i class="bi bi-search me-1"></i> Scan System Applications
+                </button>
+                <div id="scanResults" class="mt-3" style="display: none;"></div>
             </div>
         </div>
-    </div>
-</div>
-
-<!-- Auto-Scan Modal -->
-<div class="modal fade" id="scanModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="bi bi-search me-2"></i>Auto-Scan System Applications
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">Tips</h5>
             </div>
-            <div class="modal-body">
-                <div id="scanResults">
-                    <div class="text-center">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Scanning...</span>
-                        </div>
-                        <p class="mt-3"><strong>Scanning system for GUI applications...</strong></p>
-                        <p class="text-muted">This may take a few moments</p>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" id="addSelectedApps" style="display: none;">
-                    <i class="bi bi-plus-circle me-1"></i>Add Selected Applications
-                </button>
+            <div class="card-body">
+                <ul class="small">
+                    <li>Use the <strong>Test</strong> button to verify commands are available</li>
+                    <li>Internal names should be unique and contain only letters, numbers, - and _</li>
+                    <li>Commands should include full path if not in system PATH</li>
+                    <li>Environment variables are optional and override system defaults</li>
+                    <li>Use the <strong>Scan System</strong> feature to find common applications automatically</li>
+                </ul>
             </div>
         </div>
     </div>
@@ -223,341 +170,310 @@
 {% endblock %}
 
 {% block scripts %}
-{{ super() }}
 <script>
-    // Application templates
-    const templates = {
-        firefox: {
-            name: 'firefox',
-            display_name: 'Firefox Web Browser',
-            description: 'Free and open-source web browser developed by Mozilla',
-            command: 'firefox',
-            category: 'browsers',
-            icon_path: '/usr/share/pixmaps/firefox.png'
-        },
-        chromium: {
-            name: 'chromium',
-            display_name: 'Chromium Browser',
-            description: 'Open-source web browser project',
-            command: 'chromium-browser',
-            category: 'browsers',
-            icon_path: '/usr/share/pixmaps/chromium.png'
-        },
-        gedit: {
-            name: 'gedit',
-            display_name: 'Text Editor',
-            description: 'GNOME text editor',
-            command: 'gedit',
-            category: 'editors',
-            icon_path: '/usr/share/pixmaps/gedit.png'
-        },
-        xterm: {
-            name: 'xterm',
-            display_name: 'XTerm Terminal',
-            description: 'Classic X terminal emulator',
-            command: 'xterm',
-            category: 'terminals',
-            icon_path: '/usr/share/pixmaps/xterm.png'
-        },
-        calculator: {
-            name: 'calculator',
-            display_name: 'Calculator',
-            description: 'Desktop calculator application',
-            command: 'gnome-calculator',
-            category: 'utilities',
-            icon_path: '/usr/share/pixmaps/calc.png'
-        },
-        libreoffice: {
-            name: 'libreoffice',
-            display_name: 'LibreOffice Writer',
-            description: 'Full-featured word processor',
-            command: 'libreoffice --writer',
-            category: 'utilities',
-            icon_path: '/usr/share/pixmaps/libreoffice-writer.png'
+document.addEventListener('DOMContentLoaded', function() {
+    setupEventHandlers();
+    setupFormValidation();
+});
+
+function setupEventHandlers() {
+    // Test command button
+    document.getElementById('testCommandBtn').addEventListener('click', testCommand);
+    
+    // Scan system button
+    document.getElementById('scanSystemBtn').addEventListener('click', scanSystemApplications);
+    
+    // Add environment variable button
+    document.getElementById('addEnvVarBtn').addEventListener('click', addEnvironmentVariable);
+    
+    // Form submission
+    document.getElementById('addApplicationForm').addEventListener('submit', handleFormSubmit);
+    
+    // Auto-generate internal name from display name
+    document.getElementById('display_name').addEventListener('input', function() {
+        const displayName = this.value;
+        const nameField = document.getElementById('name');
+        if (!nameField.value) {
+            const internalName = displayName.toLowerCase()
+                .replace(/[^a-z0-9\s-_]/g, '')
+                .replace(/\s+/g, '-')
+                .substring(0, 50);
+            nameField.value = internalName;
         }
-    };
+    });
+    
+    // Environment variable removal
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-env-var') || 
+            e.target.parentElement.classList.contains('remove-env-var')) {
+            const row = e.target.closest('.env-var-row');
+            if (row && document.querySelectorAll('.env-var-row').length > 1) {
+                row.remove();
+            }
+        }
+    });
+}
 
-    function fillTemplate(templateName) {
-        const template = templates[templateName];
-        if (!template) return;
+function setupFormValidation() {
+    const form = document.getElementById('addApplicationForm');
+    const nameField = document.getElementById('name');
+    const commandField = document.getElementById('command');
+    
+    // Validate internal name
+    nameField.addEventListener('input', function() {
+        const value = this.value;
+        const isValid = /^[a-zA-Z0-9_-]+$/.test(value);
+        
+        if (value && !isValid) {
+            this.setCustomValidity('Only letters, numbers, hyphens and underscores allowed');
+        } else {
+            this.setCustomValidity('');
+        }
+    });
+}
 
-        document.getElementById('name').value = template.name;
-        document.getElementById('display_name').value = template.display_name;
-        document.getElementById('description').value = template.description;
-        document.getElementById('command').value = template.command;
-        document.getElementById('category').value = template.category;
-        document.getElementById('icon_path').value = template.icon_path;
-
-        // Test command availability
-        testCommand();
+async function testCommand() {
+    const commandInput = document.getElementById('command');
+    const testBtn = document.getElementById('testCommandBtn');
+    const resultDiv = document.getElementById('commandTestResult');
+    
+    const command = commandInput.value.trim();
+    
+    if (!command) {
+        showAlert('Please enter a command first', 'warning');
+        return;
     }
-
-    function testCommand() {
-        const command = document.getElementById('command').value.trim();
-        if (!command) return;
-
-        const statusEl = document.getElementById('commandStatus');
-        statusEl.innerHTML = '<div class="spinner-border spinner-border-sm text-primary me-2"></div>Testing command...';
-
-        fetch('/gui/api/test-command', {
+    
+    // Show loading state
+    testBtn.disabled = true;
+    testBtn.innerHTML = '<i class="bi bi-clock"></i> Testing...';
+    resultDiv.innerHTML = '';
+    
+    try {
+        const response = await fetch('{{ url_for("gui.api_test_command") }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
             },
             body: JSON.stringify({ command: command })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.available) {
-                statusEl.innerHTML = '<div class="alert alert-success alert-sm py-2 mb-0"><i class="bi bi-check-circle me-1"></i>Command available</div>';
-            } else {
-                statusEl.innerHTML = '<div class="alert alert-warning alert-sm py-2 mb-0"><i class="bi bi-exclamation-triangle me-1"></i>Command not found</div>';
-            }
-        })
-        .catch(error => {
-            statusEl.innerHTML = '<div class="alert alert-danger alert-sm py-2 mb-0"><i class="bi bi-x-circle me-1"></i>Error testing command</div>';
         });
-    }
-
-    function addEnvVar() {
-        const envVarsDiv = document.getElementById('envVars');
-        const newRow = document.createElement('div');
-        newRow.className = 'row mb-2';
-        newRow.innerHTML = `
-            <div class="col-5">
-                <input type="text" class="form-control form-control-sm" 
-                       placeholder="Variable Name" name="env_keys[]">
-            </div>
-            <div class="col-5">
-                <input type="text" class="form-control form-control-sm" 
-                       placeholder="Value" name="env_values[]">
-            </div>
-            <div class="col-2">
-                <button type="button" class="btn btn-sm btn-danger" onclick="this.closest('.row').remove()">
-                    <i class="bi bi-dash"></i>
-                </button>
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            throw new Error('Server returned non-JSON response: ' + text.substring(0, 100));
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            if (data.available) {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-success alert-sm">
+                        <i class="bi bi-check-circle me-1"></i>
+                        Command "${data.base_command}" is available
+                        ${data.path ? `<br><small>Path: ${data.path}</small>` : ''}
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-warning alert-sm">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Command "${data.base_command}" not found in system PATH
+                    </div>
+                `;
+            }
+        } else {
+            resultDiv.innerHTML = `
+                <div class="alert alert-danger alert-sm">
+                    <i class="bi bi-x-circle me-1"></i>
+                    Error: ${data.error}
+                </div>
+            `;
+        }
+        
+    } catch (error) {
+        console.error('Error testing command:', error);
+        resultDiv.innerHTML = `
+            <div class="alert alert-danger alert-sm">
+                <i class="bi bi-x-circle me-1"></i>
+                Error testing command: ${error.message}
             </div>
         `;
-        envVarsDiv.appendChild(newRow);
+    } finally {
+        // Restore button
+        testBtn.disabled = false;
+        testBtn.innerHTML = '<i class="bi bi-search"></i> Test';
     }
+}
 
-    // Auto-scan functionality
-    document.getElementById('scanModal').addEventListener('shown.bs.modal', function () {
-        startScan();
-    });
-
-    function startScan() {
-        // Show loading
-        document.getElementById('scanResults').innerHTML = `
-            <div class="text-center py-4">
-                <div class="spinner-border text-primary" role="status"></div>
-                <p class="mt-3">Scanning for applications...</p>
-            </div>
-        `;
-
-        // Make the API call
-        fetch('/gui/api/scan-applications', {
+async function scanSystemApplications() {
+    const scanBtn = document.getElementById('scanSystemBtn');
+    const resultsDiv = document.getElementById('scanResults');
+    
+    // Show loading state
+    scanBtn.disabled = true;
+    scanBtn.innerHTML = '<i class="bi bi-clock"></i> Scanning...';
+    resultsDiv.innerHTML = '<div class="text-center"><div class="spinner-border spinner-border-sm"></div> Scanning system...</div>';
+    resultsDiv.style.display = 'block';
+    
+    try {
+        const response = await fetch('{{ url_for("gui.api_scan_applications") }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
             }
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log('Scan result:', data);
-            if (data.success) {
-                showResults(data.applications || []);
-            } else {
-                showError(data.error || 'Scan failed');
-            }
-        })
-        .catch(error => {
-            console.error('Scan error:', error);
-            showError('Network error: ' + error.message);
         });
-    }
-
-    function showResults(applications) {
-        const resultsDiv = document.getElementById('scanResults');
-
-        if (applications.length === 0) {
-            resultsDiv.innerHTML = `
-                <div class="alert alert-info">
-                    <h6>No New Applications Found</h6>
-                    <p>All detected applications are already added to the system.</p>
-                </div>
-            `;
-            return;
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
         }
-
-        // Store apps globally
-        window.scannedApps = applications;
-
-        // Build results HTML
-        let html = `
-            <h6>Found ${applications.length} new applications:</h6>
-            <div class="table-responsive">
-                <table class="table table-sm">
-                    <thead>
-                        <tr>
-                            <th width="50">
-                                <input type="checkbox" id="selectAll" onchange="toggleAll(this.checked)">
-                            </th>
-                            <th>Application</th>
-                            <th>Command</th>
-                            <th>Category</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
-
-        applications.forEach((app, index) => {
-            html += `
-                <tr>
-                    <td>
-                        <input type="checkbox" name="appCheckbox" value="${index}" checked>
-                    </td>
-                    <td>
-                        <strong>${app.display_name}</strong><br>
-                        <small class="text-muted">${app.description}</small>
-                    </td>
-                    <td><code>${app.command}</code></td>
-                    <td><span class="badge bg-primary">${app.category}</span></td>
-                </tr>
-            `;
-        });
-
-        html += `
-                    </tbody>
-                </table>
-            </div>
-        `;
-
-        resultsDiv.innerHTML = html;
-        document.getElementById('addSelectedApps').style.display = 'block';
-    }
-
-    function showError(message) {
-        document.getElementById('scanResults').innerHTML = `
-            <div class="alert alert-danger">
-                <h6>Scan Failed</h6>
-                <p>${message}</p>
-            </div>
-        `;
-    }
-
-    function toggleAll(checked) {
-        document.querySelectorAll('input[name="appCheckbox"]').forEach(cb => {
-            cb.checked = checked;
-        });
-    }
-
-    // Add selected applications
-    document.getElementById('addSelectedApps').addEventListener('click', function () {
-        const selectedIndexes = [];
-        document.querySelectorAll('input[name="appCheckbox"]:checked').forEach(cb => {
-            selectedIndexes.push(parseInt(cb.value));
-        });
-
-        if (selectedIndexes.length === 0) {
-            alert('Please select at least one application.');
-            return;
+        
+        const data = await response.json();
+        
+        if (data.success && data.applications.length > 0) {
+            let html = `<h6>Found ${data.applications.length} new applications:</h6><div class="list-group list-group-flush">`;
+            
+            data.applications.forEach(app => {
+                html += `
+                    <div class="list-group-item p-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>${app.display_name}</strong><br>
+                                <small class="text-muted">${app.command}</small>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input scan-app-checkbox" type="checkbox" 
+                                       value="${app.name}" checked data-app='${JSON.stringify(app)}'>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += `</div><button type="button" class="btn btn-success btn-sm mt-2 w-100" onclick="addSelectedApplications()">
+                        <i class="bi bi-plus-circle me-1"></i> Add Selected Applications
+                     </button>`;
+            
+            resultsDiv.innerHTML = html;
+        } else {
+            resultsDiv.innerHTML = '<div class="alert alert-info alert-sm">No new applications found to add.</div>';
         }
+        
+    } catch (error) {
+        console.error('Error scanning applications:', error);
+        resultsDiv.innerHTML = `<div class="alert alert-danger alert-sm">Error scanning: ${error.message}</div>`;
+    } finally {
+        scanBtn.disabled = false;
+        scanBtn.innerHTML = '<i class="bi bi-search me-1"></i> Scan System Applications';
+    }
+}
 
-        const selectedApps = selectedIndexes.map(index => window.scannedApps[index]);
-
-        // Show loading
-        const button = this;
-        const originalText = button.textContent;
-        button.textContent = 'Adding...';
-        button.disabled = true;
-
-        // Add applications
-        fetch('/gui/api/add-scanned-applications', {
+async function addSelectedApplications() {
+    const checkboxes = document.querySelectorAll('.scan-app-checkbox:checked');
+    const applications = Array.from(checkboxes).map(cb => JSON.parse(cb.dataset.app));
+    
+    if (applications.length === 0) {
+        showAlert('No applications selected', 'warning');
+        return;
+    }
+    
+    try {
+        const response = await fetch('{{ url_for("gui.api_add_scanned_applications") }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
             },
-            body: JSON.stringify({
-                applications: selectedApps
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Close modal and refresh page
-                bootstrap.Modal.getInstance(document.getElementById('scanModal')).hide();
-                window.location.reload();
-            } else {
-                alert('Error: ' + data.error);
-            }
-        })
-        .catch(error => {
-            alert('Network error: ' + error.message);
-        })
-        .finally(() => {
-            button.textContent = originalText;
-            button.disabled = false;
+            body: JSON.stringify({ applications: applications })
         });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert(`Successfully added ${data.added_count} applications!`, 'success');
+            setTimeout(() => {
+                window.location.href = '{{ url_for("gui.index") }}';
+            }, 2000);
+        } else {
+            showAlert(`Error: ${data.error}`, 'danger');
+        }
+        
+    } catch (error) {
+        console.error('Error adding applications:', error);
+        showAlert('Error adding applications', 'danger');
+    }
+}
+
+function addEnvironmentVariable() {
+    const container = document.getElementById('environmentVariables');
+    const newRow = document.createElement('div');
+    newRow.className = 'row mb-2 env-var-row';
+    newRow.innerHTML = `
+        <div class="col-md-5">
+            <input type="text" class="form-control" name="env_keys[]" placeholder="Variable name">
+        </div>
+        <div class="col-md-5">
+            <input type="text" class="form-control" name="env_values[]" placeholder="Value">
+        </div>
+        <div class="col-md-2">
+            <button type="button" class="btn btn-outline-danger remove-env-var">
+                <i class="bi bi-trash"></i>
+            </button>
+        </div>
+    `;
+    container.appendChild(newRow);
+    
+    // Enable remove buttons
+    document.querySelectorAll('.remove-env-var').forEach(btn => {
+        btn.disabled = false;
     });
+}
 
-    // Form validation and submission
-    document.getElementById('addAppForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(this);
-        const submitBtn = this.querySelector('button[type="submit"]');
-        const originalText = submitBtn.innerHTML;
-        
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Adding...';
-        
-        fetch('/gui/add-application', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                window.location.href = `/gui/application/${data.application.id}`;
-            } else {
-                alert('Error: ' + (data.error || 'Unknown error occurred'));
-            }
-        })
-        .catch(error => {
-            alert('Error: ' + error.message);
-        })
-        .finally(() => {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
-        });
-    });
+function handleFormSubmit(e) {
+    e.preventDefault();
+    
+    const submitBtn = document.getElementById('submitBtn');
+    const form = e.target;
+    
+    // Show loading state
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="bi bi-clock"></i> Adding...';
+    
+    // Submit form normally (not via AJAX for simplicity)
+    form.submit();
+}
 
-    // Load system info when page loads
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('Loading system info...');
-        
-        fetch('/gui/api/system-info')
-        .then(response => response.json())
-        .then(data => {
-            console.log('System info received:', data);
-            document.getElementById('osInfo').textContent = data.os || 'Unknown';
-            document.getElementById('desktopInfo').textContent = data.desktop || 'Unknown';
-            document.getElementById('availableApps').textContent = data.gui_apps_count || '0';
-        })
-        .catch(error => {
-            console.error('Error loading system info:', error);
-            document.getElementById('osInfo').textContent = 'Error';
-            document.getElementById('desktopInfo').textContent = 'Error';
-            document.getElementById('availableApps').textContent = 'Error';
-        });
-
-        // Auto-focus on session name
-        document.getElementById('name').focus();
-    });
-
+function showAlert(message, type = 'info') {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            <i class="bi bi-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    const container = document.querySelector('.container-fluid');
+    const existingAlert = container.querySelector('.alert');
+    if (existingAlert) {
+        existingAlert.remove();
+    }
+    
+    container.insertAdjacentHTML('afterbegin', alertHtml);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        const alert = container.querySelector('.alert');
+        if (alert) {
+            alert.remove();
+        }
+    }, 5000);
+}
 </script>
 {% endblock %}

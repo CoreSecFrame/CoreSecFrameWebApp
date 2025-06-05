@@ -2,11 +2,12 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from app import db
 from app.gui.models import GUIApplication, GUISession, GUICategory, GUISessionLog
-from app.gui.manager import GUISessionManager
+from app.gui.manager import GUISessionManager, GUIEnvironmentDetector
 from datetime import datetime
 import traceback
 import shutil # For _test_command_availability and _scan_system_applications
 import os # For _scan_system_applications
+import subprocess
 
 # Module-level constant for default applications to scan
 DEFAULT_SCAN_APPLICATIONS = [
@@ -125,8 +126,6 @@ gui_bp = Blueprint('gui', __name__, url_prefix='/gui')
 @login_required
 def index():
     """Main GUI applications page with WSLg awareness"""
-    from app.gui.manager import GUIEnvironmentDetector
-    
     # Detect environment
     env_info = GUIEnvironmentDetector.detect_environment()
     
@@ -168,8 +167,6 @@ def index():
 @login_required
 def applications():
     """List all GUI applications with environment awareness"""
-    from app.gui.manager import GUIEnvironmentDetector
-    
     category_filter = request.args.get('category')
     search_query = request.args.get('q', '')
     env_info = GUIEnvironmentDetector.detect_environment()
@@ -228,8 +225,6 @@ def application_detail(app_id):
 @login_required
 def sessions():
     """List user's GUI sessions with environment awareness"""
-    from app.gui.manager import GUIEnvironmentDetector
-    
     # Get pagination parameters
     page = request.args.get('page', 1, type=int)
     per_page = 20
@@ -264,8 +259,6 @@ def sessions():
 @login_required
 def api_environment():
     """API endpoint to get GUI environment information"""
-    from app.gui.manager import GUIEnvironmentDetector
-    
     try:
         env_info = GUIEnvironmentDetector.detect_environment()
         
@@ -313,8 +306,6 @@ def api_environment():
 @login_required
 def session_detail(session_id):
     """Show session details with WSLg-aware information"""
-    from app.gui.manager import GUIEnvironmentDetector
-    
     session = GUISession.query.filter_by(
         session_id=session_id,
         user_id=current_user.id
@@ -349,8 +340,6 @@ def session_detail(session_id):
 @login_required
 def launch_application(app_id):
     """Launch a GUI application with WSLg-aware handling"""
-    from app.gui.manager import GUIEnvironmentDetector
-    
     application = GUIApplication.query.get_or_404(app_id)
     
     if not application.enabled:
@@ -552,8 +541,6 @@ def api_delete_session(session_id):
 @login_required
 def connect_session(session_id):
     """Connect to a GUI session with WSLg awareness"""
-    from app.gui.manager import GUIEnvironmentDetector
-    
     session = GUISession.query.filter_by(
         session_id=session_id,
         user_id=current_user.id
@@ -664,8 +651,6 @@ def api_applications():
 @login_required
 def api_launch_application(app_id):
     """API endpoint to launch an application with WSLg awareness"""
-    from app.gui.manager import GUIEnvironmentDetector
-    
     try:
         application = GUIApplication.query.get(app_id)
         if not application:
@@ -867,35 +852,53 @@ def add_application():
     """Add a new GUI application"""
     if request.method == 'POST':
         try:
-            # Handle JSON requests (from API)
+            # Manejo de datos del formulario y JSON
             if request.is_json:
                 data = request.get_json()
+                if not data:
+                    return jsonify({'success': False, 'error': 'No JSON data received'}), 400
             else:
-                # Handle form data
-                data = request.form.to_dict()
+                # Manejar datos del formulario
+                data = {}
                 
-                # Process environment variables
+                # Campos básicos
+                data['name'] = request.form.get('name', '').strip()
+                data['display_name'] = request.form.get('display_name', '').strip()
+                data['description'] = request.form.get('description', '').strip()
+                data['category'] = request.form.get('category', '').strip()
+                data['command'] = request.form.get('command', '').strip()
+                data['working_directory'] = request.form.get('working_directory', '').strip()
+                data['version'] = request.form.get('version', '').strip()
+                data['icon_path'] = request.form.get('icon_path', '').strip()
+                
+                # Procesar variables de entorno
                 env_keys = request.form.getlist('env_keys[]')
                 env_values = request.form.getlist('env_values[]')
                 env_dict = {}
                 
                 for i, key in enumerate(env_keys):
-                    if key.strip() and i < len(env_values):
+                    if key.strip() and i < len(env_values) and env_values[i].strip():
                         env_dict[key.strip()] = env_values[i].strip()
                 
                 if env_dict:
                     data['environment_vars'] = env_dict
             
-            # Validate required fields
+            # Validar campos requeridos
             required_fields = ['name', 'display_name', 'command']
+            missing_fields = []
+            
             for field in required_fields:
                 if not data.get(field, '').strip():
-                    if request.is_json:
-                        return jsonify({'success': False, 'error': f'{field} is required'}), 400
-                    flash(f'{field.replace("_", " ").title()} is required.', 'danger')
-                    return redirect(url_for('gui.add_application'))
+                    missing_fields.append(field.replace('_', ' ').title())
             
-            # Check if application name already exists
+            if missing_fields:
+                error_msg = f"Required fields missing: {', '.join(missing_fields)}"
+                if request.is_json:
+                    return jsonify({'success': False, 'error': error_msg}), 400
+                flash(error_msg, 'danger')
+                return redirect(url_for('gui.add_application'))
+            
+            # Validar nombre único
             existing_app = GUIApplication.query.filter_by(name=data['name'].strip()).first()
             if existing_app:
                 error_msg = f"Application with name '{data['name']}' already exists"
@@ -904,14 +907,23 @@ def add_application():
                 flash(error_msg, 'danger')
                 return redirect(url_for('gui.add_application'))
             
-            # Test if command is available
+            # Validar comando
+            command_parts = data['command'].strip().split()
+            if not command_parts:
+                error_msg = "Invalid command format"
+                if request.is_json:
+                    return jsonify({'success': False, 'error': error_msg}), 400
+                flash(error_msg, 'danger')
+                return redirect(url_for('gui.add_application'))
+            
+            # Verificar si el comando está disponible
             command_available = _test_command_availability(data['command'].strip())
             
-            # Create new application
+            # Crear nueva aplicación
             app = GUIApplication(
                 name=data['name'].strip(),
                 display_name=data['display_name'].strip(),
-                description=data.get('description', '').strip(),
+                description=data.get('description', '').strip() or None,
                 category=data.get('category', '').strip() or None,
                 command=data['command'].strip(),
                 working_directory=data.get('working_directory', '').strip() or None,
@@ -921,23 +933,30 @@ def add_application():
                 enabled=True
             )
             
-            # Set environment variables if provided
+            # Establecer variables de entorno si se proporcionan
             if 'environment_vars' in data and data['environment_vars']:
                 app.set_environment_dict(data['environment_vars'])
             
+            # Guardar en base de datos
             db.session.add(app)
             db.session.commit()
             
             current_app.logger.info(f"User {current_user.username} added GUI application: {app.name}")
             
-            if request.is_json:
-                return jsonify({
-                    'success': True,
-                    'message': 'Application added successfully',
-                    'application': app.to_dict()
-                })
+            success_msg = f'Application "{app.display_name}" added successfully!'
+            if not command_available:
+                success_msg += f' (Command "{command_parts[0]}" not found - marked as not installed)'
             
-            flash(f'Application "{app.display_name}" added successfully!', 'success')
+            if request.is_json:
+                response_data = {
+                    'success': True,
+                    'message': success_msg,
+                    'application': app.to_dict(),
+                    'command_available': command_available
+                }
+                return jsonify(response_data), 200
+            
+            flash(success_msg, 'success')
             return redirect(url_for('gui.application_detail', app_id=app.id))
             
         except Exception as e:
@@ -949,36 +968,79 @@ def add_application():
             if request.is_json:
                 return jsonify({'success': False, 'error': error_msg}), 500
             flash(error_msg, 'danger')
+            return redirect(url_for('gui.add_application'))
     
-    # GET request - show form
-    categories = GUICategory.query.order_by(GUICategory.sort_order, GUICategory.name).all()
-    return render_template(
-        'gui/add_application.html',
-        title='Add GUI Application',
-        categories=categories
-    )
+    # GET request - mostrar formulario
+    try:
+        categories = GUICategory.query.order_by(GUICategory.sort_order, GUICategory.name).all()
+        return render_template(
+            'gui/add_application.html',
+            title='Add GUI Application',
+            categories=categories
+        )
+    except Exception as e:
+        current_app.logger.error(f"Error loading add application form: {e}")
+        flash('Error loading form', 'danger')
+        return redirect(url_for('gui.index'))
 
 @gui_bp.route('/api/test-command', methods=['POST'])
 @login_required
 def api_test_command():
     """Test if a command is available on the system"""
     try:
-        data = request.get_json()
+        # Validar request JSON
+        data, error_response, status_code = validate_json_request(['command'])
+        if error_response:
+            return error_response, status_code
+        
         command = data.get('command', '').strip()
         
         if not command:
-            return jsonify({'available': False, 'error': 'No command provided'})
+            return jsonify({
+                'success': False, 
+                'available': False, 
+                'error': 'Command cannot be empty'
+            }), 400
         
+        # Extraer el comando base (primera palabra)
+        command_parts = command.split()
+        base_command = command_parts[0] if command_parts else command
+        
+        # Log para debugging
+        current_app.logger.debug(f"Testing command: '{command}' (base: '{base_command}')")
+        
+        # Verificar disponibilidad
         available = _test_command_availability(command)
         
-        return jsonify({
+        response_data = {
+            'success': True,
             'available': available,
-            'command': command
-        })
+            'command': command,
+            'base_command': base_command
+        }
+        
+        if available:
+            # Intentar obtener información adicional del comando
+            try:
+                which_result = shutil.which(base_command)
+                if which_result:
+                    response_data['path'] = which_result
+                    current_app.logger.debug(f"Command found at: {which_result}")
+            except Exception as e:
+                current_app.logger.warning(f"Error getting command path: {e}")
+        else:
+            current_app.logger.debug(f"Command '{base_command}' not found in PATH")
+        
+        return jsonify(response_data), 200
         
     except Exception as e:
         current_app.logger.error(f"Error testing command: {e}")
-        return jsonify({'available': False, 'error': str(e)})
+        current_app.logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'available': False, 
+            'error': f'Server error: {str(e)}'
+        }), 500
 
 @gui_bp.route('/api/scan-applications', methods=['POST'])
 @login_required
@@ -1105,17 +1167,188 @@ def api_system_info():
 # Helper functions
 
 def _test_command_availability(command):
-    """Test if a command is available on the system"""
+    """Test if a command is available and executable on the system"""
     try:
-        # shutil is already imported at the module level
-        # Extract the base command (first word)
-        base_command = command.split()[0]
+        if not command or not command.strip():
+            return False
+
+        command_parts = command.strip().split()
+        if not command_parts:
+            return False
         
-        # Check if command exists
-        return shutil.which(base_command) is not None
+        base_command = command_parts[0]
+        current_app.logger.debug(f"Testing command availability for: '{base_command}' (full command: '{command}')")
+
+        command_path = None
+        
+        # Try to find command using 'command -v'
+        try:
+            current_app.logger.debug(f"Attempting to find '{base_command}' using 'command -v'")
+            command_v_result = subprocess.run(['command', '-v', base_command], 
+                                              capture_output=True, text=True, check=False, timeout=5)
+            if command_v_result.returncode == 0 and command_v_result.stdout.strip():
+                command_path = command_v_result.stdout.strip()
+                current_app.logger.info(f"Command '{base_command}' found using 'command -v': {command_path}")
+            else:
+                current_app.logger.debug(f"'command -v {base_command}' failed or returned empty. RC: {command_v_result.returncode}, Stdout: '{command_v_result.stdout.strip()}'")
+        except FileNotFoundError:
+            current_app.logger.warning("Utility 'command' not found. Falling back to shutil.which for command lookup.")
+            command_path = None # Ensure fallback to shutil.which occurs
+        except subprocess.TimeoutExpired:
+            current_app.logger.warning(f"'command -v {base_command}' timed out.")
+        except Exception as e: # General exception for other subprocess errors
+            current_app.logger.warning(f"Error running 'command -v {base_command}': {e}")
+
+        # If 'command -v' fails (or 'command' utility not found), try shutil.which
+        if not command_path:
+            current_app.logger.debug(f"Attempting to find '{base_command}' using 'shutil.which'")
+            command_path_shutil = shutil.which(base_command)
+            if command_path_shutil:
+                command_path = command_path_shutil
+                current_app.logger.info(f"Command '{base_command}' found using 'shutil.which': {command_path}")
+            else:
+                current_app.logger.debug(f"'shutil.which({base_command})' did not find the command.")
+
+        if command_path:
+            current_app.logger.debug(f"Command '{base_command}' resolved to path: {command_path}")
+            
+            # Additional checks for the found command
+            try:
+                # Check if it's actually executable
+                if not os.access(command_path, os.X_OK):
+                    current_app.logger.warning(f"Command path '{command_path}' for '{base_command}' found but not executable.")
+                    return False
+                
+                current_app.logger.debug(f"Command path '{command_path}' is executable. Checking file type.")
+                # Get file information
+                try:
+                    # Run 'file' command without check=True, handle errors manually
+                    file_info_process = subprocess.run(['file', command_path], 
+                                                       capture_output=True, text=True, timeout=5, check=False)
+                    
+                    if file_info_process.returncode != 0:
+                        current_app.logger.warning(f"'file {command_path}' failed with RC {file_info_process.returncode}: {file_info_process.stderr.strip()}")
+                        # If 'file' command fails, we might still consider it available if it's executable
+                        # but log a warning. This behavior is similar to previous logic.
+                        return True
+
+                    file_type = file_info_process.stdout.strip().lower()
+                    current_app.logger.debug(f"File type for '{command_path}': {file_type}")
+                        
+                    if 'cannot execute binary file' in file_type:
+                        current_app.logger.warning(f"Binary file architecture mismatch for '{command_path}': {file_type}")
+                        return False
+                        
+                    if 'script' in file_type or command_path.endswith(('.sh', '.py', '.pl', '.rb')):
+                        current_app.logger.debug(f"Detected script: '{command_path}'")
+                        if command_path.endswith('.sh'):
+                            try:
+                                with open(command_path, 'r', encoding='utf-8', errors='ignore') as f:
+                                    first_line = f.readline().strip()
+                                    if not first_line.startswith('#!'):
+                                        current_app.logger.debug(f"Shell script '{command_path}' without shebang. Assuming bash can handle.")
+                            except Exception as e_script:
+                                current_app.logger.warning(f"Could not read script '{command_path}' to check shebang: {e_script}")
+                        return True
+                        
+                    if 'java' in file_type or command_path.endswith('.jar'):
+                        current_app.logger.debug(f"Detected Java application: '{command_path}'")
+                        if shutil.which('java'):
+                            return True
+                        else:
+                            current_app.logger.warning(f"Java application '{command_path}' found, but 'java' runtime is not available in PATH.")
+                            return False
+                        
+                    return True # Default to available if file type is recognized and not problematic
+                        
+                except subprocess.TimeoutExpired:
+                    current_app.logger.warning(f"'file {command_path}' timed out. Assuming available as it's executable.")
+                    return True # If file command times out, assume it's available
+                except FileNotFoundError:
+                    current_app.logger.warning(f"Utility 'file' not found. Skipping file type check for {command_path}.")
+                    return True # Proceed as if file check was inconclusive but command is executable
+                except Exception as e_file:
+                    current_app.logger.error(f"Error running 'file {command_path}': {e_file}", exc_info=True)
+                    # If 'file' command has other issues, but path was found and executable, cautiously return True
+                    return True
+                
+            except Exception as e_access:
+                current_app.logger.error(f"Error during access or file checks for '{command_path}': {e_access}", exc_info=True)
+                return False # If any other unexpected error occurs during these checks
+        else:
+            # This block is reached if both 'command -v' and 'shutil.which' failed
+            current_app.logger.warning(f"Command '{base_command}' not found using 'command -v' or 'shutil.which'.")
+
+        # If not found with 'command -v' or 'shutil.which', try absolute path (existing logic)
+        if os.path.isabs(base_command):
+            current_app.logger.debug(f"Checking absolute path: {base_command}")
+            if os.path.exists(base_command):
+                if os.access(base_command, os.X_OK):
+                    current_app.logger.debug(f"Absolute path executable: {base_command}")
+                    return True
+                else:
+                    current_app.logger.debug(f"Absolute path exists but not executable: {base_command}")
+                    return False
+            else:
+                current_app.logger.debug(f"Absolute path does not exist: {base_command}")
+                return False
+        
+        # Special handling for common applications that might need special treatment
+        if base_command in ['burpsuitepro', 'burp', 'burpsuite']:
+            current_app.logger.debug(f"Checking special application: {base_command}")
+            return _check_burpsuite_availability()
+        
+        current_app.logger.debug(f"Command '{base_command}' not found in PATH")
+        return False
+            
+    except Exception as e:
+        current_app.logger.error(f"Error testing command availability for '{command}': {e}")
+        return False
+
+def _check_burpsuite_availability():
+    """Special check for Burp Suite Pro availability"""
+    try:
+        # Common Burp Suite Pro locations
+        burp_locations = [
+            '/opt/BurpSuitePro/BurpSuitePro',
+            '/usr/local/bin/burpsuitepro',
+            os.path.expanduser('~/BurpSuitePro/BurpSuitePro'),
+            '/opt/burpsuite_pro/BurpSuitePro'
+        ]
+        
+        jar_locations = [
+            '/opt/burpsuite_pro/burpsuite_pro.jar',
+            os.path.expanduser('~/burpsuite_pro.jar'),
+            '/usr/local/share/burpsuite_pro/burpsuite_pro.jar'
+        ]
+        
+        # Check executable locations
+        for location in burp_locations:
+            if os.path.exists(location) and os.access(location, os.X_OK):
+                current_app.logger.debug(f"Found Burp Suite Pro executable at: {location}")
+                return True
+        
+        # Check JAR locations (if java is available)
+        if shutil.which('java'):
+            for jar_location in jar_locations:
+                if os.path.exists(jar_location):
+                    current_app.logger.debug(f"Found Burp Suite Pro JAR at: {jar_location}")
+                    return True
+        
+        # Check in home directory with wildcard
+        import glob
+        home_pattern = os.path.expanduser('~/*/BurpSuitePro')
+        matches = glob.glob(home_pattern)
+        for match in matches:
+            if os.path.exists(match) and os.access(match, os.X_OK):
+                current_app.logger.debug(f"Found Burp Suite Pro in home directory: {match}")
+                return True
+        
+        current_app.logger.debug("Burp Suite Pro not found in common locations")
+        return False
         
     except Exception as e:
-        current_app.logger.error(f"Error testing command availability: {e}")
+        current_app.logger.error(f"Error checking Burp Suite availability: {e}")
         return False
 
 def _scan_system_applications():
@@ -1145,3 +1378,106 @@ def _scan_system_applications():
     except Exception as e:
         current_app.logger.error(f"Error scanning system applications: {e}")
         return []
+
+# Manejadores de error mejorados
+@gui_bp.errorhandler(400)
+def bad_request(error):
+    if request.is_json or request.path.startswith('/gui/api/'):
+        return jsonify({
+            'success': False,
+            'error': 'Bad request',
+            'message': str(error.description) if hasattr(error, 'description') else 'Invalid request'
+        }), 400
+    return render_template('gui/error.html', 
+                         title='Bad Request',
+                         error_code=400,
+                         error_message='Invalid request.'), 400
+
+@gui_bp.errorhandler(404)
+def gui_not_found(error):
+    if request.is_json or request.path.startswith('/gui/api/'):
+        return jsonify({
+            'success': False,
+            'error': 'Not found',
+            'message': 'The requested resource was not found'
+        }), 404
+    return render_template('gui/error.html', 
+                         title='Page Not Found',
+                         error_code=404,
+                         error_message='The requested GUI resource was not found.'), 404
+
+@gui_bp.errorhandler(500)
+def gui_server_error(error):
+    db.session.rollback()
+    current_app.logger.error(f"GUI module server error: {error}")
+    
+    if request.is_json or request.path.startswith('/gui/api/'):
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error',
+            'message': 'An unexpected error occurred on the server'
+        }), 500
+    return render_template('gui/error.html',
+                         title='Server Error', 
+                         error_code=500,
+                         error_message='An internal server error occurred.'), 500
+
+@gui_bp.errorhandler(405)
+def method_not_allowed(error):
+    if request.is_json or request.path.startswith('/gui/api/'):
+        return jsonify({
+            'success': False,
+            'error': 'Method not allowed',
+            'message': f'Method {request.method} not allowed for this endpoint'
+        }), 405
+    return render_template('gui/error.html',
+                         title='Method Not Allowed', 
+                         error_code=405,
+                         error_message='This method is not allowed for this resource.'), 405
+
+# Middleware para debugging de requests JSON
+@gui_bp.before_request
+def log_request_info():
+    """Log request details for debugging"""
+    if current_app.debug and request.path.startswith('/gui/api/'):
+        current_app.logger.debug(f"GUI API Request: {request.method} {request.path}")
+        current_app.logger.debug(f"Content-Type: {request.content_type}")
+        current_app.logger.debug(f"Is JSON: {request.is_json}")
+        if request.is_json:
+            try:
+                data = request.get_json()
+                current_app.logger.debug(f"JSON Data: {data}")
+            except Exception as e:
+                current_app.logger.error(f"Error parsing JSON: {e}")
+
+# Función auxiliar para validar datos JSON
+def validate_json_request(required_fields=None):
+    """Validate JSON request and return data"""
+    if not request.is_json:
+        return None, jsonify({
+            'success': False,
+            'error': 'Content-Type must be application/json'
+        }), 400
+    
+    try:
+        data = request.get_json()
+        if data is None:
+            return None, jsonify({
+                'success': False,
+                'error': 'No JSON data received'
+            }), 400
+    except Exception as e:
+        return None, jsonify({
+            'success': False,
+            'error': f'Invalid JSON: {str(e)}'
+        }), 400
+    
+    if required_fields:
+        missing_fields = [field for field in required_fields if not data.get(field)]
+        if missing_fields:
+            return None, jsonify({
+                'success': False,
+                'error': f'Missing required fields: {", ".join(missing_fields)}'
+            }), 400
+    
+    return data, None, None
