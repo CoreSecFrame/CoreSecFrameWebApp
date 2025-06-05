@@ -5,6 +5,7 @@ import subprocess
 import psutil
 import time
 import shutil
+import shlex
 from datetime import datetime
 from flask import current_app
 from app import db
@@ -293,7 +294,7 @@ class WSLgGUIManager:
     @staticmethod
     def _start_application(application, env):
         """Start WSLg application"""
-        cmd = application.command.split()
+        cmd = shlex.split(application.command)
         cwd = application.working_directory if application.working_directory else None
         
         current_app.logger.info(f"Starting WSLg application: {' '.join(cmd)}")
@@ -312,9 +313,16 @@ class WSLgGUIManager:
         """Get error message from failed process"""
         if process:
             try:
-                stdout, stderr = process.communicate(timeout=5)
+                stdout, stderr = process.communicate(timeout=1)
+                error_parts = []
                 if stderr:
-                    return f"Application failed to start. Error: {stderr.decode()}"
+                    error_parts.append(f"Error: {stderr.decode(errors='ignore')}")
+                if stdout: # Also capture stdout
+                    error_parts.append(f"Output: {stdout.decode(errors='ignore')}")
+                
+                if not error_parts:
+                    return "Application failed to start with no specific error output."
+                return "Application failed to start. " + " | ".join(error_parts)
             except subprocess.TimeoutExpired:
                 pass
         return "Application failed to start."
@@ -460,7 +468,7 @@ class VNCGUIManager:
             if display_num not in used_displays:
                 try:
                     result = subprocess.run(['xdpyinfo', '-display', f':{display_num}'], 
-                                          capture_output=True, timeout=2)
+                                          capture_output=True, timeout=1)
                     if result.returncode != 0:
                         return display_num
                 except:
@@ -497,7 +505,7 @@ class VNCGUIManager:
         try:
             process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             
-            max_wait_time = 5  # seconds
+            max_wait_time = 3  # seconds
             check_interval = 0.5  # seconds
             elapsed_time = 0
             
@@ -567,7 +575,7 @@ class VNCGUIManager:
             process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             
             # Esperar a que el puerto esté disponible
-            max_wait_time = 15  # Aumentar tiempo de espera
+            max_wait_time = 7
             check_interval = 0.5
             elapsed_time = 0
             
@@ -580,7 +588,7 @@ class VNCGUIManager:
                     try:
                         # Buscar procesos x11vnc que estén usando este display
                         ps_cmd = ['ps', 'aux']
-                        ps_process = subprocess.run(ps_cmd, capture_output=True, text=True, timeout=5)
+                        ps_process = subprocess.run(ps_cmd, capture_output=True, text=True, timeout=2)
                         
                         if ps_process.returncode == 0:
                             lines = ps_process.stdout.split('\n')
@@ -656,13 +664,13 @@ class VNCGUIManager:
         
         # Parse command properly
         cmd_string = application.command.strip()
+        cmd_parts = shlex.split(cmd_string)
         cwd = application.working_directory
         
         current_app.logger.info(f"Starting VNC application '{application.name}' with command: {cmd_string}")
         
         try:
             # First, let's validate the command
-            cmd_parts = cmd_string.split()
             if not cmd_parts:
                 raise ValueError("Empty command")
             
@@ -790,7 +798,7 @@ class VNCGUIManager:
             )
 
             # Wait for a short moment to let the process start or fail quickly
-            initial_wait = 2.0  # Increased wait time for complex applications
+            initial_wait = 0.2
             time.sleep(initial_wait)
 
             if process.poll() is None:
@@ -856,7 +864,7 @@ class VNCGUIManager:
         """Test if X11 display is working"""
         try:
             result = subprocess.run(['xdpyinfo', '-display', f':{display_number}'], 
-                                  capture_output=True, timeout=5)
+                                  capture_output=True, timeout=2)
             return result.returncode == 0
         except:
             return False
