@@ -185,7 +185,7 @@ def list_files(path=None):
         current_path = get_safe_path(req_path)
 
         if not os.path.exists(current_path):
-            return render_template('file_manager.html', 
+            return render_template('file_manager/file_manager.html', 
                                  error=f"Path does not exist: {current_path}", 
                                  current_path=req_path or '/', 
                                  items=[], 
@@ -194,7 +194,7 @@ def list_files(path=None):
                                  is_admin=is_admin_user())
 
         if not os.path.isdir(current_path):
-            return render_template('file_manager.html', 
+            return render_template('file_manager/file_manager.html', 
                                  error=f"Path is not a directory: {current_path}", 
                                  current_path=req_path or '/', 
                                  items=[], 
@@ -204,7 +204,7 @@ def list_files(path=None):
 
         # Check read permissions
         if not os.access(current_path, os.R_OK):
-            return render_template('file_manager.html', 
+            return render_template('file_manager/file_manager.html', 
                                  error="Permission denied: Cannot read directory", 
                                  current_path=current_path, 
                                  items=[], 
@@ -232,7 +232,7 @@ def list_files(path=None):
                 items.append(file_info)
                 
         except PermissionError:
-            return render_template('file_manager.html', 
+            return render_template('file_manager/file_manager.html', 
                                  error="Permission denied: Cannot access directory contents", 
                                  current_path=current_path, 
                                  items=[], 
@@ -261,7 +261,7 @@ def list_files(path=None):
             }
         )
 
-        return render_template('file_manager.html', 
+        return render_template('file_manager/file_manager.html', 
                              items=items, 
                              current_path=current_path, 
                              parent_dir=parent_dir,
@@ -272,7 +272,7 @@ def list_files(path=None):
     except PermissionError as e:
         current_app.logger.warning(f"Permission denied in file manager: {e}", 
                                    extra={'user_id': current_user.id})
-        return render_template('file_manager.html', 
+        return render_template('file_manager/file_manager.html', 
                              error=str(e), 
                              current_path='/', 
                              items=[], 
@@ -282,7 +282,7 @@ def list_files(path=None):
     except Exception as e:
         current_app.logger.error(f"Error in file manager: {e}", 
                                 extra={'user_id': current_user.id})
-        return render_template('file_manager.html', 
+        return render_template('file_manager/file_manager.html', 
                              error="An error occurred while accessing the file system.", 
                              current_path='/', 
                              items=[], 
