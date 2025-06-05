@@ -149,8 +149,8 @@ def create_app(config_class=Config):
             app.logger.warning(f"Could not register security handlers (blinker may be missing): {e}")
             # Continue without security event handlers if blinker is not available
         
-        # Log successful initialization
-        log_system_event('application_ready', 'CoreSecFrame application initialized successfully')
+        # Log successful initialization (This will be moved to run.py to ensure app context)
+        # log_system_event('application_ready', 'CoreSecFrame application initialized successfully')
         
         return app
         

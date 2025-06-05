@@ -4,6 +4,13 @@ from app import create_app, socketio
 
 app = create_app()
 
+if app:  # Ensure app object was created successfully
+    # Import log_system_event if it's not already imported at the top of run.py
+    # Assuming it might not be, let's add a local import for safety.
+    from app.core.logging import log_system_event
+    with app.app_context():
+        log_system_event('application_ready', 'CoreSecFrame application initialized successfully')
+
 def is_wsl_environment():
     """Detects if the app is running in a WSL environment"""
     try:
@@ -13,26 +20,8 @@ def is_wsl_environment():
     except Exception:
         return False
 
-def start_novnc_service():
-    """Starts the noVNC systemd service if it's not already running"""
-    try:
-        # Check if service is active
-        status = subprocess.run(
-            ["systemctl", "is-active", "--quiet", "novnc.service"]
-        )
-        if status.returncode != 0:
-            print("ℹ️  Starting noVNC service via systemd...")
-            subprocess.run(["sudo", "systemctl", "start", "novnc.service"])
-        else:
-            print("✅ noVNC service already running")
-    except Exception as e:
-        print(f"❌ Failed to check/start noVNC service: {e}")
-
 if __name__ == '__main__':
-    if not is_wsl_environment():
-        print("🖥️  Native Linux detected. Ensuring noVNC service is running...")
-        start_novnc_service()
-    else:
-        print("💡 WSL environment detected. Skipping noVNC systemd service startup.")
-
-    socketio.run(app, debug=False, host='0.0.0.0')
+    # The logic for starting noVNC service has been removed.
+    # is_wsl_environment() function remains if needed elsewhere,
+    # or can be removed if this was its only use.
+    socketio.run(app, debug=False, host='0.0.0.0', allow_unsafe_werkzeug=True)
