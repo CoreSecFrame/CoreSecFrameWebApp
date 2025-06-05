@@ -1,4 +1,4 @@
-<!-- app/templates/terminal/view.html - Fixed version -->
+<!-- app/templates/terminal/view.html - Fixed for Dynamic Themes -->
 {% extends "base.html" %}
 
 {% block css %}
@@ -201,7 +201,7 @@
 </div>
 
 {% if session.active %}
-<!-- Close Modal -->
+<!-- Close Modal - Fixed with theme support -->
 <div class="modal fade" id="closeModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -239,16 +239,10 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // Only initialize terminal if user has access
-    {% if current_user.id == session.user_id %}
-    
-    // Terminal configuration
-    const terminal = new Terminal({
-        cursorBlink: true,
-        fontFamily: 'Cascadia Code, Consolas, Monaco, "Courier New", monospace',
-        fontSize: 14,
-        lineHeight: 1.2,
-        theme: {
+    // Function to get terminal colors (always dark theme)
+    function getTerminalColors() {
+        // Always use dark terminal theme regardless of system theme
+        return {
             background: '#0c0c0c',
             foreground: '#cccccc',
             cursor: '#ffffff',
@@ -256,12 +250,12 @@ document.addEventListener('DOMContentLoaded', function () {
             selectionBackground: '#264f78',
             selectionForeground: '#ffffff',
             black: '#0c0c0c',
-            red: '#c50f1f',
-            green: '#13a10e',
-            yellow: '#c19c00',
-            blue: '#0078d4',
-            magenta: '#881798',
-            cyan: '#3a96dd',
+            red: '#e74856',
+            green: '#16c60c',
+            yellow: '#f9f1a5',
+            blue: '#3b78ff',
+            magenta: '#b4009e',
+            cyan: '#61d6d6',
             white: '#cccccc',
             brightBlack: '#767676',
             brightRed: '#e74856',
@@ -271,13 +265,28 @@ document.addEventListener('DOMContentLoaded', function () {
             brightMagenta: '#b4009e',
             brightCyan: '#61d6d6',
             brightWhite: '#f2f2f2'
-        },
+        };
+    }
+
+    // Only initialize terminal if user has access
+    {% if current_user.id == session.user_id %}
+    
+    // Terminal configuration with consistent dark theme
+    const terminal = new Terminal({
+        cursorBlink: true,
+        fontFamily: 'Cascadia Code, Consolas, Monaco, "Courier New", monospace',
+        fontSize: 14,
+        lineHeight: 1.2,
+        theme: getTerminalColors(), // Always dark theme
         allowTransparency: false,
         scrollback: 5000,
         convertEol: true,
         cols: 80,
         rows: 24
     });
+
+    // Remove theme change detection - terminal stays consistent
+    // No need for MutationObserver since terminal theme is fixed
 
     // Load addons
     const fitAddon = new FitAddon.FitAddon();
@@ -540,23 +549,21 @@ function showNotification(message, type = 'info') {
     };
     
     const notification = document.createElement('div');
-    notification.className = `alert alert-${alertClass} position-fixed top-0 start-50 translate-middle-x mt-3`;
-    notification.style.cssText = `
-        z-index: 9999;
-        min-width: 300px;
-        text-align: center;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        animation: slideInDown 0.3s ease-out;
-    `;
+    notification.className = `terminal-toast ${type}`;
     notification.innerHTML = `
         <i class="bi bi-${icons[type]} me-2"></i>${message}
     `;
     
     document.body.appendChild(notification);
 
+    // Show notification
     setTimeout(() => {
-        notification.style.animation = 'slideOutUp 0.3s ease-in';
+        notification.classList.add('show');
+    }, 100);
+
+    // Hide notification
+    setTimeout(() => {
+        notification.classList.remove('show');
         setTimeout(() => {
             if (notification.parentNode) {
                 notification.remove();

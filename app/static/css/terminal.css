@@ -1,4 +1,4 @@
-/* Terminal Styles - Fixed Version */
+/* Terminal Styles - Fixed for Theme Support */
 
 /* Page header styles */
 .terminal-page-header {
@@ -7,21 +7,25 @@
     align-items: center;
     margin-bottom: 1rem;
     padding: 1rem;
-    background: #f8f9fa;
+    background: var(--w11-bg-secondary);
     border-radius: 8px;
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--w11-surface-stroke);
+    transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .terminal-page-title {
     margin: 0;
     font-size: 1.5rem;
     font-weight: 600;
+    color: var(--w11-text-primary);
+    transition: color var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .terminal-page-subtitle {
     margin: 0.5rem 0 0 0;
-    color: #6c757d;
+    color: var(--w11-text-secondary);
     font-size: 0.9rem;
+    transition: color var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 /* CRITICAL: Main terminal container */
@@ -29,24 +33,26 @@
     display: flex;
     flex-direction: column;
     height: 600px;
-    background: #1e1e1e;
-    border: 1px solid #333;
+    background: var(--w11-bg-solid);
+    border: 1px solid var(--w11-surface-stroke);
     border-radius: 8px;
     overflow: hidden;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--w11-shadow-4);
+    transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 /* Terminal header */
 .terminal-header {
-    background: linear-gradient(135deg, #2d2d2d 0%, #1e1e1e 100%);
-    border-bottom: 1px solid #444;
+    background: var(--w11-bg-secondary);
+    border-bottom: 1px solid var(--w11-surface-stroke);
     padding: 12px 16px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    color: white;
+    color: var(--w11-text-primary);
     flex-shrink: 0;
     height: 50px;
+    transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .terminal-title {
@@ -56,6 +62,8 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    color: var(--w11-text-primary);
+    transition: color var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .terminal-controls {
@@ -74,50 +82,82 @@
 }
 
 .status-active {
-    background-color: #28a745;
-    box-shadow: 0 0 4px #28a745;
+    background-color: var(--w11-success);
+    box-shadow: 0 0 4px var(--w11-success);
 }
 
 .status-inactive {
-    background-color: #dc3545;
-    box-shadow: 0 0 4px #dc3545;
+    background-color: var(--w11-danger);
+    box-shadow: 0 0 4px var(--w11-danger);
 }
 
 /* Terminal buttons */
 .terminal-btn {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: white;
+    background: var(--w11-bg-tertiary);
+    border: 1px solid var(--w11-surface-stroke);
+    color: var(--w11-text-primary);
     padding: 6px 10px;
     border-radius: 4px;
     font-size: 12px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all var(--w11-duration-fast) var(--w11-ease-standard);
     display: inline-flex;
     align-items: center;
     gap: 4px;
 }
 
 .terminal-btn:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.3);
-    color: white;
+    background: var(--w11-bg-quarternary);
+    border-color: var(--w11-accent);
+    color: var(--w11-text-primary);
     text-decoration: none;
+    transform: translateY(-1px);
+    box-shadow: var(--w11-shadow-2);
 }
 
 .terminal-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    background: var(--w11-bg-tertiary);
+    color: var(--w11-text-disabled);
 }
 
-/* CRITICAL: Terminal display area */
+/* CRITICAL: Terminal display area - Always dark */
 .terminal-display {
     flex: 1;
-    background: #0c0c0c;
+    background: #0c0c0c; /* Always dark background for terminal */
     position: relative;
     height: calc(600px - 100px); /* Fixed height minus header and footer */
     min-height: 400px;
 }
+
+/* Ensure terminal area stays dark regardless of theme */
+.terminal-display,
+.terminal-display .xterm,
+.terminal-display .xterm-viewport,
+.terminal-display .xterm-screen {
+    background-color: #0c0c0c !important;
+}
+
+.terminal-display .xterm-viewport {
+    background-color: #0c0c0c !important;
+}
+
+.terminal-display .xterm-screen canvas {
+    background-color: #0c0c0c !important;
+}
+
+/* The following rules for cursor and selection should be removed or commented out
+.terminal-display .xterm-cursor-layer .xterm-cursor {
+    background-color: #ffffff !important; 
+    color: #0c0c0c !important; 
+}
+
+.terminal-display ::selection {
+    background-color: #ffffff !important; 
+    color: #0c0c0c !important; 
+}
+*/
 
 /* CRITICAL: XTerm.js container */
 #terminal {
@@ -136,28 +176,51 @@
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: #6c757d;
+    color: var(--w11-text-secondary);
     text-align: center;
+    background: var(--w11-bg-primary);
+    transition: all var(--w11-duration-normal) var(--w11-ease-standard);
+}
+
+.terminal-access-denied h3 {
+    color: var(--w11-text-primary);
+    transition: color var(--w11-duration-normal) var(--w11-ease-standard);
+}
+
+.terminal-access-denied p {
+    color: var(--w11-text-secondary);
+    transition: color var(--w11-duration-normal) var(--w11-ease-standard);
+}
+
+.terminal-access-denied i {
+    color: var(--w11-text-disabled);
+    transition: color var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 /* Terminal footer */
 .terminal-footer {
-    background: linear-gradient(135deg, #2d2d2d 0%, #1e1e1e 100%);
-    border-top: 1px solid #444;
+    background: var(--w11-bg-secondary);
+    border-top: 1px solid var(--w11-surface-stroke);
     padding: 8px 16px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--w11-text-secondary);
     font-size: 11px;
     flex-shrink: 0;
     height: 50px;
+    transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .terminal-info {
     display: flex;
     align-items: center;
     gap: 16px;
+}
+
+.terminal-info strong {
+    color: var(--w11-text-primary);
+    transition: color var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .terminal-actions {
@@ -170,13 +233,14 @@
     position: absolute;
     top: 60px;
     right: 20px;
-    background: white;
-    border: 1px solid #dee2e6;
+    background: var(--w11-card-bg);
+    border: 1px solid var(--w11-card-stroke);
     border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--w11-shadow-8);
     z-index: 1000;
     width: 600px;
     max-width: 90vw;
+    transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .shortcuts-card.hidden {
@@ -184,16 +248,22 @@
 }
 
 .shortcuts-header {
-    background: #f8f9fa;
+    background: var(--w11-bg-secondary);
     padding: 12px 16px;
-    border-bottom: 1px solid #dee2e6;
+    border-bottom: 1px solid var(--w11-surface-stroke);
     font-weight: 600;
     display: flex;
     align-items: center;
+    color: var(--w11-text-primary);
+    border-radius: 8px 8px 0 0;
+    transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .shortcuts-content {
     padding: 16px;
+    background: var(--w11-card-bg);
+    color: var(--w11-text-primary);
+    transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .shortcut-section {
@@ -203,7 +273,8 @@
 .shortcut-title {
     font-weight: 600;
     margin-bottom: 8px;
-    color: #495057;
+    color: var(--w11-text-primary);
+    transition: color var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .shortcut-table {
@@ -214,6 +285,8 @@
 .shortcut-table td {
     padding: 4px 8px;
     border: none;
+    color: var(--w11-text-primary);
+    transition: color var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .shortcut-table td:first-child {
@@ -222,14 +295,15 @@
 }
 
 .kbd {
-    background: #e9ecef;
-    border: 1px solid #ced4da;
+    background: var(--w11-bg-tertiary);
+    border: 1px solid var(--w11-surface-stroke);
     border-radius: 3px;
     padding: 2px 6px;
     font-family: monospace;
     font-size: 11px;
     font-weight: 600;
-    color: #495057;
+    color: var(--w11-text-primary);
+    transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 /* Fullscreen styles */
@@ -379,4 +453,420 @@
 .xterm .xterm-decoration-top {
     z-index: 2 !important;
     position: relative !important;
+}
+
+/* Toast notifications specific to terminal */
+.terminal-toast {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    background: var(--w11-card-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--w11-card-stroke);
+    border-radius: var(--w11-radius-medium);
+    padding: 12px 16px;
+    z-index: 1001;
+    color: var(--w11-text-primary);
+    box-shadow: var(--w11-shadow-8);
+    opacity: 0;
+    transform: translateX(100px);
+    transition: all var(--w11-duration-normal) var(--w11-ease-standard);
+}
+
+.terminal-toast.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.terminal-toast.success {
+    border-left: 4px solid var(--w11-success);
+}
+
+.terminal-toast.danger {
+    border-left: 4px solid var(--w11-danger);
+}
+
+.terminal-toast.warning {
+    border-left: 4px solid var(--w11-warning);
+}
+
+.terminal-toast.info {
+    border-left: 4px solid var(--w11-info);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .terminal-page-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    
+    .terminal-container {
+        height: 500px;
+    }
+    
+    .terminal-display {
+        height: calc(500px - 100px);
+    }
+    
+    .shortcuts-card {
+        width: 95vw;
+        right: 2.5vw;
+    }
+    
+    .terminal-footer {
+        font-size: 10px;
+    }
+    
+    .terminal-info {
+        flex-direction: column;
+        gap: 4px;
+        align-items: flex-start;
+    }
+}
+
+@media (max-width: 576px) {
+    .terminal-page-title {
+        font-size: 1.2rem;
+    }
+    
+    .terminal-container {
+        height: 400px;
+    }
+    
+    .terminal-display {
+        height: calc(400px - 80px);
+    }
+    
+    .terminal-header,
+    .terminal-footer {
+        padding: 8px 12px;
+        height: 40px;
+    }
+    
+    .terminal-controls {
+        gap: 6px;
+    }
+    
+    .terminal-btn {
+        padding: 4px 8px;
+        font-size: 11px;
+    }
+}
+
+/* Dark theme specific adjustments */
+[data-theme="dark"] {
+    /* Ensure proper contrast in dark mode */
+}
+
+[data-theme="dark"] .terminal-page-header {
+    background: var(--w11-bg-secondary);
+    border-color: var(--w11-surface-stroke);
+}
+
+[data-theme="dark"] .terminal-access-denied {
+    background: var(--w11-bg-primary);
+}
+
+/* Light theme specific adjustments */
+[data-theme="light"] {
+    /* Ensure proper contrast in light mode */
+}
+
+[data-theme="light"] .terminal-page-header {
+    background: var(--w11-bg-secondary);
+    border-color: var(--w11-surface-stroke);
+}
+
+[data-theme="light"] .terminal-access-denied {
+    background: var(--w11-bg-primary);
+}
+
+/* High contrast mode adjustments */
+@media (prefers-contrast: high) {
+    .terminal-btn {
+        border-width: 2px;
+    }
+    
+    .status-indicator {
+        border: 2px solid var(--w11-text-primary);
+    }
+    
+    .terminal-container {
+        border-width: 2px;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .terminal-btn:hover,
+    .shortcuts-card,
+    .terminal-toast {
+        transition: none !important;
+        transform: none !important;
+    }
+    
+    .status-active,
+    .status-inactive {
+        box-shadow: none;
+    }
+}
+
+/* Custom Modal Styles with Theme Support */
+.custom-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1050;
+    display: none;
+}
+
+.custom-modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.custom-modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--w11-card-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--w11-card-stroke);
+    border-radius: var(--w11-radius-large);
+    box-shadow: var(--w11-shadow-16);
+    min-width: 400px;
+    max-width: 600px;
+    color: var(--w11-text-primary);
+    transition: all var(--w11-duration-normal) var(--w11-ease-standard);
+}
+
+.custom-modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--w11-surface-stroke);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--w11-bg-secondary);
+    border-radius: var(--w11-radius-large) var(--w11-radius-large) 0 0;
+    transition: all var(--w11-duration-normal) var(--w11-ease-standard);
+}
+
+.custom-modal-header h5 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--w11-text-primary);
+    transition: color var(--w11-duration-normal) var(--w11-ease-standard);
+}
+
+.custom-modal-body {
+    padding: 24px;
+    color: var(--w11-text-primary);
+    transition: color var(--w11-duration-normal) var(--w11-ease-standard);
+}
+
+.custom-modal-body p {
+    margin-bottom: 16px;
+    color: var(--w11-text-primary);
+    transition: color var(--w11-duration-normal) var(--w11-ease-standard);
+}
+
+.custom-modal-body .text-danger {
+    color: var(--w11-danger) !important;
+    background: var(--w11-danger-bg);
+    border: 1px solid var(--w11-danger);
+    border-radius: var(--w11-radius-medium);
+    padding: 12px 16px;
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    transition: all var(--w11-duration-normal) var(--w11-ease-standard);
+}
+
+.custom-modal-footer {
+    padding: 20px 24px;
+    border-top: 1px solid var(--w11-surface-stroke);
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    background: var(--w11-bg-secondary);
+    border-radius: 0 0 var(--w11-radius-large) var(--w11-radius-large);
+    transition: all var(--w11-duration-normal) var(--w11-ease-standard);
+}
+
+.custom-modal .btn-close {
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    color: var(--w11-text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: var(--w11-radius-small);
+    transition: all var(--w11-duration-fast) var(--w11-ease-standard);
+}
+
+.custom-modal .btn-close:hover {
+    background: var(--w11-bg-tertiary);
+    color: var(--w11-text-primary);
+}
+
+.custom-modal .btn-close::before {
+    content: '✕';
+    font-weight: bold;
+}
+
+/* Animation for custom modals */
+.custom-modal.show .custom-modal-content {
+    animation: modalFadeIn 0.3s ease-out;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -60%);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
+}
+
+/* Enhanced table styling for terminal sessions */
+.table thead th {
+    background: var(--w11-bg-secondary) !important;
+    color: var(--w11-text-secondary) !important;
+    border-bottom: 2px solid var(--w11-surface-stroke) !important;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 16px 20px;
+}
+
+.table tbody tr {
+    transition: background var(--w11-duration-fast) var(--w11-ease-standard);
+    border-bottom: 1px solid var(--w11-surface-stroke);
+}
+
+.table tbody tr:hover {
+    background: var(--w11-bg-secondary) !important;
+}
+
+.table td {
+    padding: 16px 20px;
+    vertical-align: middle;
+    border-top: none;
+    border-bottom: 1px solid var(--w11-surface-stroke);
+    color: var(--w11-text-primary) !important;
+    background: transparent !important;
+}
+
+/* Badge improvements */
+.badge {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 8px;
+    border-radius: var(--w11-radius-large);
+}
+
+.badge.bg-secondary {
+    background: var(--w11-bg-tertiary) !important;
+    color: var(--w11-text-primary) !important;
+}
+
+.badge.bg-info {
+    background: var(--w11-info) !important;
+    color: white !important;
+}
+
+.badge.bg-warning {
+    background: var(--w11-warning) !important;
+    color: #000 !important;
+}
+
+.badge.bg-success {
+    background: var(--w11-success) !important;
+    color: white !important;
+}
+
+.badge.bg-danger {
+    background: var(--w11-danger) !important;
+    color: white !important;
+}
+
+/* Card header improvements */
+.card-header.bg-dark {
+    background: var(--w11-bg-secondary) !important;
+    color: var(--w11-text-primary) !important;
+    border-bottom: 1px solid var(--w11-surface-stroke);
+}
+
+.card-header.bg-secondary {
+    background: var(--w11-bg-tertiary) !important;
+    color: var(--w11-text-primary) !important;
+    border-bottom: 1px solid var(--w11-surface-stroke);
+}
+
+/* Button group improvements */
+.btn-group .btn {
+    border-color: var(--w11-surface-stroke);
+}
+
+.btn-group .btn:hover {
+    z-index: 2;
+}
+
+/* Responsive modal improvements */
+@media (max-width: 768px) {
+    .custom-modal-content {
+        min-width: 300px;
+        max-width: 90vw;
+        margin: 20px;
+    }
+    
+    .custom-modal-header,
+    .custom-modal-body,
+    .custom-modal-footer {
+        padding: 16px 20px;
+    }
+    
+    .table-responsive {
+        font-size: 14px;
+    }
+    
+    .btn-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .btn-group .btn {
+        border-radius: var(--w11-radius-medium) !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .custom-modal-content {
+        min-width: 280px;
+        max-width: 95vw;
+    }
+    
+    .table th:nth-child(3),
+    .table td:nth-child(3),
+    .table th:nth-child(4),
+    .table td:nth-child(4),
+    .table th:nth-child(5),
+    .table td:nth-child(5) {
+        display: none;
+    }
 }
