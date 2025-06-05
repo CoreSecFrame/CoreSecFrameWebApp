@@ -1,4 +1,4 @@
-<!-- app/templates/terminal/view.html - Fixed version -->
+<!-- app/templates/terminal/view.html - Fixed for Dynamic Themes -->
 {% extends "base.html" %}
 
 {% block css %}
@@ -57,7 +57,8 @@
                 <button id="btn-copy" class="terminal-btn" title="Copy">
                     <i class="bi bi-clipboard"></i>
                 </button>
-                <button id="btn-paste" class="terminal-btn" title="Paste" {% if not session.active %}disabled{% endif %}>
+                <button id="btn-paste" class="terminal-btn" title="Paste" {% if not session.active %}disabled{% endif
+                    %}>
                     <i class="bi bi-clipboard-plus"></i>
                 </button>
             </div>
@@ -66,15 +67,15 @@
 
     <div class="terminal-display">
         {% if current_user.id == session.user_id %}
-            <div id="terminal"></div>
+        <div id="terminal"></div>
         {% else %}
-            <div class="terminal-access-denied">
-                <div>
-                    <i class="bi bi-lock-fill display-1 text-muted"></i>
-                    <h3 class="mt-3">Access Denied</h3>
-                    <p>You don't have permission to access this terminal session.</p>
-                </div>
+        <div class="terminal-access-denied">
+            <div>
+                <i class="bi bi-lock-fill display-1 text-muted"></i>
+                <h3 class="mt-3">Access Denied</h3>
+                <p>You don't have permission to access this terminal session.</p>
             </div>
+        </div>
         {% endif %}
     </div>
 
@@ -164,11 +165,13 @@
                                 <td>Toggle fullscreen</td>
                             </tr>
                             <tr>
-                                <td><span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">C</span></td>
+                                <td><span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span
+                                        class="kbd">C</span></td>
                                 <td>Copy selection</td>
                             </tr>
                             <tr>
-                                <td><span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">V</span></td>
+                                <td><span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span
+                                        class="kbd">V</span></td>
                                 <td>Paste</td>
                             </tr>
                         </tbody>
@@ -201,7 +204,7 @@
 </div>
 
 {% if session.active %}
-<!-- Close Modal -->
+<!-- Close Modal - Fixed with theme support -->
 <div class="modal fade" id="closeModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -218,7 +221,8 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form action="{{ url_for('terminal.close', session_id=session.session_id) }}" method="post" style="display: inline;">
+                <form action="{{ url_for('terminal.close', session_id=session.session_id) }}" method="post"
+                    style="display: inline;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-danger">
                         <i class="bi bi-x-circle me-1"></i>Close Session
@@ -238,209 +242,219 @@
 <script src="https://cdn.jsdelivr.net/npm/xterm-addon-search@0.11.0/lib/xterm-addon-search.min.js"></script>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    // Only initialize terminal if user has access
-    {% if current_user.id == session.user_id %}
-    
-    // Terminal configuration
-    const terminal = new Terminal({
-        cursorBlink: true,
-        fontFamily: 'Cascadia Code, Consolas, Monaco, "Courier New", monospace',
-        fontSize: 14,
-        lineHeight: 1.2,
-        theme: {
-            background: '#0c0c0c',
-            foreground: '#cccccc',
-            cursor: '#ffffff',
-            cursorAccent: '#0c0c0c',
-            selectionBackground: '#264f78',
-            selectionForeground: '#ffffff',
-            black: '#0c0c0c',
-            red: '#c50f1f',
-            green: '#13a10e',
-            yellow: '#c19c00',
-            blue: '#0078d4',
-            magenta: '#881798',
-            cyan: '#3a96dd',
-            white: '#cccccc',
-            brightBlack: '#767676',
-            brightRed: '#e74856',
-            brightGreen: '#16c60c',
-            brightYellow: '#f9f1a5',
-            brightBlue: '#3b78ff',
-            brightMagenta: '#b4009e',
-            brightCyan: '#61d6d6',
-            brightWhite: '#f2f2f2'
-        },
-        allowTransparency: false,
-        scrollback: 5000,
-        convertEol: true,
-        cols: 80,
-        rows: 24
-    });
+    document.addEventListener('DOMContentLoaded', function () {
+        // Function to get terminal colors (always dark theme)
+        function getTerminalColors() {
+            // Always use dark terminal theme regardless of system theme
+            return {
+                background: '#0c0c0c',
+                foreground: '#cccccc',
+                cursor: '#ffffff',
+                cursorAccent: '#0c0c0c',
+                selectionBackground: '#264f78',
+                selectionForeground: '#ffffff',
+                black: '#0c0c0c',
+                red: '#e74856',
+                green: '#16c60c',
+                yellow: '#f9f1a5',
+                blue: '#3b78ff',
+                magenta: '#b4009e',
+                cyan: '#61d6d6',
+                white: '#cccccc',
+                brightBlack: '#767676',
+                brightRed: '#e74856',
+                brightGreen: '#16c60c',
+                brightYellow: '#f9f1a5',
+                brightBlue: '#3b78ff',
+                brightMagenta: '#b4009e',
+                brightCyan: '#61d6d6',
+                brightWhite: '#f2f2f2'
+            };
+        }
 
-    // Load addons
-    const fitAddon = new FitAddon.FitAddon();
-    const webLinksAddon = new WebLinksAddon.WebLinksAddon();
-    const searchAddon = new SearchAddon.SearchAddon();
+        // Only initialize terminal if user has access
+        {% if current_user.id == session.user_id %}
 
-    terminal.loadAddon(fitAddon);
-    terminal.loadAddon(webLinksAddon);
-    terminal.loadAddon(searchAddon);
+        // Terminal configuration with consistent dark theme
+        const terminal = new Terminal({
+            cursorBlink: true,
+            fontFamily: 'Cascadia Code, Consolas, Monaco, "Courier New", monospace',
+            fontSize: 14,
+            lineHeight: 1.2,
+            theme: getTerminalColors(), // Always dark theme
+            allowTransparency: false,
+            scrollback: 5000,
+            convertEol: true,
+            cols: 80,
+            rows: 24
+        });
 
-    // Open terminal in the container
-    const terminalElement = document.getElementById('terminal');
-    if (terminalElement) {
-        terminal.open(terminalElement);
-        
-        // Fit terminal to container
-        setTimeout(() => {
-            fitAddon.fit();
-        }, 100);
-    }
+        // Remove theme change detection - terminal stays consistent
+        // No need for MutationObserver since terminal theme is fixed
 
-    // Handle window resize
-    let resizeTimeout;
-    window.addEventListener('resize', () => {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(() => {
-            fitAddon.fit();
-            
+        // Load addons
+        const fitAddon = new FitAddon.FitAddon();
+        const webLinksAddon = new WebLinksAddon.WebLinksAddon();
+        const searchAddon = new SearchAddon.SearchAddon();
+
+        terminal.loadAddon(fitAddon);
+        terminal.loadAddon(webLinksAddon);
+        terminal.loadAddon(searchAddon);
+
+        // Open terminal in the container
+        const terminalElement = document.getElementById('terminal');
+        if (terminalElement) {
+            terminal.open(terminalElement);
+
+            // Fit terminal to container
+            setTimeout(() => {
+                fitAddon.fit();
+            }, 100);
+        }
+
+        // Handle window resize
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                fitAddon.fit();
+
+                const dimensions = fitAddon.proposeDimensions();
+                if (dimensions && socket && socket.connected) {
+                    socket.emit('terminal_resize', {
+                        session_id: '{{ session.session_id }}',
+                        rows: dimensions.rows,
+                        cols: dimensions.cols
+                    });
+                }
+            }, 250);
+        });
+
+        // Socket connection
+        const socket = io();
+        let isConnected = false;
+
+        socket.on('connect', () => {
+            console.log('Socket connected');
+            isConnected = true;
+
+            // Join terminal session
+            socket.emit('terminal_connect', {
+                session_id: '{{ session.session_id }}'
+            });
+
+            // Request terminal buffer
+            socket.emit('terminal_get_buffer', {
+                session_id: '{{ session.session_id }}'
+            });
+
+            // Send terminal dimensions
             const dimensions = fitAddon.proposeDimensions();
-            if (dimensions && socket && socket.connected) {
+            if (dimensions) {
                 socket.emit('terminal_resize', {
                     session_id: '{{ session.session_id }}',
                     rows: dimensions.rows,
                     cols: dimensions.cols
                 });
             }
-        }, 250);
-    });
-
-    // Socket connection
-    const socket = io();
-    let isConnected = false;
-
-    socket.on('connect', () => {
-        console.log('Socket connected');
-        isConnected = true;
-        
-        // Join terminal session
-        socket.emit('terminal_connect', {
-            session_id: '{{ session.session_id }}'
         });
 
-        // Request terminal buffer
-        socket.emit('terminal_get_buffer', {
-            session_id: '{{ session.session_id }}'
+        socket.on('disconnect', () => {
+            console.log('Socket disconnected');
+            isConnected = false;
+            terminal.write('\r\n\x1b[31m[Disconnected from server. Attempting to reconnect...]\x1b[0m\r\n');
         });
 
-        // Send terminal dimensions
-        const dimensions = fitAddon.proposeDimensions();
-        if (dimensions) {
-            socket.emit('terminal_resize', {
-                session_id: '{{ session.session_id }}',
-                rows: dimensions.rows,
-                cols: dimensions.cols
-            });
-        }
-    });
-
-    socket.on('disconnect', () => {
-        console.log('Socket disconnected');
-        isConnected = false;
-        terminal.write('\r\n\x1b[31m[Disconnected from server. Attempting to reconnect...]\x1b[0m\r\n');
-    });
-
-    socket.on('terminal_buffer', (data) => {
-        terminal.clear();
-        if (data.buffer) {
-            terminal.write(data.buffer);
-        }
-        
-        if (data.read_only) {
-            terminal.options.disableStdin = true;
-            const pasteBtn = document.getElementById('btn-paste');
-            if (pasteBtn) pasteBtn.disabled = true;
-        } else {
-            terminal.focus();
-        }
-    });
-
-    socket.on('terminal_output', (data) => {
-        if (data && typeof data === 'string') {
-            terminal.write(data);
-        }
-    });
-
-    socket.on('terminal_error', (data) => {
-        console.error('Terminal error:', data.error);
-        terminal.write('\r\n\x1b[31m[Error: ' + data.error + ']\x1b[0m\r\n');
-    });
-
-    // Handle terminal input (only if session is active)
-    {% if session.active %}
-    terminal.onData((data) => {
-        if (socket && socket.connected) {
-            socket.emit('terminal_input', {
-                session_id: '{{ session.session_id }}',
-                data: data
-            });
-        }
-    });
-    {% else %}
-    // Disable input for inactive sessions
-    terminal.options.disableStdin = true;
-    {% endif %}
-
-    // Button event handlers
-    const clearBtn = document.getElementById('btn-clear');
-    if (clearBtn) {
-        clearBtn.addEventListener('click', () => {
+        socket.on('terminal_buffer', (data) => {
             terminal.clear();
-        });
-    }
+            if (data.buffer) {
+                terminal.write(data.buffer);
+            }
 
-    const fullscreenBtn = document.getElementById('btn-fullscreen');
-    if (fullscreenBtn) {
-        fullscreenBtn.addEventListener('click', () => {
-            const container = document.getElementById('terminalContainer');
-            
-            if (!document.fullscreenElement) {
-                container.requestFullscreen().then(() => {
-                    container.classList.add('fullscreen-active');
-                    setTimeout(() => fitAddon.fit(), 100);
-                }).catch(err => {
-                    console.error('Error entering fullscreen:', err);
-                });
+            if (data.read_only) {
+                terminal.options.disableStdin = true;
+                const pasteBtn = document.getElementById('btn-paste');
+                if (pasteBtn) pasteBtn.disabled = true;
             } else {
-                document.exitFullscreen().then(() => {
-                    container.classList.remove('fullscreen-active');
-                    setTimeout(() => fitAddon.fit(), 100);
+                terminal.focus();
+            }
+        });
+
+        socket.on('terminal_output', (data) => {
+            if (data && typeof data === 'string') {
+                terminal.write(data);
+            }
+        });
+
+        socket.on('terminal_error', (data) => {
+            console.error('Terminal error:', data.error);
+            terminal.write('\r\n\x1b[31m[Error: ' + data.error + ']\x1b[0m\r\n');
+        });
+
+        // Handle terminal input (only if session is active)
+        {% if session.active %}
+        terminal.onData((data) => {
+            if (socket && socket.connected) {
+                socket.emit('terminal_input', {
+                    session_id: '{{ session.session_id }}',
+                    data: data
                 });
             }
         });
-    }
+        {% else %}
+        // Disable input for inactive sessions
+        terminal.options.disableStdin = true;
+        {% endif %}
 
-    const copyBtn = document.getElementById('btn-copy');
-    if (copyBtn) {
-        copyBtn.addEventListener('click', () => {
-            const selection = terminal.getSelection();
-            if (selection) {
-                navigator.clipboard.writeText(selection).then(() => {
-                    showNotification('Copied to clipboard', 'success');
-                }).catch(err => {
-                    console.error('Failed to copy:', err);
-                    showNotification('Failed to copy text', 'danger');
-                });
-            } else {
-                showNotification('No text selected', 'warning');
-            }
-        });
-    }
+        // Button event handlers
+        const clearBtn = document.getElementById('btn-clear');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                terminal.clear();
+            });
+        }
 
-    const pasteBtn = document.getElementById('btn-paste');
-    if (pasteBtn && {{ 'true' if session.active else 'false' }}) {
+        const fullscreenBtn = document.getElementById('btn-fullscreen');
+        if (fullscreenBtn) {
+            fullscreenBtn.addEventListener('click', () => {
+                const container = document.getElementById('terminalContainer');
+
+                if (!document.fullscreenElement) {
+                    container.requestFullscreen().then(() => {
+                        container.classList.add('fullscreen-active');
+                        setTimeout(() => fitAddon.fit(), 100);
+                    }).catch(err => {
+                        console.error('Error entering fullscreen:', err);
+                    });
+                } else {
+                    document.exitFullscreen().then(() => {
+                        container.classList.remove('fullscreen-active');
+                        setTimeout(() => fitAddon.fit(), 100);
+                    });
+                }
+            });
+        }
+
+        const copyBtn = document.getElementById('btn-copy');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', () => {
+                const selection = terminal.getSelection();
+                if (selection) {
+                    navigator.clipboard.writeText(selection).then(() => {
+                        showNotification('Copied to clipboard', 'success');
+                    }).catch(err => {
+                        console.error('Failed to copy:', err);
+                        showNotification('Failed to copy text', 'danger');
+                    });
+                } else {
+                    showNotification('No text selected', 'warning');
+                }
+            });
+        }
+
+        const pasteBtn = document.getElementById('btn-paste');
+        if (pasteBtn && {{ 'true' if session.active else 'false' }
+    }) {
         pasteBtn.addEventListener('click', () => {
             navigator.clipboard.readText().then(text => {
                 if (socket && socket.connected) {
@@ -463,24 +477,25 @@ document.addEventListener('DOMContentLoaded', function () {
             e.preventDefault();
             fullscreenBtn.click();
         }
-        
+
         // Ctrl+Shift+C for copy
         if (e.ctrlKey && e.shiftKey && e.key === 'C') {
             e.preventDefault();
             copyBtn.click();
         }
-        
+
         // Ctrl+Shift+V for paste
-        if (e.ctrlKey && e.shiftKey && e.key === 'V' && {{ 'true' if session.active else 'false' }}) {
-            e.preventDefault();
-            pasteBtn.click();
-        }
-        
-        // Ctrl+L for clear (when terminal is focused)
-        if (e.ctrlKey && e.key === 'l' && document.activeElement === terminalElement) {
-            e.preventDefault();
-            clearBtn.click();
-        }
+        if (e.ctrlKey && e.shiftKey && e.key === 'V' && {{ 'true' if session.active else 'false' }
+    }) {
+        e.preventDefault();
+        pasteBtn.click();
+    }
+
+    // Ctrl+L for clear (when terminal is focused)
+    if (e.ctrlKey && e.key === 'l' && document.activeElement === terminalElement) {
+        e.preventDefault();
+        clearBtn.click();
+    }
     });
 
     // Exit fullscreen on escape
@@ -507,7 +522,7 @@ document.addEventListener('DOMContentLoaded', function () {
     {% endif %}
 
     {% endif %} // End of user access check
-    
+
     // Shortcuts panel toggle (available for all users)
     const shortcutsBtn = document.getElementById('btn-shortcuts');
     if (shortcutsBtn) {
@@ -515,86 +530,84 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 
-// Helper functions
-function toggleShortcuts() {
-    const panel = document.getElementById('shortcuts-panel');
-    if (panel) {
-        panel.classList.toggle('hidden');
+    // Helper functions
+    function toggleShortcuts() {
+        const panel = document.getElementById('shortcuts-panel');
+        if (panel) {
+            panel.classList.toggle('hidden');
+        }
     }
-}
 
-function showNotification(message, type = 'info') {
-    const alertTypes = {
-        'success': 'success',
-        'danger': 'danger', 
-        'warning': 'warning',
-        'info': 'info'
-    };
-    
-    const alertClass = alertTypes[type] || 'info';
-    const icons = {
-        'success': 'check-circle',
-        'danger': 'exclamation-circle',
-        'warning': 'exclamation-triangle',
-        'info': 'info-circle'
-    };
-    
-    const notification = document.createElement('div');
-    notification.className = `alert alert-${alertClass} position-fixed top-0 start-50 translate-middle-x mt-3`;
-    notification.style.cssText = `
-        z-index: 9999;
-        min-width: 300px;
-        text-align: center;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        animation: slideInDown 0.3s ease-out;
-    `;
-    notification.innerHTML = `
+    function showNotification(message, type = 'info') {
+        const alertTypes = {
+            'success': 'success',
+            'danger': 'danger',
+            'warning': 'warning',
+            'info': 'info'
+        };
+
+        const alertClass = alertTypes[type] || 'info';
+        const icons = {
+            'success': 'check-circle',
+            'danger': 'exclamation-circle',
+            'warning': 'exclamation-triangle',
+            'info': 'info-circle'
+        };
+
+        const notification = document.createElement('div');
+        notification.className = `terminal-toast ${type}`;
+        notification.innerHTML = `
         <i class="bi bi-${icons[type]} me-2"></i>${message}
     `;
-    
-    document.body.appendChild(notification);
 
-    setTimeout(() => {
-        notification.style.animation = 'slideOutUp 0.3s ease-in';
+        document.body.appendChild(notification);
+
+        // Show notification
         setTimeout(() => {
-            if (notification.parentNode) {
-                notification.remove();
-            }
-        }, 300);
-    }, 3000);
-}
+            notification.classList.add('show');
+        }, 100);
 
-// Module execution script (if needed)
-{% if module_to_execute %}
-document.addEventListener('DOMContentLoaded', function () {
-    setTimeout(function () {
-        console.log('Executing module: {{ module_to_execute.name }} in {{ module_to_execute.mode }} mode');
+        // Hide notification
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 300);
+        }, 3000);
+    }
 
-        fetch('{{ url_for("terminal.execute_module", session_id=session.session_id) }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token() }}'
-            },
-            body: JSON.stringify({
-                module_name: '{{ module_to_execute.name }}',
-                mode: '{{ module_to_execute.mode }}'
+    // Module execution script (if needed)
+    {% if module_to_execute %}
+    document.addEventListener('DOMContentLoaded', function () {
+        setTimeout(function () {
+            console.log('Executing module: {{ module_to_execute.name }} in {{ module_to_execute.mode }} mode');
+
+            fetch('{{ url_for("terminal.execute_module", session_id=session.session_id) }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    module_name: '{{ module_to_execute.name }}',
+                    mode: '{{ module_to_execute.mode }}'
+                })
             })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (!data.success) {
-                console.error('Error executing module:', data.message);
-                showNotification('Error executing module: ' + data.message, 'danger');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showNotification('Error: ' + error, 'danger');
-        });
-    }, 1500);
-});
-{% endif %}
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        console.error('Error executing module:', data.message);
+                        showNotification('Error executing module: ' + data.message, 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Error: ' + error, 'danger');
+                });
+        }, 1500);
+    });
+    {% endif %}
 </script>
 {% endblock %}

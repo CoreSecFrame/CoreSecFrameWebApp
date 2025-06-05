@@ -1,8 +1,153 @@
-<!-- app/templates/terminal/index.html -->
+<!-- app/templates/terminal/index.html - Fixed Custom Modals -->
 {% extends "base.html" %}
 {% block css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/terminal.css') }}">
+<style>
+/* Custom Modal Styles with Theme Support */
+.custom-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1050;
+    display: none;
+}
+
+.custom-modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.custom-modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--w11-card-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--w11-card-stroke);
+    border-radius: var(--w11-radius-large);
+    box-shadow: var(--w11-shadow-16);
+    min-width: 400px;
+    max-width: 600px;
+    color: var(--w11-text-primary);
+    transition: all var(--w11-duration-normal) var(--w11-ease-standard);
+}
+
+.custom-modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--w11-surface-stroke);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--w11-bg-secondary);
+    border-radius: var(--w11-radius-large) var(--w11-radius-large) 0 0;
+    transition: all var(--w11-duration-normal) var(--w11-ease-standard);
+}
+
+.custom-modal-header h5 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--w11-text-primary);
+    transition: color var(--w11-duration-normal) var(--w11-ease-standard);
+}
+
+.custom-modal-body {
+    padding: 24px;
+    color: var(--w11-text-primary);
+    transition: color var(--w11-duration-normal) var(--w11-ease-standard);
+}
+
+.custom-modal-body p {
+    margin-bottom: 16px;
+    color: var(--w11-text-primary);
+    transition: color var(--w11-duration-normal) var(--w11-ease-standard);
+}
+
+.custom-modal-body .text-danger {
+    color: var(--w11-danger) !important;
+    background: var(--w11-danger-bg);
+    border: 1px solid var(--w11-danger);
+    border-radius: var(--w11-radius-medium);
+    padding: 12px 16px;
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    transition: all var(--w11-duration-normal) var(--w11-ease-standard);
+}
+
+.custom-modal-footer {
+    padding: 20px 24px;
+    border-top: 1px solid var(--w11-surface-stroke);
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    background: var(--w11-bg-secondary);
+    border-radius: 0 0 var(--w11-radius-large) var(--w11-radius-large);
+    transition: all var(--w11-duration-normal) var(--w11-ease-standard);
+}
+
+.btn-close {
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    color: var(--w11-text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: var(--w11-radius-small);
+    transition: all var(--w11-duration-fast) var(--w11-ease-standard);
+}
+
+.btn-close:hover {
+    background: var(--w11-bg-tertiary);
+    color: var(--w11-text-primary);
+}
+
+.btn-close::before {
+    content: '✕';
+    font-weight: bold;
+}
+
+/* Animation for custom modals */
+.custom-modal.show .custom-modal-content {
+    animation: modalFadeIn 0.3s ease-out;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -60%);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
+}
+
+/* Responsive modal */
+@media (max-width: 768px) {
+    .custom-modal-content {
+        min-width: 300px;
+        max-width: 90vw;
+        margin: 20px;
+    }
+    
+    .custom-modal-header,
+    .custom-modal-body,
+    .custom-modal-footer {
+        padding: 16px 20px;
+    }
+}
+</style>
 {% endblock %}
+
 {% block content %}
 <div class="row mb-3">
     <div class="col-md-12 d-flex justify-content-between align-items-center">
@@ -72,9 +217,8 @@
                                     </div>
 
                                     <!-- Close Modal -->
-                                    <div id="customCloseModal{{ session.id }}" class="custom-modal"
-                                        style="display: none;">
-                                        <div class="custom-modal-backdrop"></div>
+                                    <div id="customCloseModal{{ session.id }}" class="custom-modal">
+                                        <div class="custom-modal-backdrop" onclick="closeCustomModal('customCloseModal{{ session.id }}')"></div>
                                         <div class="custom-modal-content">
                                             <div class="custom-modal-header">
                                                 <h5>Close Terminal Session</h5>
@@ -82,12 +226,11 @@
                                                     onclick="closeCustomModal('customCloseModal{{ session.id }}')"></button>
                                             </div>
                                             <div class="custom-modal-body">
-                                                <p>Are you sure you want to close the terminal session "{{ session.name
-                                                    }}"?</p>
-                                                <p class="text-danger">
-                                                    <i class="bi bi-exclamation-triangle me-1"></i>
+                                                <p>Are you sure you want to close the terminal session "<strong>{{ session.name }}</strong>"?</p>
+                                                <div class="text-danger">
+                                                    <i class="bi bi-exclamation-triangle me-2"></i>
                                                     This will terminate all processes running in this session.
-                                                </p>
+                                                </div>
                                             </div>
                                             <div class="custom-modal-footer">
                                                 <button type="button" class="btn btn-secondary"
@@ -103,8 +246,6 @@
                                             </div>
                                         </div>
                                     </div>
-
-
                                 </td>
                             </tr>
                             {% else %}
@@ -170,9 +311,10 @@
                                             <i class="bi bi-trash"></i> Delete
                                         </button>
                                     </div>
+                                    
                                     <!-- Delete Modal -->
-                                    <div id="customModal{{ session.id }}" class="custom-modal" style="display: none;">
-                                        <div class="custom-modal-backdrop"></div>
+                                    <div id="customModal{{ session.id }}" class="custom-modal">
+                                        <div class="custom-modal-backdrop" onclick="closeCustomModal('customModal{{ session.id }}')"></div>
                                         <div class="custom-modal-content">
                                             <div class="custom-modal-header">
                                                 <h5>Delete Terminal Session</h5>
@@ -180,10 +322,11 @@
                                                     onclick="closeCustomModal('customModal{{ session.id }}')"></button>
                                             </div>
                                             <div class="custom-modal-body">
-                                                <p>Are you sure you want to delete the terminal session "{{ session.name
-                                                    }}"?</p>
-                                                <p class="text-danger">This will permanently delete all logs and history
-                                                    for this session.</p>
+                                                <p>Are you sure you want to delete the terminal session "<strong>{{ session.name }}</strong>"?</p>
+                                                <div class="text-danger">
+                                                    <i class="bi bi-exclamation-triangle me-2"></i>
+                                                    This will permanently delete all logs and history for this session.
+                                                </div>
                                             </div>
                                             <div class="custom-modal-footer">
                                                 <button type="button" class="btn btn-secondary"
@@ -192,7 +335,9 @@
                                                     action="{{ url_for('terminal.delete', session_id=session.session_id) }}"
                                                     method="post" style="display: inline;">
                                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                    <button type="submit" class="btn btn-danger">Delete Session</button>
+                                                    <button type="submit" class="btn btn-danger">
+                                                        <i class="bi bi-trash me-1"></i>Delete Session
+                                                    </button>
                                                 </form>
                                             </div>
                                         </div>
@@ -212,6 +357,7 @@
     </div>
 </div>
 {% endblock %}
+
 {% block scripts %}
 {{ super() }}
 <script>
@@ -219,15 +365,25 @@
         const modal = document.getElementById(modalId);
         if (modal) {
             modal.style.display = 'block';
+            modal.classList.add('show');
             document.body.style.overflow = 'hidden';
+            
+            // Focus trap for accessibility
+            const focusableElements = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            if (focusableElements.length > 0) {
+                focusableElements[0].focus();
+            }
         }
     }
 
     function closeCustomModal(modalId) {
         const modal = document.getElementById(modalId);
         if (modal) {
-            modal.style.display = 'none';
-            document.body.style.overflow = '';
+            modal.classList.remove('show');
+            setTimeout(() => {
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+            }, 300);
         }
     }
 
@@ -236,9 +392,28 @@
         if (e.target.classList.contains('custom-modal-backdrop')) {
             const modal = e.target.closest('.custom-modal');
             if (modal) {
-                modal.style.display = 'none';
-                document.body.style.overflow = '';
+                closeCustomModal(modal.id);
             }
+        }
+    });
+
+    // Close modal with Escape key
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            const visibleModals = document.querySelectorAll('.custom-modal.show');
+            visibleModals.forEach(modal => {
+                closeCustomModal(modal.id);
+            });
+        }
+    });
+
+    // Prevent form submission when modal is not visible
+    document.addEventListener('submit', function(e) {
+        const form = e.target;
+        const modal = form.closest('.custom-modal');
+        if (modal && !modal.classList.contains('show')) {
+            e.preventDefault();
+            return false;
         }
     });
 </script>
