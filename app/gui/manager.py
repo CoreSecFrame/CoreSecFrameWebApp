@@ -559,11 +559,6 @@ class VNCGUIManager:
     def _start_x11vnc(display_number, vnc_port):
         """Start x11vnc server with better compatibility"""
         
-        # Crear directorio temporal si no existe
-        pid_dir = "/tmp/coresecframe"
-        if not os.path.exists(pid_dir):
-            os.makedirs(pid_dir, exist_ok=True)
-        
         # Primera versión: intentar sin -pidfile
         cmd = ['x11vnc', '-display', f':{display_number}', '-rfbport', str(vnc_port),
             '-forever', '-shared', '-nopw', '-noshm', '-noxdamage', '-quiet', '-bg']
@@ -889,26 +884,6 @@ class VNCGUIManager:
                     current_app.logger.info(f"Terminated x11vnc using pkill for display :{session.display_number}")
                 except Exception as e:
                     current_app.logger.warning(f"Could not terminate x11vnc with pkill: {e}")
-
-    @staticmethod
-    def _check_x11vnc_version():
-        """Check x11vnc version and capabilities"""
-        try:
-            result = subprocess.run(['x11vnc', '-version'], capture_output=True, text=True, timeout=5)
-            version_info = result.stderr  # x11vnc outputs version to stderr
-            
-            current_app.logger.info(f"x11vnc version info: {version_info[:200]}...")
-            
-            # Verificar si soporta -pidfile
-            if '-pidfile' in version_info or 'pidfile' in version_info:
-                return True
-            else:
-                current_app.logger.warning("x11vnc does not support -pidfile option")
-                return False
-                
-        except Exception as e:
-            current_app.logger.warning(f"Could not check x11vnc version: {e}")
-            return False
 
 class AdaptiveGUISessionManager:
     """Adaptive manager that chooses WSLg or VNC based on environment"""

@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from app import db
 from app.gui.models import GUIApplication, GUISession, GUICategory, GUISessionLog
-from app.gui.manager import GUISessionManager
+from app.gui.manager import GUISessionManager, GUIEnvironmentDetector
 from datetime import datetime
 import traceback
 import shutil # For _test_command_availability and _scan_system_applications
@@ -125,8 +125,6 @@ gui_bp = Blueprint('gui', __name__, url_prefix='/gui')
 @login_required
 def index():
     """Main GUI applications page with WSLg awareness"""
-    from app.gui.manager import GUIEnvironmentDetector
-    
     # Detect environment
     env_info = GUIEnvironmentDetector.detect_environment()
     
@@ -168,8 +166,6 @@ def index():
 @login_required
 def applications():
     """List all GUI applications with environment awareness"""
-    from app.gui.manager import GUIEnvironmentDetector
-    
     category_filter = request.args.get('category')
     search_query = request.args.get('q', '')
     env_info = GUIEnvironmentDetector.detect_environment()
@@ -228,8 +224,6 @@ def application_detail(app_id):
 @login_required
 def sessions():
     """List user's GUI sessions with environment awareness"""
-    from app.gui.manager import GUIEnvironmentDetector
-    
     # Get pagination parameters
     page = request.args.get('page', 1, type=int)
     per_page = 20
@@ -264,8 +258,6 @@ def sessions():
 @login_required
 def api_environment():
     """API endpoint to get GUI environment information"""
-    from app.gui.manager import GUIEnvironmentDetector
-    
     try:
         env_info = GUIEnvironmentDetector.detect_environment()
         
@@ -313,8 +305,6 @@ def api_environment():
 @login_required
 def session_detail(session_id):
     """Show session details with WSLg-aware information"""
-    from app.gui.manager import GUIEnvironmentDetector
-    
     session = GUISession.query.filter_by(
         session_id=session_id,
         user_id=current_user.id
@@ -349,8 +339,6 @@ def session_detail(session_id):
 @login_required
 def launch_application(app_id):
     """Launch a GUI application with WSLg-aware handling"""
-    from app.gui.manager import GUIEnvironmentDetector
-    
     application = GUIApplication.query.get_or_404(app_id)
     
     if not application.enabled:
@@ -552,8 +540,6 @@ def api_delete_session(session_id):
 @login_required
 def connect_session(session_id):
     """Connect to a GUI session with WSLg awareness"""
-    from app.gui.manager import GUIEnvironmentDetector
-    
     session = GUISession.query.filter_by(
         session_id=session_id,
         user_id=current_user.id
@@ -664,8 +650,6 @@ def api_applications():
 @login_required
 def api_launch_application(app_id):
     """API endpoint to launch an application with WSLg awareness"""
-    from app.gui.manager import GUIEnvironmentDetector
-    
     try:
         application = GUIApplication.query.get(app_id)
         if not application:
