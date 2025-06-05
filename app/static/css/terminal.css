@@ -147,11 +147,6 @@
     background-color: #0c0c0c !important;
 }
 
-/* Ensure xterm.js text color from JS theme is respected */
-.terminal-display .xterm-rows span {
-    color: #cccccc !important; /* Matches foreground in getTerminalColors() */
-}
-
 /* The following rules for cursor and selection should be removed or commented out
 .terminal-display .xterm-cursor-layer .xterm-cursor {
     background-color: #ffffff !important; 

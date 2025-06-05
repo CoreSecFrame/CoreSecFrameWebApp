@@ -133,10 +133,7 @@ h4 { font-size: 18px; }
 h5 { font-size: 16px; }
 h6 { font-size: 14px; font-weight: 600; }
 
-p, span, div, label {
-    color: var(--w11-text-primary);
-    transition: color var(--w11-duration-normal) var(--w11-ease-standard);
-}
+
 
 small {
     color: var(--w11-text-secondary);
