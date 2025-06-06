@@ -461,7 +461,7 @@ def fetch_remote_modules():
 
 def parse_module_info(content):
     """
-    Parse module metadata from content
+    Parse module metadata from content - handles Python type annotations
     
     Args:
         content: Module file content
@@ -475,26 +475,77 @@ def parse_module_info(content):
     category = "Uncategorized"
     
     try:
-        # Look for category in _get_category()
-        if "_get_category" in content:
-            cat_match = re.search(r'def\s+_get_category.*?return\s+[\'"](.+?)[\'"]', content, re.DOTALL)
+        # Pattern for methods with type annotations: def _get_category(self) -> str:
+        # Also handles methods without type annotations: def _get_category(self):
+        
+        # Category patterns - handle both with and without type annotations
+        cat_patterns = [
+            # With type annotation: def _get_category(self) -> str: return "OSINT"
+            r'def\s+_get_category\s*\([^)]*\)\s*(?:->\s*\w+\s*)?:\s*return\s+["\']([^"\']+)["\']',
+            # Multi-line with type annotation
+            r'def\s+_get_category\s*\([^)]*\)\s*(?:->\s*\w+\s*)?:\s*\n\s*return\s+["\']([^"\']+)["\']',
+            # With other code in between
+            r'def\s+_get_category\s*\([^)]*\)\s*(?:->\s*\w+\s*)?:.*?return\s+["\']([^"\']+)["\']'
+        ]
+        
+        for pattern in cat_patterns:
+            cat_match = re.search(pattern, content, re.DOTALL)
             if cat_match:
-                category = cat_match.group(1)
+                potential_category = cat_match.group(1).strip()
+                # Validate it's a reasonable category name
+                if (len(potential_category) < 50 and 
+                    not any(bad in potential_category.lower() for bad in ['def', 'return', 'self', 'get_'])):
+                    category = potential_category
+                    break
         
-        # Look for description in _get_description() or docstring
-        if "_get_description" in content:
-            desc_match = re.search(r'def\s+_get_description.*?return\s+[\'"](.+?)[\'"]', content, re.DOTALL)
+        # Description patterns - handle both with and without type annotations  
+        desc_patterns = [
+            # With type annotation: def _get_description(self) -> str: return "description"
+            r'def\s+_get_description\s*\([^)]*\)\s*(?:->\s*\w+\s*)?:\s*return\s+["\']([^"\']+)["\']',
+            # Multi-line with type annotation
+            r'def\s+_get_description\s*\([^)]*\)\s*(?:->\s*\w+\s*)?:\s*\n\s*return\s+["\']([^"\']+)["\']',
+            # With other code in between
+            r'def\s+_get_description\s*\([^)]*\)\s*(?:->\s*\w+\s*)?:.*?return\s+["\']([^"\']+)["\']'
+        ]
+        
+        for pattern in desc_patterns:
+            desc_match = re.search(pattern, content, re.DOTALL)
             if desc_match:
-                description = desc_match.group(1)
-        elif '"""' in content:
-            doc_start = content.find('"""') + 3
-            doc_end = content.find('"""', doc_start)
-            if doc_end > doc_start:
-                description = content[doc_start:doc_end].strip().split('\n')[0]
-                
-    except Exception as e:
-        current_app.logger.error(f"Error parsing module info: {str(e)}")
+                potential_description = desc_match.group(1).strip()
+                # Validate it's a reasonable description
+                if (len(potential_description) < 300 and 
+                    not any(bad in potential_description.lower() for bad in ['def', 'return', 'self'])):
+                    description = potential_description
+                    break
         
+        # Fallback for description: try to find class docstring
+        if description == "No description":
+            class_doc_pattern = r'class\s+\w+.*?:\s*["\']([^"\']{15,100})["\']'
+            doc_match = re.search(class_doc_pattern, content, re.DOTALL)
+            if doc_match:
+                doc_text = doc_match.group(1).strip()
+                # Take first line if multiline
+                first_line = doc_text.split('\n')[0].strip()
+                if first_line and len(first_line) > 10:
+                    description = first_line
+                    
+    except Exception as e:
+        # Silent failure
+        pass
+    
+    # Final cleanup
+    if category and any(bad in category.lower() for bad in ['def ', 'return', 'self', 'get_command', 'get_name']):
+        category = "Uncategorized"
+    
+    if description and any(bad in description.lower() for bad in ['def ', 'return', 'self']):
+        description = "No description"
+    
+    # Limit lengths
+    if len(category) > 50:
+        category = "Uncategorized"
+    if len(description) > 300:
+        description = description[:300] + "..."
+    
     return description, category
 
 def download_module(url, name, category):
