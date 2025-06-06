@@ -15,11 +15,11 @@
             <h2 class="w11-login-title">Welcome Back</h2>
             <p class="w11-login-subtitle">Sign in to your CoreSecFrame account</p>
         </div>
-        
+
         <div class="w11-login-body">
             <form method="post" action="{{ url_for('auth.login') }}">
                 {{ form.hidden_tag() }}
-                
+
                 <div class="w11-form-group">
                     {{ form.username.label(class="w11-form-label") }}
                     <div class="w11-input-group">
@@ -33,7 +33,7 @@
                     </div>
                     {% endfor %}
                 </div>
-                
+
                 <div class="w11-form-group">
                     {{ form.password.label(class="w11-form-label") }}
                     <div class="w11-input-group">
@@ -47,7 +47,7 @@
                     </div>
                     {% endfor %}
                 </div>
-                
+
                 <div class="w11-checkbox-group">
                     <div class="w11-checkbox">
                         {{ form.remember_me }}
@@ -55,147 +55,144 @@
                     </div>
                     {{ form.remember_me.label(class="w11-checkbox-label") }}
                 </div>
-                
+
                 {{ form.submit(class="w11-login-btn") }}
             </form>
         </div>
-        
+
         <div class="w11-login-footer">
             <p style="margin: 0; font-size: 14px; color: var(--w11-text-secondary);">
-                New to CoreSecFrame? 
+                New to CoreSecFrame?
                 <a href="{{ url_for('auth.register') }}" class="w11-login-link">Create an account</a>
             </p>
         </div>
     </div>
-    
-    <div class="w11-copyright">
-        &copy; 2025 CoreSecFrame. All rights reserved.
-    </div>
 </div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Add subtle entrance animation
-    const loginCard = document.querySelector('.w11-login-card');
-    loginCard.style.opacity = '0';
-    loginCard.style.transform = 'translateY(20px) scale(0.95)';
-    
-    setTimeout(() => {
-        loginCard.style.transition = 'all 0.6s cubic-bezier(0.4, 0.0, 0.2, 1)';
-        loginCard.style.opacity = '1';
-        loginCard.style.transform = 'translateY(0) scale(1)';
-    }, 100);
-    
-    // Focus on username field
-    const usernameField = document.querySelector('input[name="username"]');
-    if (usernameField) {
-        setTimeout(() => {
-            usernameField.focus();
-        }, 700);
-    }
-    
-    // Enhanced form interactions
-    const formInputs = document.querySelectorAll('.w11-form-input');
-    formInputs.forEach(input => {
-        // Add focus effects
-        input.addEventListener('focus', function() {
-            this.parentElement.style.transform = 'scale(1.02)';
-            this.parentElement.style.transition = 'transform 0.2s ease';
-        });
-        
-        input.addEventListener('blur', function() {
-            this.parentElement.style.transform = 'scale(1)';
-        });
-        
-        // Add typing effects
-        input.addEventListener('input', function() {
-            if (this.value.length > 0) {
-                this.style.borderColor = 'var(--w11-accent)';
-                this.style.backgroundColor = 'rgba(0, 120, 212, 0.05)';
-            } else {
-                this.style.borderColor = 'var(--w11-surface-stroke)';
-                this.style.backgroundColor = 'var(--w11-bg-primary)';
-            }
-        });
-    });
-    
-    // Enhanced button interactions
-    const loginBtn = document.querySelector('.w11-login-btn');
-    let isSubmitting = false;
-    
-    loginBtn.addEventListener('click', function(e) {
-        if (!isSubmitting) {
-            isSubmitting = true;
-            this.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Signing in...';
-            this.style.background = 'var(--w11-accent-light1)';
-            
-            // Reset after 3 seconds if form doesn't submit
-            setTimeout(() => {
-                if (isSubmitting) {
-                    this.innerHTML = 'Sign In';
-                    this.style.background = 'var(--w11-accent)';
-                    isSubmitting = false;
-                }
-            }, 3000);
-        }
-    });
-    
-    // Checkbox animation
-    const checkbox = document.querySelector('.w11-checkbox input');
-    if (checkbox) {
-        checkbox.addEventListener('change', function() {
-            const indicator = this.nextElementSibling;
-            if (this.checked) {
-                indicator.style.transform = 'scale(0.9)';
-                setTimeout(() => {
-                    indicator.style.transform = 'scale(1)';
-                }, 100);
-            }
-        });
-    }
-    
-    // Keyboard shortcuts
-    document.addEventListener('keydown', function(e) {
-        // Enter key to submit
-        if (e.key === 'Enter' && !e.ctrlKey && !e.altKey) {
-            const activeElement = document.activeElement;
-            if (activeElement.tagName === 'INPUT') {
-                const form = activeElement.closest('form');
-                if (form) {
-                    loginBtn.click();
-                }
-            }
-        }
-        
-        // Escape to clear form
-        if (e.key === 'Escape') {
-            formInputs.forEach(input => {
-                input.value = '';
-                input.style.borderColor = 'var(--w11-surface-stroke)';
-                input.style.backgroundColor = 'var(--w11-bg-primary)';
-            });
-            if (checkbox) {
-                checkbox.checked = false;
-                checkbox.nextElementSibling.style.background = 'var(--w11-bg-primary)';
-            }
-        }
-    });
-    
-    // Add particle effect on successful login (if no errors)
-    const hasErrors = document.querySelector('.w11-error-message');
-    if (!hasErrors && window.location.search.includes('login=success')) {
-        createSuccessParticles();
-    }
-});
+    document.addEventListener('DOMContentLoaded', function () {
+        // Add subtle entrance animation
+        const loginCard = document.querySelector('.w11-login-card');
+        loginCard.style.opacity = '0';
+        loginCard.style.transform = 'translateY(20px) scale(0.95)';
 
-function createSuccessParticles() {
-    const container = document.querySelector('.w11-login-container');
-    
-    for (let i = 0; i < 20; i++) {
-        const particle = document.createElement('div');
-        particle.style.cssText = `
+        setTimeout(() => {
+            loginCard.style.transition = 'all 0.6s cubic-bezier(0.4, 0.0, 0.2, 1)';
+            loginCard.style.opacity = '1';
+            loginCard.style.transform = 'translateY(0) scale(1)';
+        }, 100);
+
+        // Focus on username field
+        const usernameField = document.querySelector('input[name="username"]');
+        if (usernameField) {
+            setTimeout(() => {
+                usernameField.focus();
+            }, 700);
+        }
+
+        // Enhanced form interactions
+        const formInputs = document.querySelectorAll('.w11-form-input');
+        formInputs.forEach(input => {
+            // Add focus effects
+            input.addEventListener('focus', function () {
+                this.parentElement.style.transform = 'scale(1.02)';
+                this.parentElement.style.transition = 'transform 0.2s ease';
+            });
+
+            input.addEventListener('blur', function () {
+                this.parentElement.style.transform = 'scale(1)';
+            });
+
+            // Add typing effects
+            input.addEventListener('input', function () {
+                if (this.value.length > 0) {
+                    this.style.borderColor = 'var(--w11-accent)';
+                    this.style.backgroundColor = 'rgba(0, 120, 212, 0.05)';
+                } else {
+                    this.style.borderColor = 'var(--w11-surface-stroke)';
+                    this.style.backgroundColor = 'var(--w11-bg-primary)';
+                }
+            });
+        });
+
+        // Enhanced button interactions
+        const loginBtn = document.querySelector('.w11-login-btn');
+        let isSubmitting = false;
+
+        loginBtn.addEventListener('click', function (e) {
+            if (!isSubmitting) {
+                isSubmitting = true;
+                this.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Signing in...';
+                this.style.background = 'var(--w11-accent-light1)';
+
+                // Reset after 3 seconds if form doesn't submit
+                setTimeout(() => {
+                    if (isSubmitting) {
+                        this.innerHTML = 'Sign In';
+                        this.style.background = 'var(--w11-accent)';
+                        isSubmitting = false;
+                    }
+                }, 3000);
+            }
+        });
+
+        // Checkbox animation
+        const checkbox = document.querySelector('.w11-checkbox input');
+        if (checkbox) {
+            checkbox.addEventListener('change', function () {
+                const indicator = this.nextElementSibling;
+                if (this.checked) {
+                    indicator.style.transform = 'scale(0.9)';
+                    setTimeout(() => {
+                        indicator.style.transform = 'scale(1)';
+                    }, 100);
+                }
+            });
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function (e) {
+            // Enter key to submit
+            if (e.key === 'Enter' && !e.ctrlKey && !e.altKey) {
+                const activeElement = document.activeElement;
+                if (activeElement.tagName === 'INPUT') {
+                    const form = activeElement.closest('form');
+                    if (form) {
+                        loginBtn.click();
+                    }
+                }
+            }
+
+            // Escape to clear form
+            if (e.key === 'Escape') {
+                formInputs.forEach(input => {
+                    input.value = '';
+                    input.style.borderColor = 'var(--w11-surface-stroke)';
+                    input.style.backgroundColor = 'var(--w11-bg-primary)';
+                });
+                if (checkbox) {
+                    checkbox.checked = false;
+                    checkbox.nextElementSibling.style.background = 'var(--w11-bg-primary)';
+                }
+            }
+        });
+
+        // Add particle effect on successful login (if no errors)
+        const hasErrors = document.querySelector('.w11-error-message');
+        if (!hasErrors && window.location.search.includes('login=success')) {
+            createSuccessParticles();
+        }
+    });
+
+    function createSuccessParticles() {
+        const container = document.querySelector('.w11-login-container');
+
+        for (let i = 0; i < 20; i++) {
+            const particle = document.createElement('div');
+            particle.style.cssText = `
             position: absolute;
             width: 4px;
             height: 4px;
@@ -208,18 +205,18 @@ function createSuccessParticles() {
             animation-delay: ${i * 50}ms;
             opacity: 0;
         `;
-        container.appendChild(particle);
-        
-        // Remove particle after animation
-        setTimeout(() => {
-            particle.remove();
-        }, 2500);
-    }
-}
+            container.appendChild(particle);
 
-// Add particle animation
-const particleStyle = document.createElement('style');
-particleStyle.textContent = `
+            // Remove particle after animation
+            setTimeout(() => {
+                particle.remove();
+            }, 2500);
+        }
+    }
+
+    // Add particle animation
+    const particleStyle = document.createElement('style');
+    particleStyle.textContent = `
     @keyframes particle-float {
         0% {
             opacity: 1;
@@ -235,6 +232,6 @@ particleStyle.textContent = `
         }
     }
 `;
-document.head.appendChild(particleStyle);
+    document.head.appendChild(particleStyle);
 </script>
 {% endblock %}
