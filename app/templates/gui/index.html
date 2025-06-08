@@ -297,7 +297,7 @@
                                             {% endif %}
                                             <div class="flex-grow-1">
                                                 <h6 class="mb-1">{{ app.display_name }}</h6>
-                                                <p class="w11-stat-tile-label">{{ app.description|truncate(60) }}</p>
+                                                <p class="w11-stat-tile-label">{{ (app.description or '')|truncate(60) }}</p>
                                                 <div class="d-flex flex-wrap gap-1">
                                                     <span class="badge bg-light text-dark">{{ app.category or 'Uncategorized' }}</span>
                                                     {% if gui_uses_wslg %}
@@ -344,7 +344,7 @@
                                             {% endif %}
                                             <div class="flex-grow-1">
                                                 <h6 class="mb-1">{{ app.display_name }}</h6>
-                                                <p class="w11-stat-tile-label">{{ app.description|truncate(60) }}</p>
+                                                <p class="w11-stat-tile-label">{{ (app.description or '')|truncate(60) }}</p>
                                                 {% if gui_uses_wslg %}
                                                 <span class="badge bg-success badge-sm">WSLg Native</span>
                                                 {% else %}
