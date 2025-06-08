@@ -104,7 +104,7 @@
                                     </div>
                                     {% endif %}
                                     <h6 class="mb-1">{{ app.display_name }}</h6>
-                                    <p class="w11-stat-tile-label">{{ app.description|truncate(80) }}</p>
+                                    <p class="w11-stat-tile-label">{{ (app.description or '')|truncate(80) }}</p>
                                     <div class="d-flex justify-content-center gap-1">
                                         <span class="badge bg-light text-dark">{{ app.category or 'Uncategorized' }}</span>
                                         {% if app.version %}
