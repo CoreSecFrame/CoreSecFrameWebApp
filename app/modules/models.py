@@ -27,3 +27,11 @@ class ModuleCategory(db.Model):
     
     def __repr__(self):
         return f'<Category {self.name}>'
+
+class ModuleShopCache(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    data = db.Column(db.Text)  # To store the JSON string of modules
+    last_updated = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<ModuleShopCache {self.id}>'

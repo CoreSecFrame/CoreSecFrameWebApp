@@ -1,7 +1,7 @@
 # init_db.py - Clean Database Initialization
 from app import create_app, db
 from app.auth.models import User
-from app.modules.models import Module, ModuleCategory
+from app.modules.models import Module, ModuleCategory, ModuleShopCache
 from app.terminal.models import TerminalSession, TerminalLog, TerminalLogSummary
 from app.core.models import SystemLog, LogSearchQuery, SystemMetric
 from datetime import datetime
@@ -46,7 +46,7 @@ def initialize_database():
             return False
         
         expected_tables = [
-            'user', 'module', 'module_category', 
+            'user', 'module', 'module_category', 'module_shop_cache',
             'terminal_session', 'terminal_log', 'terminal_log_summary',
             'system_log', 'log_search_query', 'system_metric'
         ]
@@ -164,6 +164,7 @@ def initialize_database():
         print("  Module Management:")
         print("    ✓ module_category - Security tool categories")
         print("    ✓ module - Security modules and tools")
+        print("    ✓ module_shop_cache - Cached module shop listings")
         print("  ")
         print("  Terminal System:")
         print("    ✓ terminal_session - Terminal session management")
