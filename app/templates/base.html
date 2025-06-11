@@ -154,6 +154,14 @@
                             </button>
                         </li>
 
+                        <!-- Oniux Installation Indicator -->
+                        <li class="nav-item" id="oniux-status-indicator-li">
+                            <span class="nav-link" id="oniux-indicator-span" title="Oniux Status: Unknown">
+                                <i class="bi bi-shield-question" id="oniux-indicator-icon" aria-hidden="true"></i>
+                                <span class="d-none d-lg-inline ms-1" id="oniux-indicator-text">Oniux</span>
+                            </span>
+                        </li>
+
                         {% if current_user.is_authenticated %}
                         <!-- User Dropdown -->
                         <li class="nav-item dropdown">

@@ -94,6 +94,9 @@ check_requirements() {
     # Add required system dependencies for Python development
     missing_deps+=("build-essential" "python3-dev" "python3-pip" "python3-venv")
 
+    # Add dependencies for Oniux
+    missing_deps+=("tor" "iproute2" "cargo")
+
     
     # Check tmux
     if ! command -v tmux &> /dev/null; then
@@ -292,13 +295,59 @@ check_requirements() {
             sudo apt-get update
             sudo apt-get install -y "${missing_deps[@]}"
         elif command -v yum &> /dev/null; then
+            # For yum, cargo might need EPEL or other configurations
+            if [[ " ${missing_deps[*]} " =~ " cargo " ]]; then
+                print_warning "Cargo installation with yum might require EPEL repository or manual setup."
+                print_warning "Attempting to install an available 'cargo' package. If it fails, please install Rust/Cargo manually."
+            fi
             sudo yum install -y "${missing_deps[@]}"
         elif command -v dnf &> /dev/null; then
+            # For dnf, cargo might be in a separate group or require enabling a module
+            if [[ " ${missing_deps[*]} " =~ " cargo " ]]; then
+                print_warning "Cargo installation with dnf might require enabling a module or specific repository."
+                print_warning "Attempting to install an available 'cargo' package. If it fails, please install Rust/Cargo manually."
+            fi
             sudo dnf install -y "${missing_deps[@]}"
         else
             print_error "Cannot install dependencies automatically. Please install: ${missing_deps[*]}"
             exit 1
         fi
+    fi
+
+    # Install Oniux if cargo was installed
+    if command -v cargo &> /dev/null; then
+        print_status "Installing Oniux..."
+        if cargo install --git https://gitlab.torproject.org/tpo/core/oniux; then
+            print_success "Oniux installed successfully."
+            
+            print_status "Updating PATH for Oniux..."
+            # Add to .zshrc if it exists
+            if [ -f "$HOME/.zshrc" ]; then
+                echo '' >> "$HOME/.zshrc" # Add a newline for separation
+                echo '# Add Oniux (installed via setup.sh) to PATH' >> "$HOME/.zshrc"
+                echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> "$HOME/.zshrc"
+                print_status "Added PATH update to $HOME/.zshrc"
+            fi
+            
+            # Add to .bashrc if it exists
+            if [ -f "$HOME/.bashrc" ]; then
+                echo '' >> "$HOME/.bashrc" # Add a newline for separation
+                echo '# Add Oniux (installed via setup.sh) to PATH' >> "$HOME/.bashrc"
+                echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> "$HOME/.bashrc"
+                print_status "Added PATH update to $HOME/.bashrc"
+            fi
+            
+            print_warning "Oniux has been installed. Please source your .zshrc/.bashrc (e.g., 'source ~/.zshrc') or open a new terminal to use the 'oniux' command."
+        else
+            print_error "Oniux installation failed. This could be due to network issues or problems with the build process."
+            print_warning "Please check that Rust/Cargo is correctly installed and up to date, and that you have internet access."
+            print_warning "You can try running 'cargo install --git https://gitlab.torproject.org/tpo/core/oniux' manually."
+        fi
+    else
+        print_warning "Cargo (Rust's package manager) was not installed or is not in PATH. Skipping Oniux installation."
+        print_warning "If you intended to install Oniux, please ensure cargo is installed and then run:"
+        print_warning "  cargo install --git https://gitlab.torproject.org/tpo/core/oniux"
+        print_warning "  And add $HOME/.cargo/bin to your PATH in .bashrc/.zshrc"
     fi
     
     # ========== NUEVA SECCIÓN: INSTALL COMMON GUI APPS ==========

@@ -54,6 +54,15 @@
                             {% endfor %}
                         </select>
                     </div>
+
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="run_via_oniux" name="run_via_oniux" value="true">
+                        <label class="form-check-label" for="run_via_oniux">Route session traffic via Tor (Oniux)</label>
+                        <div class="form-text w11-stat-tile-label">
+                            If checked, this terminal session will have its network traffic routed through Tor using Oniux. 
+                            Requires Oniux to be installed and configured correctly.
+                        </div>
+                    </div>
                     
                     <div class="text-center mt-4">
                         <a href="{{ url_for('terminal.index') }}" class="btn btn-secondary me-2">Cancel</a>

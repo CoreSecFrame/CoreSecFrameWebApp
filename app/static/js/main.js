@@ -1402,3 +1402,68 @@ if (typeof module !== 'undefined' && module.exports) {
         Utils
     };
 }
+
+// === BEGIN ONIUX INSTALLATION INDICATOR FUNCTIONALITY ===
+function initializeOniuxIndicator() {
+    const indicatorLi = document.getElementById('oniux-status-indicator-li');
+    const indicatorIcon = document.getElementById('oniux-indicator-icon');
+    const indicatorText = document.getElementById('oniux-indicator-text');
+    const indicatorSpan = document.getElementById('oniux-indicator-span'); // For the title
+
+    if (!indicatorLi || !indicatorIcon || !indicatorText || !indicatorSpan) {
+        // console.warn("Oniux indicator elements not found.");
+        return;
+    }
+
+    function updateOniuxIndicatorUI(installed, path_checked) {
+        indicatorIcon.classList.remove('bi-shield-question', 'bi-shield-check-fill', 'bi-shield-slash-fill', 'text-success', 'text-danger', 'text-warning');
+        indicatorText.classList.remove('text-success', 'text-danger', 'text-warning');
+
+        if (installed) {
+            indicatorIcon.classList.add('bi-shield-check-fill', 'text-success');
+            indicatorText.textContent = 'Oniux Ready'; // Or just "Oniux"
+            indicatorText.classList.add('text-success');
+            indicatorSpan.title = `Oniux is installed and ready (${path_checked})`;
+            indicatorLi.style.display = ''; // Ensure it's visible
+        } else {
+            indicatorIcon.classList.add('bi-shield-slash-fill', 'text-danger'); // Or 'text-muted' or 'text-warning'
+            indicatorText.textContent = 'Oniux N/A'; // Or "Oniux Not Found"
+            indicatorText.classList.add('text-danger');
+            indicatorSpan.title = `Oniux not found or not executable at ${path_checked}. Install via setup.sh.`;
+            // Optionally hide it if not installed, or show it as "not available"
+            // indicatorLi.style.display = 'none'; // If we decide to hide it
+            indicatorLi.style.display = ''; // Let's show its status
+        }
+    }
+
+    async function fetchOniuxInstallationStatus() {
+        try {
+            // Assuming getCSRFToken is not needed for this GET request as per previous fixes
+            const response = await fetch('/gui/api/oniux/is-installed', {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' }
+            });
+            if (!response.ok) {
+                console.error('Failed to fetch Oniux installation status:', response.statusText);
+                updateOniuxIndicatorUI(false, "Error fetching status");
+                return;
+            }
+            const data = await response.json();
+            if (data.error) { // Backend error during check
+                 console.error('Error from Oniux installation status API:', data.error);
+                 updateOniuxIndicatorUI(false, data.path_checked || "Server error during check");
+            } else {
+                updateOniuxIndicatorUI(data.installed, data.path_checked);
+            }
+        } catch (error) {
+            console.error('Network error fetching Oniux installation status:', error);
+            updateOniuxIndicatorUI(false, "Network error fetching status");
+        }
+    }
+
+    // Initial status update on page load
+    fetchOniuxInstallationStatus();
+}
+
+document.addEventListener('DOMContentLoaded', initializeOniuxIndicator);
+// === END ONIUX INSTALLATION INDICATOR FUNCTIONALITY ===

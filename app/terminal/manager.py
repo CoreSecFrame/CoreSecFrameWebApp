@@ -11,7 +11,7 @@ import shlex
 from datetime import datetime
 from flask import current_app
 from app import db
-from app.terminal.models import TerminalLog
+from app.terminal.models import TerminalLog, TerminalSession
 
 # Store active terminal sessions
 active_terminals = {}
@@ -59,9 +59,55 @@ class TerminalManager:
             # Get user's home directory
             user_home = os.path.expanduser('~')
 
+            # Fetch TerminalSession DB entry to check for use_oniux flag
+            session_db_entry = TerminalSession.query.get(session_id) # Assuming session_id is the primary key ID
+            # If session_id is the UUID string, then it should be:
+            # session_db_entry = TerminalSession.query.filter_by(session_id=session_id).first()
+
+            use_oniux_flag = False # Default to false
+            if session_db_entry:
+                if hasattr(session_db_entry, 'use_oniux'):
+                    use_oniux_flag = session_db_entry.use_oniux
+                    current_app.logger.info(f"Session {session_id} use_oniux flag is {use_oniux_flag}.")
+                else:
+                    current_app.logger.warning(f"Session {session_id} DB entry is missing 'use_oniux' attribute. Defaulting to False.")
+            else:
+                # This case implies create_session was called with a session_id not yet in DB,
+                # or the session_id arg to create_session is not the DB primary key.
+                # For now, assuming session_id passed to create_session is the string UUID.
+                # Let's adjust the query above if session_id is the string UUID.
+                # If session_id is indeed the string UUID, the query should be:
+                session_db_entry_by_uuid = TerminalSession.query.filter_by(session_id=session_id).first()
+                if session_db_entry_by_uuid:
+                    if hasattr(session_db_entry_by_uuid, 'use_oniux'):
+                        use_oniux_flag = session_db_entry_by_uuid.use_oniux
+                        current_app.logger.info(f"Session {session_id} (uuid) use_oniux flag is {use_oniux_flag}.")
+                    else:
+                        current_app.logger.warning(f"Session {session_id} (uuid) DB entry is missing 'use_oniux' attribute. Defaulting to False.")
+                else:
+                    current_app.logger.warning(f"Could not find DB entry for session_id {session_id} in TerminalManager.create_session. Defaulting use_oniux to False.")
+
+
+            command_to_run = ['/bin/bash', '--login'] # Original command
+
+            if use_oniux_flag:
+                oniux_executable = os.path.expanduser("~/.cargo/bin/oniux")
+                if os.path.exists(oniux_executable) and os.access(oniux_executable, os.X_OK):
+                    command_to_run = [oniux_executable] + command_to_run
+                    current_app.logger.info(f"Session {session_id} will be launched via Oniux: {' '.join(command_to_run)}")
+                    TerminalManager._log_comprehensive_event(app, session_id, 'session_configuration',
+                                                             message=f"Session configured to run via Oniux. Command: {' '.join(command_to_run)}")
+                else:
+                    current_app.logger.warning(f"Oniux was requested for session {session_id}, but '{oniux_executable}' was not found or not executable. Launching terminal normally.")
+                    TerminalManager._log_comprehensive_event(app, session_id, 'session_warning',
+                                                             message=f"Oniux requested but not found/executable at '{oniux_executable}'. Launching terminal normally.")
+            else:
+                 TerminalManager._log_comprehensive_event(app, session_id, 'session_configuration',
+                                                          message=f"Session configured to run normally. Command: {' '.join(command_to_run)}")
+
             # Start bash with completion enabled
             process = subprocess.Popen(
-                ['/bin/bash', '--login'],
+                command_to_run,
                 stdin=slave,
                 stdout=slave,
                 stderr=slave,

@@ -15,6 +15,7 @@ class TerminalSession(db.Model):
     last_activity = db.Column(db.DateTime, default=datetime.utcnow)
     active = db.Column(db.Boolean, default=True)
     session_type = db.Column(db.String(20), default='terminal')  # 'terminal', 'guided', 'direct'
+    use_oniux = db.Column(db.Boolean, default=False, nullable=False)
     
     # Enhanced fields for better tracking
     total_commands = db.Column(db.Integer, default=0)
@@ -35,6 +36,7 @@ class TerminalSession(db.Model):
             'last_activity': self.last_activity.isoformat(),
             'active': self.active,
             'session_type': self.session_type,
+            'use_oniux': self.use_oniux,
             'duration': self.get_duration(),
             'total_commands': self.total_commands,
             'total_output_size': self.total_output_size,
