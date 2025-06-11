@@ -15,9 +15,9 @@
             <a href="{{ url_for('modules.sync') }}" class="btn btn-info">
                 <i class="bi bi-arrow-repeat"></i> Sync Repository
             </a>
-            <button id="refreshButton" class="btn btn-primary">
-                <i class="bi bi-arrow-clockwise"></i> Refresh
-            </button>
+            <a href="{{ url_for('modules.refresh_shop') }}" class="btn btn-primary">
+                <i class="bi bi-arrow-clockwise"></i> Refresh List
+            </a>
         </div>
     </div>
 </div>
@@ -237,16 +237,6 @@
             }
         }
 
-        // Refresh button
-        const refreshButton = document.getElementById('refreshButton');
-
-        refreshButton.addEventListener('click', function () {
-            this.disabled = true;
-            this.innerHTML = '<i class="bi bi-arrow-repeat"></i> Refreshing...';
-
-            // Reload the page
-            window.location.reload();
-        });
     });
 </script>
 {% endblock %}
