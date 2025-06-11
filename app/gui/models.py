@@ -133,6 +133,9 @@ class GUISession(db.Model):
     last_activity = db.Column(db.DateTime, default=datetime.utcnow)
     end_time = db.Column(db.DateTime, nullable=True)
     
+    # Oniux integration
+    use_oniux = db.Column(db.Boolean, default=False, nullable=False)
+
     def __repr__(self):
         return f'<GUISession {self.name} ({self.session_id})>'
     
@@ -156,6 +159,7 @@ class GUISession(db.Model):
             'start_time': self.start_time.isoformat(),
             'last_activity': self.last_activity.isoformat(),
             'end_time': self.end_time.isoformat() if self.end_time else None,
+            'use_oniux': self.use_oniux,
             'duration': self.get_duration(),
             'vnc_url': self.get_vnc_url(),
             'novnc_url': self.get_novnc_url()

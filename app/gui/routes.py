@@ -373,12 +373,16 @@ def launch_application(app_id):
             current_app.logger.info(f"User {current_user.username} launching {application.name} in {env_info['display_method']} mode")
             
             # Create session using adaptive manager
+            run_via_oniux_flag = request.form.get('run_via_oniux') == 'true'
+            current_app.logger.info(f"Launch application '{application.name}' with use_oniux={run_via_oniux_flag}")
+
             success, result = GUISessionManager.create_session(
                 application_id=app_id,
                 user_id=current_user.id,
                 session_name=session_name,
                 resolution=resolution,
-                color_depth=color_depth
+                color_depth=color_depth,
+                use_oniux=run_via_oniux_flag # Pass the new flag
             )
             
             if success:
@@ -677,12 +681,16 @@ def api_launch_application(app_id):
             resolution = "native"
         
         # Create session
+        use_oniux_flag = data.get('use_oniux', False) # Retrieve the boolean flag
+        current_app.logger.info(f"API Launch for app ID {app_id} (user {current_user.username}): use_oniux={use_oniux_flag}, resolution={resolution}, color_depth={color_depth}")
+
         success, result = GUISessionManager.create_session(
             application_id=app_id,
             user_id=current_user.id,
             session_name=session_name,
             resolution=resolution,
-            color_depth=color_depth
+            color_depth=color_depth,
+            use_oniux=use_oniux_flag  # Pass the flag here
         )
         
         if success:

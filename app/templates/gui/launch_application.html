@@ -247,6 +247,20 @@
                     <input type="hidden" name="resolution" value="native">
                     <input type="hidden" name="color_depth" value="32">
                     {% endif %}
+
+                    <!-- Oniux Routing Checkbox -->
+                    <div class="mb-4">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="gui_run_via_oniux" name="run_via_oniux" value="true">
+                            <label class="form-check-label" for="gui_run_via_oniux">
+                                <i class="bi bi-shield-lock me-1"></i>Route traffic via Tor (Oniux)
+                            </label>
+                            <div class="form-text mt-1">
+                                If checked, network traffic for this GUI session will attempt to route via Tor using Oniux.
+                                Requires Oniux to be installed. May not be effective for all applications or in WSLg mode.
+                            </div>
+                        </div>
+                    </div>
                     
                     <!-- Connection Instructions -->
                     <div class="alert {% if gui_uses_wslg %}alert-success{% else %}alert-info{% endif %}">
@@ -523,6 +537,15 @@ function launchApplication() {
         if (key !== 'csrf_token') {
             config[key] = value;
         }
+    }
+
+    // Explicitly set use_oniux as a boolean based on checkbox state
+    const useOniuxCheckbox = document.getElementById('gui_run_via_oniux');
+    config['use_oniux'] = useOniuxCheckbox ? useOniuxCheckbox.checked : false;
+
+    // Remove the 'run_via_oniux' string if it was added from formData, as we now have the boolean 'use_oniux'
+    if (config.hasOwnProperty('run_via_oniux')) {
+        delete config['run_via_oniux'];
     }
     
     // Launch via API
