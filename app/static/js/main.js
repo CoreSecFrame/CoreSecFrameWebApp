@@ -1406,12 +1406,13 @@ if (typeof module !== 'undefined' && module.exports) {
 // === BEGIN ONIUX INSTALLATION INDICATOR FUNCTIONALITY ===
 function initializeOniuxIndicator() {
     const indicatorLi = document.getElementById('oniux-status-indicator-li');
-    const indicatorIcon = document.getElementById('oniux-indicator-icon'); // Reverted ID
-    const indicatorText = document.getElementById('oniux-indicator-text');
+    const indicatorIcon = document.getElementById('oniux-indicator-icon');
+    const indicatorText = document.getElementById('oniux-indicator-text'); // This is now expected by the new JS
     const indicatorSpan = document.getElementById('oniux-indicator-span');
+    const statusDot = document.getElementById('oniux-status-dot'); // New element
 
-    if (!indicatorLi || !indicatorIcon || !indicatorText || !indicatorSpan) {
-        // console.warn("Oniux indicator elements not found.");
+    if (!indicatorLi || !indicatorIcon || !indicatorText || !indicatorSpan) { // indicatorText re-added to check
+        console.warn("Oniux indicator elements not found. Check base.html for oniux-status-indicator-li, oniux-indicator-icon, oniux-indicator-text, oniux-indicator-span.");
         return;
     }
 
@@ -1421,27 +1422,61 @@ function initializeOniuxIndicator() {
         currentOniuxStatus.installed = installed; 
         currentOniuxStatus.path = path_checked;
 
-        // Clear previous icon and text color classes
-        indicatorIcon.classList.remove('bi-shield-question', 'bi-shield-check-fill', 'bi-shield-slash-fill', 'text-success', 'text-danger', 'text-warning');
+        const isIndexPage = window.location.pathname === '/' || 
+                           window.location.pathname === '/auth/login' ||
+                           window.location.pathname.endsWith('login') ||
+                           (!document.body.classList.contains('dashboard-page') && 
+                            document.querySelector('.cta-section'));
+
+        if (isIndexPage) {
+            indicatorLi.style.display = 'none';
+            return;
+        }
+
+        indicatorLi.style.display = ''; // Should be 'list-item' or flex depending on parent
+
+        indicatorIcon.classList.remove(
+            'bi-shield-question', 
+            'bi-shield-check-fill', 
+            'bi-shield-slash-fill',
+            'bi-onion', // New icon class
+            'text-success', 
+            'text-danger', 
+            'text-warning'
+        );
         indicatorText.classList.remove('text-success', 'text-danger', 'text-warning');
 
+        if (statusDot) {
+            statusDot.classList.remove('ready', 'not-ready', 'unknown');
+        }
+
         if (installed) {
-            indicatorIcon.classList.add('bi-shield-check-fill', 'text-success');
-            indicatorText.textContent = 'Oniux Ready';
+            indicatorIcon.classList.add('bi-onion', 'text-success');
+            indicatorText.textContent = 'Ready';
             indicatorText.classList.add('text-success');
-            indicatorSpan.title = 'Oniux is installed at ' + path_checked;
+            indicatorSpan.title = 'Oniux is ready and installed at ' + path_checked;
+            if (statusDot) statusDot.classList.add('ready');
+
+            const modalIcon = document.getElementById('oniuxModalIcon');
+            if (modalIcon) {
+                modalIcon.className = 'bi bi-check-circle-fill text-success me-2'; // Example, ensure bi class is there
+            }
         } else {
-            indicatorIcon.classList.add('bi-shield-slash-fill', 'text-danger');
-            indicatorText.textContent = 'Oniux N/A';
+            indicatorIcon.classList.add('bi-onion', 'text-danger');
+            indicatorText.textContent = 'N/A';
             indicatorText.classList.add('text-danger');
+            if (statusDot) statusDot.classList.add('not-ready');
+
             if (path_checked && path_checked.toLowerCase().includes("error")) {
-                 indicatorSpan.title = 'Oniux status error: ' + path_checked;
+                indicatorSpan.title = 'Oniux status error: ' + path_checked;
             } else {
-                 indicatorSpan.title = 'Oniux not found or not executable. Path checked: ' + path_checked + ". Ensure it's installed via setup.sh.";
+                indicatorSpan.title = 'Oniux not found or not executable. Path checked: ' + path_checked + ". Ensure it's installed via setup.sh.";
+            }
+            const modalIcon = document.getElementById('oniuxModalIcon');
+            if (modalIcon) {
+                 modalIcon.className = 'bi bi-x-circle-fill text-danger me-2'; // Example
             }
         }
-        // Ensure the LI is visible
-        indicatorLi.style.display = ''; 
     }
 
     async function fetchOniuxInstallationStatus() {
@@ -1455,65 +1490,94 @@ function initializeOniuxIndicator() {
                 updateOniuxIndicatorUI(false, `Error fetching status: ${response.statusText}`);
                 return;
             }
-            const data = await response.json();
+            // IMPORTANT: Check if response is actually JSON before parsing
+            const responseText = await response.text();
+            let data;
+            try {
+                data = JSON.parse(responseText);
+            } catch (jsonError) {
+                console.error('Failed to parse Oniux status JSON:', jsonError);
+                console.error('Response text was:', responseText); // Log the problematic HTML
+                updateOniuxIndicatorUI(false, `Error parsing server response. Expected JSON but received: ${responseText.substring(0,100)}...`);
+                return;
+            }
+
             if (data.error) { 
                  console.error('Error from Oniux installation status API:', data.error);
                  updateOniuxIndicatorUI(false, data.path_checked || "Server error during check");
             } else {
                 updateOniuxIndicatorUI(data.installed, data.path_checked);
             }
-        } catch (error) {
+        } catch (error) { // Network or other errors
             console.error('Network error fetching Oniux installation status:', error);
             updateOniuxIndicatorUI(false, "Network error fetching status");
         }
     }
 
-    if (indicatorSpan) {
-        indicatorSpan.style.cursor = 'pointer'; 
-        indicatorSpan.setAttribute('role', 'button'); 
-        indicatorSpan.setAttribute('tabindex', '0');   
+    const isLoginPageCheck = window.location.pathname === '/' || 
+                       window.location.pathname === '/auth/login' ||
+                       window.location.pathname.endsWith('login') ||
+                       (!document.body.classList.contains('dashboard-page') && 
+                        document.querySelector('.cta-section'));
 
-        indicatorSpan.addEventListener('click', () => {
-            const modalStatusEl = document.getElementById('oniuxModalStatusText');
-            const modalPathEl = document.getElementById('oniuxModalPathText');
-            const modalPathNoteEl = document.getElementById('oniuxModalPathNote');
 
-            if (modalStatusEl && modalPathEl && modalPathNoteEl) {
-                if (currentOniuxStatus.installed) {
-                    modalStatusEl.textContent = 'Ready';
-                    modalStatusEl.className = 'text-success fw-bold'; // Apply Bootstrap classes for color
-                    modalPathNoteEl.textContent = 'Oniux found and executable.';
-                } else {
-                    if (currentOniuxStatus.path && currentOniuxStatus.path.toLowerCase().includes("error")) {
-                         modalStatusEl.textContent = 'Error Checking Status';
-                         modalPathNoteEl.textContent = `Details: ${currentOniuxStatus.path}`;
+    if (!isLoginPageCheck) { // Only run these if not on login page
+        if (indicatorSpan) {
+            indicatorSpan.style.cursor = 'pointer'; 
+            indicatorSpan.setAttribute('role', 'button'); 
+            indicatorSpan.setAttribute('tabindex', '0');   
+
+            indicatorSpan.addEventListener('click', () => {
+                const modalStatusEl = document.getElementById('oniuxModalStatusText');
+                const modalPathEl = document.getElementById('oniuxModalPathText');
+                const modalPathNoteEl = document.getElementById('oniuxModalPathNote');
+                const installButton = document.getElementById('oniuxInstallButton');
+                // const modalIcon = document.getElementById('oniuxModalIcon'); // Already updated in updateOniuxIndicatorUI
+
+                if (modalStatusEl && modalPathEl && modalPathNoteEl) {
+                    if (currentOniuxStatus.installed) {
+                        modalStatusEl.textContent = 'Ready';
+                        modalStatusEl.className = 'text-success fw-bold';
+                        modalPathNoteEl.textContent = 'Oniux found and executable. All systems operational.';
+                        if (installButton) installButton.style.display = 'none';
                     } else {
-                        modalStatusEl.textContent = 'Not Available';
-                        modalPathNoteEl.textContent = `Oniux not found or not executable at the checked path. Please run setup.sh or verify installation.`;
+                        if (currentOniuxStatus.path && currentOniuxStatus.path.toLowerCase().includes("error")) {
+                             modalStatusEl.textContent = 'Error Checking Status';
+                             modalPathNoteEl.textContent = `Details: ${currentOniuxStatus.path}`;
+                        } else {
+                            modalStatusEl.textContent = 'Not Available';
+                            modalPathNoteEl.textContent = 'Oniux not found or not executable at the checked path. Please run setup.sh or verify installation.';
+                        }
+                        modalStatusEl.className = 'text-danger fw-bold';
+                        if (installButton) installButton.style.display = 'inline-block';
                     }
-                    modalStatusEl.className = 'text-danger fw-bold'; // Apply Bootstrap classes for color
+                    modalPathEl.textContent = currentOniuxStatus.path; 
                 }
-                modalPathEl.textContent = currentOniuxStatus.path; 
-            }
-            
-            const oniuxModalElement = document.getElementById('oniuxInfoModal');
-            if (oniuxModalElement) {
-                const oniuxModal = new bootstrap.Modal(oniuxModalElement);
-                oniuxModal.show();
-            } else {
-                console.error("Oniux info modal element not found.");
-            }
-        });
-        indicatorSpan.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                indicatorSpan.click();
-            }
-        });
-    }
+                
+                const oniuxModalElement = document.getElementById('oniuxInfoModal');
+                if (oniuxModalElement) {
+                    const oniuxModal = bootstrap.Modal.getOrCreateInstance(oniuxModalElement); // Use getOrCreateInstance
+                    oniuxModal.show();
+                } else {
+                    console.error("Oniux info modal element not found.");
+                }
+            });
 
-    fetchOniuxInstallationStatus();
+            indicatorSpan.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    indicatorSpan.click();
+                }
+            });
+        }
+        fetchOniuxInstallationStatus();
+        setInterval(fetchOniuxInstallationStatus, 30000);
+    } else {
+         // Explicitly hide on login page if not already handled by updateOniuxIndicatorUI's early return
+        if(indicatorLi) indicatorLi.style.display = 'none';
+    }
 }
 
 document.addEventListener('DOMContentLoaded', initializeOniuxIndicator);
+window.addEventListener('popstate', initializeOniuxIndicator); // For SPAs or back/forward navigation
 // === END ONIUX INSTALLATION INDICATOR FUNCTIONALITY ===

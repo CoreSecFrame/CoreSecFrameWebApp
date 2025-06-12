@@ -1492,3 +1492,97 @@ footer {
         display: none !important;
     }
 }
+
+/* === ESTILOS CSS PARA EL ICONO DE CEBOLLA === */
+/* Agregar este CSS al final del archivo main.css o crear un archivo separado */
+
+/* Icono de cebolla personalizado usando emoji */
+.bi-onion::before {
+    content: "🧅"; /* Onion emoji */
+    font-style: normal;
+    /* font-size: 1rem; */ /* Let's use the icon's inherent size or navbar's font-size */
+    line-height: 1;
+    vertical-align: baseline; /* Adjusted for better alignment with text */
+}
+
+/* Alternativa usando SVG para mejor control (ensure .bi-onion-svg class is used in HTML if this is preferred) */
+.bi-onion-svg {
+    display: inline-block;
+    width: 1em; /* scales with font-size */
+    height: 1em; /* scales with font-size */
+    vertical-align: -0.125em; /* typical for Bootstrap icons */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='currentColor' d='M8 1a5.5 5.5 0 0 0-5.5 5.5c0 1.8.6 3.2 1.2 4.5.3.6.6 1.2.8 1.8.2.6.3 1.2.3 1.7h6.4c0-.5.1-1.1.3-1.7.2-.6.5-1.2.8-1.8.6-1.3 1.2-2.7 1.2-4.5A5.5 5.5 0 0 0 8 1zm0 1.5a4 4 0 0 1 4 4c0 1.3-.4 2.4-.9 3.5-.3.6-.6 1.1-.8 1.6-.1.3-.2.6-.2.9H6.9c0-.3-.1-.6-.2-.9-.2-.5-.5-1-.8-1.6-.5-1.1-.9-2.2-.9-3.5a4 4 0 0 1 4-4zM6.5 4.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1H7a.5.5 0 0 1-.5-.5zm.5 1.5a.5.5 0 0 0 0 1h2a.5.5 0 0 0 0-1H7z'/%3E%3C/svg%3E");
+    background-size: cover;
+    background-repeat: no-repeat;
+}
+
+/* Asegurar que el color se aplique correctamente al icono de cebolla */
+/* These might be redundant if text-success/danger directly apply color, but good for specificity */
+.bi-onion.text-success {
+    color: var(--bs-success) !important; 
+}
+
+.bi-onion.text-danger {
+    color: var(--bs-danger) !important;
+}
+
+.bi-onion.text-warning { /* Though the JS doesn't use text-warning for the icon itself */
+    color: var(--bs-warning) !important;
+}
+
+/* Animación sutil para el hover del indicador */
+#oniux-indicator-span:hover .bi-onion {
+    transform: scale(1.1);
+    transition: transform 0.2s ease-in-out;
+}
+
+/* Asegurar que el indicador sea responsive (text part) */
+@media (max-width: 991.98px) {
+    #oniux-indicator-text { /* This ID is in the new HTML */
+        display: none !important;
+    }
+}
+
+/* Estilo para cuando el indicador está oculto (by JS) */
+/* This rule might be redundant if JS sets display:none directly on the LI */
+/* #oniux-status-indicator-li.hidden { 
+    display: none !important;
+} */
+
+/* Tooltip - The user's CSS had a custom tooltip, but Bootstrap's default via title attribute is usually sufficient.
+   If custom styling is needed, it can be added. For now, relying on default title tooltip. */
+/* #oniux-indicator-span[title]:hover::after { ... } */
+
+
+/* Status Dot Styling */
+.oniux-indicator .status-dot { /* Class added to #oniux-indicator-span in new HTML */
+    /* position: absolute; */ /* This might conflict with flex alignment, let's try inline first */
+    /* top: -2px; */
+    /* right: -2px; */
+    display: inline-block; /* Make it inline with text/icon */
+    width: 8px;  /* Slightly larger for visibility */
+    height: 8px; /* Slightly larger for visibility */
+    border-radius: 50%;
+    border: 1px solid white; /* Assuming navbar background isn't pure white */
+    vertical-align: middle; /* Align with text better */
+    margin-left: 4px; /* Give it some space */
+}
+
+.oniux-indicator .status-dot.ready {
+    background-color: var(--bs-success); /* Bootstrap success color */
+}
+
+.oniux-indicator .status-dot.not-ready {
+    background-color: var(--bs-danger); /* Bootstrap danger color */
+}
+
+.oniux-indicator .status-dot.unknown {
+    background-color: var(--bs-warning); /* Bootstrap warning color for unknown */
+}
+
+/* Ensure the base icon itself still has the correct font-family (from previous step, ensure it's there) */
+#oniux-indicator-icon {
+    font-family: 'bootstrap-icons' !important; 
+    /* Keep other temporary debug styles for color/size for now if they are still in main.css */
+    /* e.g. color: magenta !important; background-color: lime !important; etc. */
+}

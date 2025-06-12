@@ -156,9 +156,10 @@
 
                         <!-- Oniux Installation Indicator -->
                         <li class="nav-item" id="oniux-status-indicator-li">
-                            <span class="nav-link" id="oniux-indicator-span" title="Oniux Status: Unknown">
-                                <i class="bi bi-shield-question" id="oniux-indicator-icon" aria-hidden="true"></i>
-                                <span class="d-none d-lg-inline ms-1" id="oniux-indicator-text">Oniux</span>
+                            <span class="nav-link oniux-indicator" id="oniux-indicator-span" title="Oniux Status: Unknown" style="display: flex; align-items: center;">
+                                <i id="oniux-indicator-icon" class="bi"></i> 
+                                <span id="oniux-indicator-text" class="d-none d-lg-inline ms-1" style="line-height: 1;"></span>
+                                <span id="oniux-status-dot" class="status-dot unknown ms-1"></span>
                             </span>
                         </li>
 
@@ -203,7 +204,7 @@
                         </li>
                         {% else %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('auth.login') }}">
+                            <a class="nav-link" id="login-link" href="{{ url_for('auth.login') }}">
                                 <i class="bi bi-box-arrow-in-right me-1" aria-hidden="true"></i> Login
                             </a>
                         </li>
@@ -391,7 +392,7 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="oniuxInfoModalLabel">Oniux Status & Information</h5>
+                    <h5 class="modal-title" id="oniuxInfoModalLabel"><i id="oniuxModalIcon" class="bi me-2"></i>Oniux Status & Information</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -402,6 +403,7 @@
                     <p id="oniuxModalPathNote" class="small text-muted"></p>
                 </div>
                 <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="oniuxInstallButton" style="display:none;">Install Oniux</button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
