@@ -154,6 +154,14 @@
                             </button>
                         </li>
 
+                        <!-- Oniux Installation Indicator -->
+                        <li class="nav-item" id="oniux-status-indicator-li">
+                            <span class="nav-link" id="oniux-indicator-span" title="Oniux Status: Unknown">
+                                <i class="bi bi-shield-question" id="oniux-indicator-icon" aria-hidden="true"></i>
+                                <span class="d-none d-lg-inline ms-1" id="oniux-indicator-text">Oniux</span>
+                            </span>
+                        </li>
+
                         {% if current_user.is_authenticated %}
                         <!-- User Dropdown -->
                         <li class="nav-item dropdown">
@@ -377,6 +385,28 @@
     <!-- Screen Reader Only Content -->
     <div id="aria-live-region" aria-live="polite" aria-atomic="true" class="visually-hidden"></div>
     <div id="aria-status-region" aria-live="assertive" aria-atomic="true" class="visually-hidden"></div>
+
+    <!-- Oniux Info Modal -->
+    <div class="modal fade" id="oniuxInfoModal" tabindex="-1" aria-labelledby="oniuxInfoModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="oniuxInfoModalLabel">Oniux Status & Information</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Status:</strong> <span id="oniuxModalStatusText">Loading...</span></p>
+                    <p><strong>Path Checked:</strong> <code id="oniuxModalPathText">~/.cargo/bin/oniux</code></p>
+                    <hr>
+                    <p>Oniux is a tool used by this application to optionally route network traffic for individual terminal sessions or GUI applications through the Tor network, enhancing privacy and anonymity for those specific tasks.</p>
+                    <p id="oniuxModalPathNote" class="small text-muted"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>

@@ -42,13 +42,15 @@ def new():
             session_name = request.form.get('session_name', f"Terminal-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}")
             session_type = request.form.get('session_type', 'terminal')
             module_name = request.form.get('module_name') if session_type != 'terminal' else None
+            run_via_oniux = request.form.get('run_via_oniux') == 'true'
             
             # Create new terminal session
             session = TerminalSession(
                 name=session_name,
                 user_id=current_user.id,
                 module_name=module_name,
-                session_type=session_type
+                session_type=session_type,
+                use_oniux=run_via_oniux
             )
             db.session.add(session)
             db.session.commit()

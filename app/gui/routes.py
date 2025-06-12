@@ -373,12 +373,16 @@ def launch_application(app_id):
             current_app.logger.info(f"User {current_user.username} launching {application.name} in {env_info['display_method']} mode")
             
             # Create session using adaptive manager
+            run_via_oniux_flag = request.form.get('run_via_oniux') == 'true'
+            current_app.logger.info(f"Launch application '{application.name}' with use_oniux={run_via_oniux_flag}")
+
             success, result = GUISessionManager.create_session(
                 application_id=app_id,
                 user_id=current_user.id,
                 session_name=session_name,
                 resolution=resolution,
-                color_depth=color_depth
+                color_depth=color_depth,
+                use_oniux=run_via_oniux_flag # Pass the new flag
             )
             
             if success:
@@ -677,12 +681,16 @@ def api_launch_application(app_id):
             resolution = "native"
         
         # Create session
+        use_oniux_flag = data.get('use_oniux', False) # Retrieve the boolean flag
+        current_app.logger.info(f"API Launch for app ID {app_id} (user {current_user.username}): use_oniux={use_oniux_flag}, resolution={resolution}, color_depth={color_depth}")
+
         success, result = GUISessionManager.create_session(
             application_id=app_id,
             user_id=current_user.id,
             session_name=session_name,
             resolution=resolution,
-            color_depth=color_depth
+            color_depth=color_depth,
+            use_oniux=use_oniux_flag  # Pass the flag here
         )
         
         if success:
@@ -1481,3 +1489,35 @@ def validate_json_request(required_fields=None):
             }), 400
     
     return data, None, None
+
+
+# Oniux Installation Status Check
+def _is_oniux_installed():
+    """Helper function to check if Oniux is installed and executable."""
+    oniux_path = os.path.expanduser("~/.cargo/bin/oniux")
+    installed = False
+    exists = os.path.exists(oniux_path)
+    executable = os.access(oniux_path, os.X_OK)
+
+    if exists and executable:
+        installed = True
+        current_app.logger.info(f"Oniux check: Found and executable at {oniux_path}")
+    elif exists and not executable:
+        current_app.logger.warning(f"Oniux check: Found at {oniux_path} but NOT executable.")
+    else:
+        current_app.logger.info(f"Oniux check: Not found at {oniux_path}")
+    return installed
+
+@gui_bp.route('/api/oniux/is-installed', methods=['GET'])
+@login_required
+def get_oniux_installation_status():
+    """API endpoint to check if Oniux is installed."""
+    try:
+        status = _is_oniux_installed()
+        path_checked = os.path.expanduser("~/.cargo/bin/oniux")
+        return jsonify({'installed': status, 'path_checked': path_checked})
+    except Exception as e:
+        current_app.logger.error(f"Error checking Oniux installation status for user {current_user.username}: {str(e)}")
+        # It's good practice to avoid exposing raw exception messages to the client
+        # For security reasons, provide a generic error message.
+        return jsonify({'installed': False, 'error': 'An error occurred while checking Oniux status.'}), 500
