@@ -13,21 +13,15 @@ import os
 import psutil
 from datetime import datetime, timedelta
 from sqlalchemy import desc, func
+from app.utils import admin_required, json_success, json_error # Import helpers
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
 @admin_bp.route('/')
 @login_required
+@admin_required
 def index():
-    if not current_user.is_admin():
-        log_security_event(
-            f"Unauthorized admin panel access attempt by user {current_user.username}",
-            user_id=current_user.id,
-            ip_address=request.remote_addr
-        )
-        flash('You do not have permission to access the admin panel.', 'danger')
-        return redirect(url_for('core.index'))
-    
+    # Admin check is now handled by @admin_required decorator
     log_user_action(
         current_user.id, 
         'admin_panel_access', 
@@ -66,52 +60,21 @@ def index():
 
 @admin_bp.route('/logs')
 @login_required
+@admin_required
 def system_logs():
-    if not current_user.is_admin():
-        log_security_event(
-            f"Unauthorized system logs access attempt by user {current_user.username}",
-            user_id=current_user.id,
-            ip_address=request.remote_addr
-        )
-        flash('You do not have permission to access this page.', 'danger')
-        return redirect(url_for('core.index'))
-    
+    # Admin check is now handled by @admin_required decorator
     # Get pagination parameters
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 50, type=int)
     
-    # Get filter parameters
-    level_filter = request.args.get('level', '')
-    module_filter = request.args.get('module', '')
-    search_query = request.args.get('search', '')
-    security_only = request.args.get('security_only', False, type=bool)
-    hours_back = request.args.get('hours', 24, type=int)
-    
-    # Build query
-    query = SystemLog.query
-    
-    # Apply filters
-    if level_filter:
-        query = query.filter(SystemLog.level == level_filter)
-    
-    if module_filter:
-        query = query.filter(SystemLog.module.ilike(f'%{module_filter}%'))
-    
-    if search_query:
-        query = query.filter(SystemLog.message.ilike(f'%{search_query}%'))
-    
-    if security_only:
-        query = query.filter(SystemLog.is_security_event == True)
-    
-    if hours_back:
-        since = datetime.utcnow() - timedelta(hours=hours_back)
-        query = query.filter(SystemLog.timestamp >= since)
+    # Build base query using the helper
+    base_query = _build_log_query(request.args)
     
     # Order by timestamp (newest first)
-    query = query.order_by(desc(SystemLog.timestamp))
+    ordered_query = base_query.order_by(desc(SystemLog.timestamp))
     
     # Paginate
-    logs_pagination = query.paginate(
+    logs_pagination = ordered_query.paginate(
         page=page, per_page=per_page, error_out=False
     )
     
@@ -119,14 +82,12 @@ def system_logs():
     filter_options = get_log_filter_options()
     
     # Get summary statistics for current filters
-    summary_stats = get_filtered_log_stats(
-        level_filter, module_filter, search_query, security_only, hours_back
-    )
+    summary_stats = get_filtered_log_stats(request.args) # Pass request.args
     
     log_user_action(
         current_user.id,
         'view_system_logs',
-        f'Viewed system logs page {page} with filters: level={level_filter}, module={module_filter}, search={search_query}',
+        f'Viewed system logs page {page} with filters: {request.args.to_dict()}', # Log all filters
         ip_address=request.remote_addr
     )
     
@@ -136,40 +97,26 @@ def system_logs():
         logs_pagination=logs_pagination,
         filter_options=filter_options,
         summary_stats=summary_stats,
-        current_filters={
-            'level': level_filter,
-            'module': module_filter,
-            'search': search_query,
-            'security_only': security_only,
-            'hours': hours_back
-        }
+        current_filters=request.args.to_dict() # Pass all filters to template
     )
 
 @admin_bp.route('/logs/export')
 @login_required
+@admin_required
 def export_logs():
     """Export system logs as CSV or JSON"""
-    if not current_user.is_admin():
-        flash('You do not have permission to access this page.', 'danger')
-        return redirect(url_for('core.index'))
-    
+    # Admin check is now handled by @admin_required decorator
     # Get export parameters
     format_type = request.args.get('format', 'csv')
-    level_filter = request.args.get('level', '')
-    hours_back = request.args.get('hours', 24, type=int)
+    # limit will be applied after building the base query
     limit = request.args.get('limit', 1000, type=int)
+
+    # Build base query using the helper
+    base_query = _build_log_query(request.args)
     
-    # Build query
-    query = SystemLog.query.order_by(desc(SystemLog.timestamp))
-    
-    if level_filter:
-        query = query.filter(SystemLog.level == level_filter)
-    
-    if hours_back:
-        since = datetime.utcnow() - timedelta(hours=hours_back)
-        query = query.filter(SystemLog.timestamp >= since)
-    
-    logs = query.limit(limit).all()
+    # Apply ordering and limit
+    ordered_query = base_query.order_by(desc(SystemLog.timestamp))
+    logs = ordered_query.limit(limit).all()
     
     log_user_action(
         current_user.id,
@@ -239,12 +186,10 @@ def export_logs():
 
 @admin_bp.route('/logs/cleanup', methods=['POST'])
 @login_required
+@admin_required
 def cleanup_logs():
     """Clean up old system logs"""
-    if not current_user.is_admin():
-        flash('You do not have permission to perform this action.', 'danger')
-        return redirect(url_for('core.index'))
-    
+    # Admin check is now handled by @admin_required decorator
     days_to_keep = request.form.get('days_to_keep', 30, type=int)
     
     try:
@@ -267,11 +212,13 @@ def cleanup_logs():
 
 @admin_bp.route('/logs/api')
 @login_required
+@admin_required
 def logs_api():
     """API endpoint for real-time log data"""
-    if not current_user.is_admin():
-        return jsonify({'error': 'Unauthorized'}), 403
-    
+    # Admin check is now handled by @admin_required decorator
+    # For API endpoints, the decorator's redirect might not be ideal.
+    # However, for this task, we'll use the standard decorator.
+    # A future enhancement could be an API-specific admin_required decorator.
     # Get parameters
     limit = request.args.get('limit', 20, type=int)
     level = request.args.get('level', '')
@@ -288,49 +235,45 @@ def logs_api():
     
     logs = query.limit(limit).all()
     
-    return jsonify({
+    data = {
         'logs': [log.to_dict() for log in logs],
         'count': len(logs),
         'latest_id': logs[0].id if logs else since_id
-    })
+    }
+    return json_success(data=data)
 
 @admin_bp.route('/logs/stats')
 @login_required
+@admin_required
 def logs_stats():
     """Get comprehensive log statistics"""
-    if not current_user.is_admin():
-        return jsonify({'error': 'Unauthorized'}), 403
-    
+    # Admin check is now handled by @admin_required decorator
     hours = request.args.get('hours', 24, type=int)
     
     # Get various statistics
-    stats = {
-        'total_logs': SystemLog.query.count(),
-        'recent_logs': SystemLog.query.filter(
-            SystemLog.timestamp >= datetime.utcnow() - timedelta(hours=hours)
-        ).count(),
-        'error_count_24h': SystemLog.get_error_count_last_24h(),
-        'security_events_24h': SystemLog.get_security_events_count_last_24h(),
-        'level_stats': SystemLog.get_log_level_stats(hours),
-        'module_stats': SystemLog.get_module_stats(hours),
-        'time_range_hours': hours,
-        'generated_at': datetime.utcnow().isoformat()
-    }
-    
-    return jsonify(stats)
+    try:
+        stats_data = {
+            'total_logs': SystemLog.query.count(),
+            'recent_logs': SystemLog.query.filter(
+                SystemLog.timestamp >= datetime.utcnow() - timedelta(hours=hours)
+            ).count(),
+            'error_count_24h': SystemLog.get_error_count_last_24h(),
+            'security_events_24h': SystemLog.get_security_events_count_last_24h(),
+            'level_stats': SystemLog.get_log_level_stats(hours),
+            'module_stats': SystemLog.get_module_stats(hours),
+            'time_range_hours': hours,
+            'generated_at': datetime.utcnow().isoformat()
+        }
+        return json_success(data=stats_data)
+    except Exception as e:
+        current_app.logger.error(f"Error fetching log statistics: {e}")
+        return json_error(message="Failed to fetch log statistics.", details=str(e), status_code=500)
 
 @admin_bp.route('/edit_user/<int:user_id>', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def edit_user(user_id):
-    if not current_user.is_admin():
-        log_security_event(
-            f"Unauthorized user edit attempt by user {current_user.username} for user_id {user_id}",
-            user_id=current_user.id,
-            ip_address=request.remote_addr
-        )
-        flash('You do not have permission to access this page.', 'danger')
-        return redirect(url_for('core.index'))
-    
+    # Admin check is now handled by @admin_required decorator
     user = User.query.get_or_404(user_id)
     form = UserForm(obj=user)
     
@@ -367,16 +310,9 @@ def edit_user(user_id):
 
 @admin_bp.route('/create_user', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def create_user():
-    if not current_user.is_admin():
-        log_security_event(
-            f"Unauthorized user creation attempt by user {current_user.username}",
-            user_id=current_user.id,
-            ip_address=request.remote_addr
-        )
-        flash('You do not have permission to access this page.', 'danger')
-        return redirect(url_for('core.index'))
-    
+    # Admin check is now handled by @admin_required decorator
     form = UserForm()
     
     if form.validate_on_submit():
@@ -407,16 +343,9 @@ def create_user():
 
 @admin_bp.route('/delete_user/<int:user_id>', methods=['POST'])
 @login_required
+@admin_required
 def delete_user(user_id):
-    if not current_user.is_admin():
-        log_security_event(
-            f"Unauthorized user deletion attempt by user {current_user.username} for user_id {user_id}",
-            user_id=current_user.id,
-            ip_address=request.remote_addr
-        )
-        flash('You do not have permission to access this page.', 'danger')
-        return redirect(url_for('core.index'))
-    
+    # Admin check is now handled by @admin_required decorator
     # Prevent self-deletion
     if user_id == current_user.id:
         flash('You cannot delete your own account.', 'danger')
@@ -456,6 +385,45 @@ def delete_user(user_id):
     return redirect(url_for('admin.index'))
 
 # Helper functions
+
+def _build_log_query(filters):
+    """Helper function to construct a SystemLog query based on filters."""
+    query = SystemLog.query
+
+    level_filter = filters.get('level', '')
+    module_filter = filters.get('module', '')
+    search_query = filters.get('search', '')
+    # Correctly handle boolean conversion for 'security_only'
+    security_only_str = filters.get('security_only', 'false') # Default to 'false' string
+    security_only = security_only_str.lower() == 'true' if isinstance(security_only_str, str) else bool(security_only_str)
+
+    hours_back_str = filters.get('hours', '') # Get as string first
+
+    if level_filter:
+        query = query.filter(SystemLog.level == level_filter)
+
+    if module_filter:
+        query = query.filter(SystemLog.module.ilike(f'%{module_filter}%'))
+
+    if search_query:
+        query = query.filter(SystemLog.message.ilike(f'%{search_query}%'))
+
+    if security_only:
+        query = query.filter(SystemLog.is_security_event == True)
+
+    if hours_back_str: # Check if hours_back_str has a value
+        try:
+            hours_back = int(hours_back_str)
+            if hours_back > 0: # Ensure positive hours
+                since = datetime.utcnow() - timedelta(hours=hours_back)
+                query = query.filter(SystemLog.timestamp >= since)
+        except ValueError:
+            # Handle case where hours_back is not a valid integer
+            current_app.logger.warning(f"Invalid value for 'hours' filter: {hours_back_str}")
+            # Optionally, you could flash a message or raise an error if strict validation is needed
+            pass
+
+    return query
 
 def get_log_statistics():
     """Get comprehensive log statistics for dashboard"""
@@ -520,26 +488,11 @@ def get_log_filter_options():
         current_app.logger.error(f"Error getting filter options: {e}")
         return {'levels': [], 'modules': []}
 
-def get_filtered_log_stats(level_filter, module_filter, search_query, security_only, hours_back):
-    """Get statistics for current filter combination"""
+def get_filtered_log_stats(filters):
+    """Get statistics for current filter combination using provided filters."""
     try:
-        query = SystemLog.query
-        
-        if hours_back:
-            since = datetime.utcnow() - timedelta(hours=hours_back)
-            query = query.filter(SystemLog.timestamp >= since)
-        
-        if level_filter:
-            query = query.filter(SystemLog.level == level_filter)
-        
-        if module_filter:
-            query = query.filter(SystemLog.module.ilike(f'%{module_filter}%'))
-        
-        if search_query:
-            query = query.filter(SystemLog.message.ilike(f'%{search_query}%'))
-        
-        if security_only:
-            query = query.filter(SystemLog.is_security_event == True)
+        # Use the helper to build the base query
+        query = _build_log_query(filters)
         
         total_filtered = query.count()
         

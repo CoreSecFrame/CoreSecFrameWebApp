@@ -10,75 +10,95 @@ from flask import render_template, request, jsonify, current_app, send_file, abo
 from flask_login import login_required, current_user
 from app.file_manager import bp
 import werkzeug.utils
+from flask import current_app # Added current_app import
+from app.utils import json_success, json_error # Import helpers
 
-# Configuration for system access
-ALLOWED_PATHS = [
-    '/home',
-    '/tmp',
-    '/var/log',
-    '/opt',
-    '/usr/local',
-    '/etc',  # Read-only for most users
-    '/',      # Root access for admins
-]
-
-# Restricted paths that should never be accessible
-RESTRICTED_PATHS = [
-    '/proc',
-    '/sys', 
-    '/dev',
-    '/run',
-    '/boot',
-    '/root',  # Unless user is admin
-]
+# Configuration for system access will be loaded from current_app.config
 
 def is_admin_user():
     """Check if current user has admin privileges"""
     return current_user.is_authenticated and current_user.is_admin()
 
 def is_path_allowed(path):
-    """Check if the path is allowed for the current user"""
+    """Check if the path is allowed for the current user based on app config."""
     abs_path = os.path.abspath(path)
-    
-    # Always deny restricted paths
-    for restricted in RESTRICTED_PATHS:
+
+    allowed_paths = current_app.config.get('FILE_MANAGER_ALLOWED_PATHS', [])
+    restricted_paths = current_app.config.get('FILE_MANAGER_RESTRICTED_PATHS', [])
+    admin_only_paths = current_app.config.get('FILE_MANAGER_ADMIN_ONLY_PATHS', [])
+
+    # Check restricted paths first
+    for restricted in restricted_paths:
         if abs_path.startswith(restricted):
-            # Allow /root only for admins
+            # Allow /root only for admins, if /root is in restricted_paths
             if restricted == '/root' and is_admin_user():
-                continue
-            return False
-    
-    # For non-admin users, restrict to allowed paths
-    if not is_admin_user():
-        # Allow user's home directory
-        user_home = os.path.expanduser('~')
-        if abs_path.startswith(user_home):
-            return True
-            
-        # Check allowed paths
-        for allowed in ALLOWED_PATHS[:-1]:  # Exclude root path for non-admins
+                # If /root is also in admin_only_paths (which it is by default config),
+                # this admin will be allowed. If it wasn't in admin_only_paths,
+                # it would be denied later for admins if not in allowed_paths.
+                # This logic assumes /root in restricted_paths is primarily to stop non-admins.
+                # Admins wanting to access /root should have it in allowed_paths or it's implicitly allowed for them.
+                # The main check for admin access to /root is if it starts with an allowed path.
+                pass # Let it be checked by allowed_paths logic for admins
+            else:
+                return False # Path is strictly forbidden
+
+    if is_admin_user():
+        # Admins can access any path in allowed_paths
+        for allowed in allowed_paths:
             if abs_path.startswith(allowed):
                 return True
+        # Fallback for admins: if not explicitly in allowed_paths, deny.
+        # This is safer than allowing everything not restricted.
+        # However, if '/' is in allowed_paths, this effectively allows most things.
         return False
-    
-    # Admins have broader access but still respect some restrictions
-    return True
+    else: # Non-admin user
+        # 1. Deny if it's an admin-only path
+        for admin_path in admin_only_paths:
+            if abs_path.startswith(admin_path):
+                return False
+
+        # 2. Allow user's own home directory (if not part of a restricted path like /home/user being inside /home which is fine)
+        # Ensure that expanduser('~') itself is not pointing to something restricted (e.g. /root if user is root)
+        user_home = os.path.expanduser('~')
+        # We must also check if their home itself is allowed by general rules (e.g. not in restricted paths)
+        # This is a bit circular if their home is /root and /root is restricted.
+        # The primary restricted_paths check at the top should handle this.
+        if abs_path.startswith(user_home):
+            # Now, ensure their home directory isn't something like /proc/user_home by mistake
+            # This check is more about ensuring the user_home itself is valid beyond just not being in admin_only
+            # It needs to be part of the general allowed_paths structure
+            is_home_safe_to_allow = False
+            for allowed in allowed_paths:
+                if user_home.startswith(allowed) and allowed not in admin_only_paths:
+                    is_home_safe_to_allow = True
+                    break
+            if is_home_safe_to_allow:
+                return True
+
+        # 3. Check against general allowed_paths that are NOT admin_only
+        for allowed in allowed_paths:
+            if abs_path.startswith(allowed) and allowed not in admin_only_paths:
+                return True
+
+        return False
 
 def get_safe_path(path):
-    """Get a safe, absolute path and validate it"""
+    """Get a safe, absolute path and validate it using app config."""
     if not path or path == '.':
-        # Default starting path
         if is_admin_user():
+            # Admins default to root if permitted by overall logic
+            # The is_path_allowed will ultimately decide if '/' is okay
             return '/'
         else:
-            return os.path.expanduser('~')
+            # Non-admins default to their home directory from config
+            return os.path.expanduser(current_app.config.get('FILE_MANAGER_DEFAULT_USER_PATH', '~'))
     
     # Handle relative paths
     if not os.path.isabs(path):
         if is_admin_user():
-            base = '/'
+            base = '/' # Or a configurable admin default start path from config if added later
         else:
-            base = os.path.expanduser('~')
+            base = os.path.expanduser(current_app.config.get('FILE_MANAGER_DEFAULT_USER_PATH', '~'))
         path = os.path.join(base, path)
     
     # Normalize the path
@@ -299,22 +319,22 @@ def create_folder():
         folder_name = request.form.get('folder_name')
 
         if not folder_name:
-            return jsonify(success=False, error="Folder name is required.")
+            return json_error("Folder name is required.")
 
         # Validate folder name
         secure_name = werkzeug.utils.secure_filename(folder_name)
         if not secure_name or secure_name != folder_name:
-            return jsonify(success=False, error="Invalid folder name.")
+            return json_error("Invalid folder name.")
 
         current_path = get_safe_path(path)
         new_folder_path = os.path.join(current_path, folder_name)
 
         # Check if we can write to the parent directory
         if not os.access(current_path, os.W_OK):
-            return jsonify(success=False, error="Permission denied: Cannot write to directory.")
+            return json_error("Permission denied: Cannot write to directory.", status_code=403)
 
         if os.path.exists(new_folder_path):
-            return jsonify(success=False, error="Folder already exists.")
+            return json_error("Folder already exists.", status_code=409)
 
         os.makedirs(new_folder_path)
         
@@ -324,13 +344,13 @@ def create_folder():
             extra={'user_id': current_user.id, 'action': 'create_folder'}
         )
         
-        return jsonify(success=True, message="Folder created successfully.")
+        return json_success(message="Folder created successfully.", status_code=201)
         
     except PermissionError as e:
-        return jsonify(success=False, error=f"Permission denied: {str(e)}")
+        return json_error(f"Permission denied: {str(e)}", status_code=403)
     except Exception as e:
         current_app.logger.error(f"Error creating folder: {e}", extra={'user_id': current_user.id})
-        return jsonify(success=False, error="An error occurred while creating the folder.")
+        return json_error("An error occurred while creating the folder.", status_code=500)
 
 @bp.route('/create_file', methods=['POST'])
 @login_required
@@ -341,22 +361,22 @@ def create_file():
         file_name = request.form.get('file_name')
 
         if not file_name:
-            return jsonify(success=False, error="File name is required.")
+            return json_error("File name is required.")
 
         # Validate file name
         secure_name = werkzeug.utils.secure_filename(file_name)
         if not secure_name or secure_name != file_name:
-            return jsonify(success=False, error="Invalid file name.")
+            return json_error("Invalid file name.")
 
         current_path = get_safe_path(path)
         new_file_path = os.path.join(current_path, file_name)
 
         # Check if we can write to the parent directory
         if not os.access(current_path, os.W_OK):
-            return jsonify(success=False, error="Permission denied: Cannot write to directory.")
+            return json_error("Permission denied: Cannot write to directory.", status_code=403)
 
         if os.path.exists(new_file_path):
-            return jsonify(success=False, error="File already exists.")
+            return json_error("File already exists.", status_code=409)
 
         # Create empty file
         with open(new_file_path, 'w') as f:
@@ -368,13 +388,13 @@ def create_file():
             extra={'user_id': current_user.id, 'action': 'create_file'}
         )
         
-        return jsonify(success=True, message="File created successfully.")
+        return json_success(message="File created successfully.", status_code=201)
         
     except PermissionError as e:
-        return jsonify(success=False, error=f"Permission denied: {str(e)}")
+        return json_error(f"Permission denied: {str(e)}", status_code=403)
     except Exception as e:
         current_app.logger.error(f"Error creating file: {e}", extra={'user_id': current_user.id})
-        return jsonify(success=False, error="An error occurred while creating the file.")
+        return json_error("An error occurred while creating the file.", status_code=500)
 
 @bp.route('/delete_item', methods=['POST'])
 @login_required
@@ -383,21 +403,21 @@ def delete_item():
     try:
         item_path = request.form.get('item_path')
         if not item_path:
-            return jsonify(success=False, error="Item path is required.")
+            return json_error("Item path is required.")
 
         full_path = get_safe_path(item_path)
 
         if not os.path.exists(full_path):
-            return jsonify(success=False, error="Item not found.")
+            return json_error("Item not found.", status_code=404)
 
         # Check if we can write to the parent directory
         parent_dir = os.path.dirname(full_path)
         if not os.access(parent_dir, os.W_OK):
-            return jsonify(success=False, error="Permission denied: Cannot delete from this directory.")
+            return json_error("Permission denied: Cannot delete from this directory.", status_code=403)
 
         # Additional safety check for important system directories
         if full_path in ['/', '/home', '/usr', '/var', '/etc', '/boot', '/sys', '/proc', '/dev']:
-            return jsonify(success=False, error="Cannot delete system directories.")
+            return json_error("Cannot delete system directories.", status_code=403)
 
         # Check if it's a directory or file
         is_directory = os.path.isdir(full_path)
@@ -415,13 +435,13 @@ def delete_item():
             extra={'user_id': current_user.id, 'action': action, 'is_directory': is_directory}
         )
 
-        return jsonify(success=True, message="Item deleted successfully.")
+        return json_success(message="Item deleted successfully.")
         
     except PermissionError as e:
-        return jsonify(success=False, error=f"Permission denied: {str(e)}")
+        return json_error(f"Permission denied: {str(e)}", status_code=403)
     except Exception as e:
         current_app.logger.error(f"Error deleting item {item_path}: {e}", extra={'user_id': current_user.id})
-        return jsonify(success=False, error="An error occurred while deleting the item.")
+        return json_error("An error occurred while deleting the item.", status_code=500)
 
 @bp.route('/view_file')
 @login_required
@@ -430,24 +450,24 @@ def view_file():
     try:
         file_path = request.args.get('path')
         if not file_path:
-            return jsonify(success=False, error="File path is required.")
+            return json_error("File path is required.")
 
         full_path = get_safe_path(file_path)
 
         if not os.path.exists(full_path):
-            return jsonify(success=False, error="File not found.")
+            return json_error("File not found.", status_code=404)
 
         if os.path.isdir(full_path):
-            return jsonify(success=False, error="Cannot view directory content.")
+            return json_error("Cannot view directory content.", status_code=400)
 
         # Check read permissions
         if not os.access(full_path, os.R_OK):
-            return jsonify(success=False, error="Permission denied: Cannot read file.")
+            return json_error("Permission denied: Cannot read file.", status_code=403)
 
         # Check file size (limit to 10MB for viewing)
         file_size = os.path.getsize(full_path)
         if file_size > 10 * 1024 * 1024:  # 10MB
-            return jsonify(success=False, error="File is too large to view (max 10MB).")
+            return json_error("File is too large to view (max 10MB).", status_code=413)
 
         # Try to read file content
         try:
@@ -460,7 +480,7 @@ def view_file():
                 with open(full_path, 'r', encoding='latin-1') as f:
                     content = f.read()
             except UnicodeDecodeError:
-                return jsonify(success=False, error="File contains binary data and cannot be displayed as text.")
+                return json_error("File contains binary data and cannot be displayed as text.", status_code=400)
 
         # Log file view
         current_app.logger.info(
@@ -468,13 +488,13 @@ def view_file():
             extra={'user_id': current_user.id, 'action': 'view_file', 'file_size': file_size}
         )
 
-        return jsonify(success=True, content=content, size=format_file_size(file_size))
+        return json_success(data={'content': content, 'size': format_file_size(file_size)})
 
     except PermissionError as e:
-        return jsonify(success=False, error=f"Permission denied: {str(e)}")
+        return json_error(f"Permission denied: {str(e)}", status_code=403)
     except Exception as e:
         current_app.logger.error(f"Error viewing file {file_path}: {e}", extra={'user_id': current_user.id})
-        return jsonify(success=False, error="An error occurred while reading the file.")
+        return json_error("An error occurred while reading the file.", status_code=500)
 
 @bp.route('/download_file')
 @login_required
@@ -559,11 +579,12 @@ def get_disk_usage():
             'file_count': file_count,
             'folder_count': folder_count,
             'path': current_path
-        })
+        }
+        return json_success(data=data)
 
     except Exception as e:
         current_app.logger.error(f"Error getting disk usage: {e}", extra={'user_id': current_user.id})
-        return jsonify(success=False, error="An error occurred while calculating disk usage.")
+        return json_error("An error occurred while calculating disk usage.", status_code=500)
 
 @bp.route('/quick_navigate')
 @login_required
@@ -625,13 +646,13 @@ def quick_navigate():
     accessible_shortcuts = []
     for shortcut in shortcuts:
         try:
-            path = get_safe_path(shortcut['path'])
+            path = get_safe_path(shortcut['path']) # This might raise PermissionError
             if os.path.exists(path) and os.access(path, os.R_OK):
                 accessible_shortcuts.append(shortcut)
-        except (PermissionError, OSError):
-            continue
+        except (PermissionError, OSError): # Catch PermissionError from get_safe_path
+            continue # Skip shortcuts that are not accessible or invalid
     
-    return jsonify(shortcuts=accessible_shortcuts)
+    return json_success(data={'shortcuts': accessible_shortcuts})
 
 # Agregar esta función a app/file_manager/routes.py
 
@@ -644,18 +665,18 @@ def rename_item():
         new_name = request.form.get('new_name')
 
         if not old_path or not new_name:
-            return jsonify(success=False, error="Both old path and new name are required.")
+            return json_error("Both old path and new name are required.")
 
         # Validate the old path
         old_full_path = get_safe_path(old_path)
         
         if not os.path.exists(old_full_path):
-            return jsonify(success=False, error="Item not found.")
+            return json_error("Item not found.", status_code=404)
 
         # Secure the new name
         secure_new_name = werkzeug.utils.secure_filename(new_name)
         if not secure_new_name or secure_new_name != new_name:
-            return jsonify(success=False, error="Invalid new name. Use only letters, numbers, hyphens, and underscores.")
+            return json_error("Invalid new name. Use only letters, numbers, hyphens, and underscores.")
 
         # Create new path
         parent_dir = os.path.dirname(old_full_path)
@@ -663,16 +684,16 @@ def rename_item():
 
         # Check if we can write to the parent directory
         if not os.access(parent_dir, os.W_OK):
-            return jsonify(success=False, error="Permission denied: Cannot rename in this directory.")
+            return json_error("Permission denied: Cannot rename in this directory.", status_code=403)
 
         # Validate the new path is also safe
         try:
-            get_safe_path(new_full_path)
+            get_safe_path(new_full_path) # This will raise PermissionError if not allowed
         except PermissionError:
-            return jsonify(success=False, error="Permission denied: Invalid destination path.")
+            return json_error("Permission denied: Invalid destination path.", status_code=403)
 
         if os.path.exists(new_full_path):
-            return jsonify(success=False, error="An item with that name already exists.")
+            return json_error("An item with that name already exists.", status_code=409)
 
         # Rename the item
         os.rename(old_full_path, new_full_path)
@@ -683,13 +704,13 @@ def rename_item():
             extra={'user_id': current_user.id, 'action': 'rename_item'}
         )
 
-        return jsonify(success=True, message="Item renamed successfully.")
+        return json_success(message="Item renamed successfully.")
 
     except PermissionError as e:
-        return jsonify(success=False, error=f"Permission denied: {str(e)}")
+        return json_error(f"Permission denied: {str(e)}", status_code=403)
     except Exception as e:
         current_app.logger.error(f"Error renaming item: {e}", extra={'user_id': current_user.id})
-        return jsonify(success=False, error="An error occurred while renaming the item.")
+        return json_error("An error occurred while renaming the item.", status_code=500)
 
 @bp.route('/upload_file', methods=['POST'])
 @login_required
@@ -699,37 +720,39 @@ def upload_file():
         path = request.form.get('path', '/')
         
         if 'file' not in request.files:
-            return jsonify(success=False, error="No file selected.")
+            return json_error("No file selected.")
 
         file = request.files['file']
         
         if file.filename == '':
-            return jsonify(success=False, error="No file selected.")
+            return json_error("No file selected.")
 
         if file:
             # Secure the filename
             filename = werkzeug.utils.secure_filename(file.filename)
-            if not filename:
-                return jsonify(success=False, error="Invalid filename.")
+            if not filename: # werkzeug.utils.secure_filename can return empty string for invalid filenames
+                return json_error("Invalid filename.")
 
             current_path = get_safe_path(path)
             full_path = os.path.join(current_path, filename)
 
             # Check if we can write to the directory
             if not os.access(current_path, os.W_OK):
-                return jsonify(success=False, error="Permission denied: Cannot write to directory.")
+                return json_error("Permission denied: Cannot write to directory.", status_code=403)
 
             # Check if file already exists
             if os.path.exists(full_path):
-                return jsonify(success=False, error="File already exists.")
+                return json_error("File already exists.", status_code=409)
 
-            # Check file size (limit to 100MB)
-            file.seek(0, 2)  # Seek to end
+            # Check file size (limit to 100MB) - example limit
+            file.seek(0, os.SEEK_END)
             file_size = file.tell()
-            file.seek(0)  # Reset to beginning
+            file.seek(0, os.SEEK_SET)
             
-            if file_size > 100 * 1024 * 1024:  # 100MB
-                return jsonify(success=False, error="File too large. Maximum size is 100MB.")
+            # Example: Get MAX_CONTENT_LENGTH from app config if set, otherwise default
+            max_upload_size = current_app.config.get('MAX_CONTENT_LENGTH', 100 * 1024 * 1024)
+            if file_size > max_upload_size:
+                return json_error(f"File too large. Maximum size is {format_file_size(max_upload_size)}.", status_code=413)
 
             # Save the file
             file.save(full_path)
@@ -740,10 +763,10 @@ def upload_file():
                 extra={'user_id': current_user.id, 'action': 'upload_file', 'filename': filename, 'file_size': file_size}
             )
 
-            return jsonify(success=True, message="File uploaded successfully.")
+            return json_success(message="File uploaded successfully.", status_code=201)
 
     except PermissionError as e:
-        return jsonify(success=False, error=f"Permission denied: {str(e)}")
+        return json_error(f"Permission denied: {str(e)}", status_code=403)
     except Exception as e:
         current_app.logger.error(f"Error uploading file: {e}", extra={'user_id': current_user.id})
-        return jsonify(success=False, error="An error occurred while uploading the file.")
+        return json_error("An error occurred while uploading the file.", status_code=500)

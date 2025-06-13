@@ -2,6 +2,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
 from app import db
+from app.utils import json_success # Import helper
 from app.terminal.models import TerminalSession, TerminalLog
 from datetime import datetime
 import subprocess
@@ -74,7 +75,7 @@ def get_logs(session_id):
         'output': log.output
     } for log in logs]
     
-    return jsonify({
+    data = {
         'session': {
             'id': session.id,
             'name': session.name,
@@ -86,7 +87,8 @@ def get_logs(session_id):
             'duration': session.get_duration()
         },
         'logs': logs_data
-    })
+    }
+    return json_success(data=data)
 
 @sessions_bp.route('/<session_id>/close', methods=['POST'])
 @login_required

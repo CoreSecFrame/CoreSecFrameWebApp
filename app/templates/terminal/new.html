@@ -76,21 +76,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const sessionTypeSelect = document.getElementById('session_type');
-    const moduleSelection = document.getElementById('module_selection');
-    const moduleNameSelect = document.getElementById('module_name');
-    
-    sessionTypeSelect.addEventListener('change', function() {
-        if (this.value === 'terminal') {
-            moduleSelection.classList.add('d-none');
-            moduleNameSelect.removeAttribute('required');
-        } else {
-            moduleSelection.classList.remove('d-none');
-            moduleNameSelect.setAttribute('required', 'required');
-        }
-    });
-});
-</script>
+{{ super() }}
+<script src="{{ url_for('static', filename='js/terminal_new.js') }}" defer></script>
 {% endblock %}

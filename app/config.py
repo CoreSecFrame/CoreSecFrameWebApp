@@ -34,6 +34,41 @@ class Config:
     # File upload settings
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max upload
 
+    # File Manager Path Settings
+    # These can be overridden by environment variables in a future enhancement
+    # e.g., FILE_MANAGER_ALLOWED_PATHS_JSON = os.environ.get('FILE_MANAGER_ALLOWED_PATHS_JSON', '[]')
+    # and then json.loads(FILE_MANAGER_ALLOWED_PATHS_JSON)
+    FILE_MANAGER_ALLOWED_PATHS = [
+        '/home',
+        '/tmp',
+        '/var/log',
+        '/opt',
+        '/usr/local',
+        '/etc',
+        '/'
+    ]
+    FILE_MANAGER_RESTRICTED_PATHS = [
+        '/proc',
+        '/sys',
+        '/dev',
+        '/run',
+        '/boot',
+        # '/root' is handled by ADMIN_ONLY_PATHS logic.
+        # Restricting it here by default is safer.
+        # If an admin truly needs access to /root via file manager,
+        # it should be an explicit override or a very conscious decision.
+        '/root'
+    ]
+    # Paths that are generally allowed but require admin privileges
+    FILE_MANAGER_ADMIN_ONLY_PATHS = [
+        '/',
+        '/etc',
+        '/root'
+    ]
+    # Default user path if no path is specified and user is not admin
+    # This will be processed with os.path.expanduser('~')
+    FILE_MANAGER_DEFAULT_USER_PATH = '~'
+
 class ProductionConfig(Config):
     """Production configuration"""
     DEBUG = False

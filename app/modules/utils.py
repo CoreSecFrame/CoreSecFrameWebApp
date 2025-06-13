@@ -15,6 +15,24 @@ from app import db
 from app.modules.models import Module, ModuleCategory
 import shlex
 
+def _get_module_script_path(module_name, action):
+    """
+    Generates the path for a module script and ensures the directory exists.
+
+    Args:
+        module_name (str): The name of the module.
+        action (str): 'install' or 'uninstall'.
+
+    Returns:
+        Path: The full path to the script file.
+    """
+    instance_path = Path(current_app.config['INSTANCE_PATH'])
+    scripts_dir = instance_path / 'module_scripts'
+    scripts_dir.mkdir(parents=True, exist_ok=True)
+
+    script_filename = f"{module_name.replace(' ', '_').lower()}_{action}.sh"
+    return scripts_dir / script_filename
+
 def scan_local_modules():
     """
     Scan the modules directory for local modules with deduplication
@@ -618,17 +636,15 @@ def download_module(url, name, category):
         current_app.logger.error(traceback.format_exc())
         return False, None, str(e)
         
-def install_module(module, use_sudo=True, sudo_password=None):
+def install_module(module):
     """
-    Install a module
+    Generates an installation script for a module.
     
     Args:
         module: Module object
-        use_sudo: Whether to use sudo for commands
-        sudo_password: Sudo password if needed
         
     Returns:
-        tuple: (success, message)
+        tuple: (success, script_path, message)
     """
     try:
         # Import required modules
@@ -636,20 +652,12 @@ def install_module(module, use_sudo=True, sudo_password=None):
         import sys
         import importlib
         import importlib.util
-        import subprocess
         import shlex
         import shutil
-        import tempfile
         from pathlib import Path
+        # datetime is not used anymore, but kept for now in case models need it later
         from datetime import datetime
         
-        # Check if sudo password is provided
-        if use_sudo and not sudo_password:
-            return False, "Sudo password is required for module installation"
-            
-        # Check if expect is installed (needed for interactive sudo)
-        has_expect = shutil.which('expect') is not None
-            
         # Load module
         file_path = Path(module.local_path)
         module_name = file_path.stem
@@ -820,117 +828,80 @@ def install_module(module, use_sudo=True, sudo_password=None):
         # Get installation commands
         try:
             commands = module_class._get_install_command(pkg_manager)
-            
-            # If commands is None, handle it gracefully
-            if commands is None:
+            if commands is None: # Ensure commands is a list
                 commands = []
         except Exception as e:
-            current_app.logger.error(f"Error getting install commands: {e}")
-            return False, f"Error getting installation commands: {str(e)}"
+            current_app.logger.error(f"Error getting install commands for {module.name}: {e}")
+            return False, None, f"Error getting installation commands: {str(e)}"
         
         if not commands:
-            # If there are no commands, just mark as installed
-            module.installed = True
-            module.installed_date = datetime.utcnow()
-            db.session.commit()
-            return True, f"Module {module_name} installed successfully (no commands needed)"
-        
-        # Convert single command to list
-        if isinstance(commands, str):
+            # No installation commands needed
+            current_app.logger.info(f"No installation commands for module {module_name}.")
+            # According to new requirements, we don't mark as installed here.
+            # We return a script that does nothing or indicates no action needed.
+            # For simplicity, we can return a success with a message that no script is needed.
+            # However, the prompt implies generating a script even if it's empty or just has comments.
+            # Let's generate a script that states no commands are needed.
+            pass # Continue to script generation
+
+        if isinstance(commands, str): # Convert single command to list
             commands = [commands]
         
-        current_app.logger.info(f"Installation commands: {commands}")
+        current_app.logger.info(f"Installation commands for {module.name}: {commands}")
         
-        # Create a temporary directory for scripts
-        temp_dir = tempfile.mkdtemp(prefix="module_install_")
+        script_path = _get_module_script_path(module.name, "install")
         
         try:
-            # Create a unified installation script that handles sudo once
-            script_path = os.path.join(temp_dir, "install_script.sh")
-            
             with open(script_path, "w") as f:
                 f.write("#!/bin/bash\n")
-                f.write("set -e\n\n")  # Exit on error
+                f.write("set -e\n\n")
+                f.write(f"# Installation script for module: {module.name}\n")
+                f.write("# Generated by CoreSecFrame on {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
+                f.write("# Please run this script as an administrator (e.g., using sudo).\n\n")
+
+                if not commands:
+                    f.write("echo \"No installation commands are defined for this module.\"\n")
+                else:
+                    f.write("echo \"Starting installation process...\"\n\n")
+                    for i, cmd_orig in enumerate(commands):
+                        cmd_to_run = cmd_orig # Store original command for echoing
+                        if not cmd_orig.lower().startswith("sudo "):
+                            cmd_to_run = f"sudo {cmd_orig}"
+
+                        # Basic escaping for echo (though complex commands might need more robust handling)
+                        escaped_cmd_for_echo = shlex.quote(cmd_to_run)
+
+                        f.write(f"echo \"Executing command {i+1}/{len(commands)}: {cmd_to_run}\"\n")
+                        f.write(f"{cmd_to_run}\n")
+                        # Add error check, though set -e should handle it.
+                        # This provides more specific feedback in the script output.
+                        f.write(f"if [ $? -ne 0 ]; then\n")
+                        f.write(f"    echo \"Command '{cmd_to_run}' failed. Aborting installation.\"\n")
+                        f.write(f"    exit 1\n")
+                        f.write(f"fi\n\n")
                 
-                if use_sudo:
-                    # Add sudo authentication at the beginning
-                    f.write(f"# Authenticate sudo once up front\n")
-                    escaped_password = sudo_password.replace("'", "'\\''")  # Escape single quotes properly
-                    f.write(f"echo '{escaped_password}' | sudo -S echo \"Starting installation...\"\n")
-                    f.write(f"if [ $? -ne 0 ]; then\n")
-                    f.write(f"    echo \"Sudo authentication failed. Exiting.\"\n")
-                    f.write(f"    exit 1\n")
-                    f.write(f"fi\n\n")
-                
-                # Add all commands
-                f.write("# Installation commands\n")
-                for i, cmd in enumerate(commands):
-                    if use_sudo and not cmd.startswith("sudo "):
-                        cmd = f"sudo {cmd}"
-                    f.write(f"echo \"Running command {i+1}/{len(commands)}: {cmd}\"\n")
-                    f.write(f"{cmd}\n")
-                    f.write(f"if [ $? -ne 0 ]; then\n")
-                    f.write(f"    echo \"Command failed: {cmd}\"\n")
-                    f.write(f"    exit 1\n")
-                    f.write(f"fi\n\n")
-                
-                f.write("echo \"Installation completed successfully\"\n")
+                f.write("echo \"Installation script finished.\"\n")
             
-            # Make script executable
-            os.chmod(script_path, 0o755)
+            os.chmod(script_path, 0o755) # Make script executable
             
-            # Execute the script
-            current_app.logger.info(f"Executing installation script: {script_path}")
-            
-            result = subprocess.run(
-                script_path,
-                shell=True,
-                check=False,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-            
-            # Process results
-            all_output = []
-            all_output.append(f"Script exit code: {result.returncode}")
-            all_output.append(f"Output:\n{result.stdout}")
-            
-            if result.returncode != 0:
-                all_output.append(f"Error:\n{result.stderr}")
-                
-                # Check for sudo authentication failures
-                if any(phrase in result.stderr.lower() for phrase in [
-                    "incorrect password",
-                    "sorry, try again",
-                    "sudo authentication failed",
-                    "authentication failure"
-                ]):
-                    return False, "Sudo password authentication failed. Please try again with the correct password."
-                
-                return False, "\n".join(all_output)
-            
-            # Update module status
-            module.installed = True
-            module.installed_date = datetime.utcnow()
-            db.session.commit()
-            
-            all_output.append(f"Module {module_name} installed successfully")
-            current_app.logger.info(f"Module {module_name} installed successfully")
-            
-            return True, "\n".join(all_output)
-        
-        finally:
-            # Clean up temporary directory
-            try:
-                shutil.rmtree(temp_dir)
-            except Exception as e:
-                current_app.logger.warning(f"Failed to clean up temporary directory: {e}")
-        
-    except Exception as e:
-        current_app.logger.error(f"Error installing module: {e}")
+            current_app.logger.info(f"Installation script for {module.name} generated at {script_path}")
+            return True, str(script_path), "Installation script generated. Please run it manually as administrator."
+
+        except IOError as e:
+            current_app.logger.error(f"IOError generating installation script for {module.name}: {e}")
+            return False, None, f"Failed to write installation script: {str(e)}"
+        except Exception as e: # Catch any other unforeseen errors during script generation
+            current_app.logger.error(f"Unexpected error generating installation script for {module.name}: {e}")
+            current_app.logger.error(traceback.format_exc())
+            return False, None, f"An unexpected error occurred: {str(e)}"
+
+    except Exception as e: # Outer try-except for loading module class, etc.
+        current_app.logger.error(f"Error preparing for module installation script generation for {module.name}: {e}")
         current_app.logger.error(traceback.format_exc())
-        return False, f"Error installing module: {str(e)}"
+        # Check if the error is due to module class loading or similar issues
+        if "module_class" in locals() and not module_class:
+             return False, None, "No suitable module class found in the module file."
+        return False, None, f"Error preparing for installation: {str(e)}"
 
 def uninstall_module(module, sudo_password=None):
     """
@@ -949,28 +920,23 @@ def uninstall_module(module, sudo_password=None):
         import sys
         import importlib
         import importlib.util
-        import subprocess
         import shlex
         import shutil
-        import tempfile
         from pathlib import Path
-        from datetime import datetime
-        
-        # Check if sudo password is provided
-        if not sudo_password:
-            return False, "Sudo password is required for module uninstallation"
-        
+        from datetime import datetime # Keep for script generation timestamp
+
         # Load module
         file_path = Path(module.local_path)
         module_name = file_path.stem
         
-        current_app.logger.info(f"Uninstalling module: {module_name} from {file_path}")
+        current_app.logger.info(f"Generating uninstallation script for module: {module_name} from {file_path}")
         
         if not file_path.exists():
-            # If file doesn't exist, just mark as uninstalled in database
-            module.installed = False
-            db.session.commit()
-            return True, "Module file not found, marked as uninstalled"
+            # If file doesn't exist, we can't generate a script for its specific uninstall commands.
+            # However, the module entry might still exist in the DB.
+            # This function's role is to generate a script, not to manage DB entries if file is missing.
+            current_app.logger.warning(f"Module file {file_path} not found. Cannot generate uninstall script based on its content.")
+            return False, None, "Module file not found, cannot generate uninstallation script."
         
         # Add modules directory to Python path
         modules_dir = current_app.config['MODULES_DIR']
@@ -1145,114 +1111,71 @@ def uninstall_module(module, sudo_password=None):
         # Get uninstallation commands
         try:
             commands = module_class._get_uninstall_command(pkg_manager)
-            
-            # If commands is None, handle it gracefully
-            if commands is None:
+            if commands is None: # Ensure commands is a list
                 commands = []
         except Exception as e:
-            current_app.logger.error(f"Error getting uninstall commands: {e}")
-            return False, f"Error getting uninstallation commands: {str(e)}"
-        
+            current_app.logger.error(f"Error getting uninstall commands for {module.name}: {e}")
+            return False, None, f"Error getting uninstallation commands: {str(e)}"
+
         if not commands:
-            # If there are no commands, just mark as uninstalled
-            module.installed = False
-            db.session.commit()
-            return True, f"Module {module_name} uninstalled successfully (no commands needed)"
-        
-        # Convert single command to list
-        if isinstance(commands, str):
+            current_app.logger.info(f"No uninstallation commands for module {module_name}.")
+            # Generate a script indicating no action needed, similar to install_module
+            pass # Continue to script generation
+
+        if isinstance(commands, str): # Convert single command to list
             commands = [commands]
-        
-        current_app.logger.info(f"Uninstallation commands: {commands}")
-        
-        # Create a temporary directory for scripts
-        temp_dir = tempfile.mkdtemp(prefix="module_uninstall_")
-        
+
+        current_app.logger.info(f"Uninstallation commands for {module.name}: {commands}")
+
+        script_path = _get_module_script_path(module.name, "uninstall")
+
         try:
-            # Create a unified uninstallation script that handles sudo once
-            script_path = os.path.join(temp_dir, "uninstall_script.sh")
-            
             with open(script_path, "w") as f:
                 f.write("#!/bin/bash\n")
-                f.write("set -e\n\n")  # Exit on error
+                f.write("set -e\n\n")
+                f.write(f"# Uninstallation script for module: {module.name}\n")
+                f.write(f"# Generated by CoreSecFrame on {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
+                f.write("# Please run this script as an administrator (e.g., using sudo).\n\n")
+
+                if not commands:
+                    f.write("echo \"No uninstallation commands are defined for this module.\"\n")
+                else:
+                    f.write("echo \"Starting uninstallation process...\"\n\n")
+                    for i, cmd_orig in enumerate(commands):
+                        cmd_to_run = cmd_orig
+                        if not cmd_orig.lower().startswith("sudo "):
+                            cmd_to_run = f"sudo {cmd_orig}"
+
+                        escaped_cmd_for_echo = shlex.quote(cmd_to_run)
+
+                        f.write(f"echo \"Executing command {i+1}/{len(commands)}: {cmd_to_run}\"\n")
+                        f.write(f"{cmd_to_run}\n")
+                        f.write(f"if [ $? -ne 0 ]; then\n")
+                        f.write(f"    echo \"Command '{cmd_to_run}' failed. Aborting uninstallation.\"\n")
+                        f.write(f"    exit 1\n")
+                        f.write(f"fi\n\n")
                 
-                # Add sudo authentication at the beginning
-                f.write(f"# Authenticate sudo once up front\n")
-                escaped_password = sudo_password.replace("'", "'\\''")  # Escape single quotes properly
-                f.write(f"echo '{escaped_password}' | sudo -S echo \"Starting uninstallation...\"\n")
-                f.write(f"if [ $? -ne 0 ]; then\n")
-                f.write(f"    echo \"Sudo authentication failed. Exiting.\"\n")
-                f.write(f"    exit 1\n")
-                f.write(f"fi\n\n")
-                
-                # Add all commands
-                f.write("# Uninstallation commands\n")
-                for i, cmd in enumerate(commands):
-                    if not cmd.startswith("sudo "):
-                        cmd = f"sudo {cmd}"
-                    f.write(f"echo \"Running command {i+1}/{len(commands)}: {cmd}\"\n")
-                    f.write(f"{cmd}\n")
-                    f.write(f"if [ $? -ne 0 ]; then\n")
-                    f.write(f"    echo \"Command failed: {cmd}\"\n")
-                    f.write(f"    exit 1\n")
-                    f.write(f"fi\n\n")
-                
-                f.write("echo \"Uninstallation completed successfully\"\n")
-            
-            # Make script executable
-            os.chmod(script_path, 0o755)
-            
-            # Execute the script
-            current_app.logger.info(f"Executing uninstallation script: {script_path}")
-            
-            result = subprocess.run(
-                script_path,
-                shell=True,
-                check=False,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-            
-            # Process results
-            all_output = []
-            all_output.append(f"Script exit code: {result.returncode}")
-            all_output.append(f"Output:\n{result.stdout}")
-            
-            if result.returncode != 0:
-                all_output.append(f"Error:\n{result.stderr}")
-                
-                # Check for sudo authentication failures
-                if any(phrase in result.stderr.lower() for phrase in [
-                    "incorrect password",
-                    "sorry, try again",
-                    "sudo authentication failed",
-                    "authentication failure"
-                ]):
-                    return False, "Sudo password authentication failed. Please try again with the correct password."
-                
-                return False, "\n".join(all_output)
-            
-            # Update module status
-            module.installed = False
-            db.session.commit()
-            
-            all_output.append(f"Module {module_name} uninstalled successfully")
-            current_app.logger.info(f"Module {module_name} uninstalled successfully")
-            
-            return True, "\n".join(all_output)
-        
-        finally:
-            # Clean up temporary directory
-            try:
-                shutil.rmtree(temp_dir)
-            except Exception as e:
-                current_app.logger.warning(f"Failed to clean up temporary directory: {e}")
-        
-    except Exception as e:
-        current_app.logger.error(f"Error uninstalling module: {e}")
+                f.write("echo \"Uninstallation script finished.\"\n")
+
+            os.chmod(script_path, 0o755) # Make script executable
+
+            current_app.logger.info(f"Uninstallation script for {module.name} generated at {script_path}")
+            return True, str(script_path), "Uninstallation script generated. Please run it manually as administrator."
+
+        except IOError as e:
+            current_app.logger.error(f"IOError generating uninstallation script for {module.name}: {e}")
+            return False, None, f"Failed to write uninstallation script: {str(e)}"
+        except Exception as e:
+            current_app.logger.error(f"Unexpected error generating uninstallation script for {module.name}: {e}")
+            current_app.logger.error(traceback.format_exc())
+            return False, None, f"An unexpected error occurred: {str(e)}"
+
+    except Exception as e: # Outer try-except for loading module class, etc.
+        current_app.logger.error(f"Error preparing for module uninstallation script generation for {module.name}: {e}")
         current_app.logger.error(traceback.format_exc())
-        return False, f"Error uninstalling module: {str(e)}"
+        if "module_class" in locals() and not module_class: # Check if error was due to class loading
+            return False, None, "Module class not found, cannot generate uninstallation script."
+        return False, None, f"Error preparing for uninstallation: {str(e)}"
 
 def delete_module(module):
     """

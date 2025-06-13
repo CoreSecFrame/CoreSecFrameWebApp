@@ -1581,3 +1581,385 @@ function initializeOniuxIndicator() {
 document.addEventListener('DOMContentLoaded', initializeOniuxIndicator);
 window.addEventListener('popstate', initializeOniuxIndicator); // For SPAs or back/forward navigation
 // === END ONIUX INSTALLATION INDICATOR FUNCTIONALITY ===
+
+// Functions moved from base.html
+
+function initializeSystemWidgets() {
+    const systemInfoToggle = document.getElementById('system-info-toggle');
+    const performanceWidget = document.getElementById('system-performance-widget');
+    const closePerformanceWidget = document.getElementById('close-performance-widget');
+
+    if (systemInfoToggle && performanceWidget && closePerformanceWidget) {
+        systemInfoToggle.addEventListener('click', function() {
+            performanceWidget.classList.toggle('hidden');
+            if (!performanceWidget.classList.contains('hidden')) {
+                updatePerformanceMetrics(); // Call immediately when shown
+            }
+        });
+
+        closePerformanceWidget.addEventListener('click', function() {
+            performanceWidget.classList.add('hidden');
+        });
+    }
+}
+
+function initializeAccessibilityPanel() {
+    const accessibilityToggle = document.getElementById('accessibility-toggle');
+    const accessibilityPanel = document.getElementById('accessibility-panel');
+    const closeAccessibilityPanel = document.getElementById('close-accessibility-panel');
+
+    if (accessibilityToggle && accessibilityPanel && closeAccessibilityPanel) {
+        accessibilityToggle.addEventListener('click', function() {
+            accessibilityPanel.classList.toggle('hidden');
+        });
+
+        closeAccessibilityPanel.addEventListener('click', function() {
+            accessibilityPanel.classList.add('hidden');
+        });
+
+        setupAccessibilityOptions();
+    }
+}
+
+function setupAccessibilityOptions() {
+    // High contrast toggle
+    const highContrastToggle = document.getElementById('high-contrast-toggle');
+    if (highContrastToggle) {
+        const isHighContrast = localStorage.getItem('high-contrast') === 'true';
+        highContrastToggle.checked = isHighContrast;
+        if (isHighContrast) document.body.classList.add('high-contrast');
+
+        highContrastToggle.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                document.body.classList.add('high-contrast');
+                localStorage.setItem('high-contrast', 'true');
+            } else {
+                document.body.classList.remove('high-contrast');
+                localStorage.setItem('high-contrast', 'false');
+            }
+        });
+    }
+
+    // Large text toggle
+    const largeTextToggle = document.getElementById('large-text-toggle');
+    if (largeTextToggle) {
+        const isLargeText = localStorage.getItem('large-text') === 'true';
+        largeTextToggle.checked = isLargeText;
+        if (isLargeText) document.body.classList.add('large-text');
+
+        largeTextToggle.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                document.body.classList.add('large-text');
+                localStorage.setItem('large-text', 'true');
+            } else {
+                document.body.classList.remove('large-text');
+                localStorage.setItem('large-text', 'false');
+            }
+        });
+    }
+
+    // Reduce motion toggle
+    const reduceMotionToggle = document.getElementById('reduce-motion-toggle');
+    if (reduceMotionToggle) {
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const isReducedMotion = localStorage.getItem('reduce-motion') === 'true' || prefersReducedMotion;
+        reduceMotionToggle.checked = isReducedMotion;
+        if (isReducedMotion) document.body.classList.add('reduce-motion');
+
+        reduceMotionToggle.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                document.body.classList.add('reduce-motion');
+                localStorage.setItem('reduce-motion', 'true');
+            } else {
+                document.body.classList.remove('reduce-motion');
+                localStorage.setItem('reduce-motion', 'false');
+            }
+        });
+    }
+
+    // Focus indicators toggle (from accessibility manager, ensure it's compatible or handled by manager)
+    const focusIndicatorsToggle = document.getElementById('focus-indicators-toggle');
+    if (focusIndicatorsToggle && window.accessibilityManager) { // Check if accessibilityManager exists
+        // This assumes AccessibilityManager handles the class toggling internally based on its state
+        // For now, we'll let the AccessibilityManager handle its own state for this.
+        // If direct manipulation is needed:
+        // focusIndicatorsToggle.checked = !document.body.classList.contains('no-enhanced-focus');
+        // focusIndicatorsToggle.addEventListener('change', (e) => {
+        //     if (e.target.checked) {
+        //         document.body.classList.remove('no-enhanced-focus');
+        //     } else {
+        //         document.body.classList.add('no-enhanced-focus');
+        //     }
+        // });
+    }
+
+
+    // Font size slider
+    const fontSizeSlider = document.getElementById('font-size-slider');
+    const fontSizeValue = document.getElementById('font-size-value');
+    if (fontSizeSlider && fontSizeValue) {
+        const savedFontSize = localStorage.getItem('font-size') || '100';
+        fontSizeSlider.value = savedFontSize;
+        fontSizeValue.textContent = savedFontSize + '%';
+        document.documentElement.style.fontSize = savedFontSize + '%';
+
+        fontSizeSlider.addEventListener('input', (e) => {
+            const size = e.target.value;
+            fontSizeValue.textContent = size + '%';
+            document.documentElement.style.fontSize = size + '%';
+            localStorage.setItem('font-size', size);
+        });
+    }
+}
+
+
+function initializeKeyboardShortcuts() {
+    document.addEventListener('keydown', function(e) {
+        // Theme toggle shortcut (already in ThemeManager, but keep if global handling is desired)
+        // if (e.ctrlKey && e.shiftKey && e.key === 'T') {
+        //     e.preventDefault();
+        //     if (window.themeManager) window.themeManager.toggleTheme();
+        // }
+
+        // Accent color picker shortcut (already in ThemeManager)
+        // if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+        //     e.preventDefault();
+        //     if (window.themeManager) window.themeManager.toggleAccentPicker();
+        // }
+
+        // Escape to close all panels (global)
+        if (e.key === 'Escape') {
+            closeAllPanels();
+        }
+
+        // Alt + 1-9 for quick navigation
+        if (e.altKey && e.key >= '1' && e.key <= '9') {
+            e.preventDefault();
+            const navLinks = document.querySelectorAll('.navbar-nav .nav-link'); // Main nav
+            let targetIndex = parseInt(e.key) - 1;
+
+            // Attempt to find visible, direct navigation links first
+            const directNavLinks = Array.from(document.querySelectorAll('#navbarNav > ul.navbar-nav.me-auto > li > a.nav-link'));
+            if (targetIndex < directNavLinks.length && directNavLinks[targetIndex]) {
+                 directNavLinks[targetIndex].click();
+            } else {
+                // Fallback or adjust if more complex logic is needed
+                // This simple approach might not be robust for all navbar structures
+                if (navLinks[targetIndex]) { // General fallback
+                    navLinks[targetIndex].click();
+                }
+            }
+        }
+    });
+}
+
+function initializeAdditionalTooltips() {
+    // This is for tooltips on elements that only have a title attribute, not data-bs-toggle
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]:not([data-bs-toggle="tooltip"]):not([data-bs-toggle="popover"])'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        // Ensure it doesn't conflict with other libraries that might use title
+        if (!tooltipTriggerEl.closest('.some-third-party-widget-that-uses-title')) {
+            return new bootstrap.Tooltip(tooltipTriggerEl, {
+                delay: { show: 500, hide: 100 }
+            });
+        }
+    });
+}
+
+
+function updatePerformanceMetrics() {
+    const loadTimeEl = document.getElementById('load-time');
+    const memoryUsageEl = document.getElementById('memory-usage');
+    const currentThemeEl = document.getElementById('current-theme');
+    const currentAccentEl = document.getElementById('current-accent');
+
+    if (loadTimeEl && window.performanceMonitor) { // Check if performanceMonitor is available
+        loadTimeEl.textContent = window.performanceMonitor.getMetrics().loadTime + 'ms';
+    } else if (loadTimeEl) {
+         // Fallback if performanceMonitor not ready or if page loaded too fast for its 'load' listener
+        const perfData = performance.getEntriesByType('navigation')[0];
+        if (perfData) {
+            loadTimeEl.textContent = Math.round(perfData.loadEventEnd - perfData.loadEventStart) + 'ms';
+        } else {
+            loadTimeEl.textContent = Math.round(performance.now()) + 'ms (approx)';
+        }
+    }
+
+
+    if (memoryUsageEl && window.performanceMonitor) { // Check if performanceMonitor is available
+        const memUsage = window.performanceMonitor.getMetrics().memoryUsage;
+        memoryUsageEl.textContent = memUsage > 0 ? memUsage + 'MB' : (performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) + 'MB' : 'N/A');
+    } else if (memoryUsageEl) {
+        memoryUsageEl.textContent = (performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) + 'MB' : 'N/A');
+    }
+
+
+    if (currentThemeEl && window.themeManager) { // Check if themeManager is available
+        currentThemeEl.textContent = window.themeManager.currentTheme;
+    } else if (currentThemeEl) {
+        currentThemeEl.textContent = document.documentElement.getAttribute('data-theme') || 'light';
+    }
+
+    if (currentAccentEl && window.themeManager) { // Check if themeManager is available
+        currentAccentEl.textContent = window.themeManager.currentAccent;
+    } else if (currentAccentEl) {
+         currentAccentEl.textContent = localStorage.getItem('accent-color') || '#0078d4';
+    }
+}
+
+
+function autoHideFlashMessages() {
+    // This logic is similar to what's already in main.js, ensure it's not duplicated or conflicts.
+    // The existing one closes .alert:not(.alert-permanent)
+    // This one targets .flash-messages .alert specifically.
+    // Let's assume the one in main.js is sufficient if .flash-messages .alert also have .alert class.
+    // If more specific handling is needed:
+    setTimeout(() => {
+        const flashAlerts = document.querySelectorAll('.flash-messages .alert');
+        flashAlerts.forEach(alert => {
+            const alertInstance = bootstrap.Alert.getOrCreateInstance(alert);
+            if (alertInstance) { // Check if instance was found/created
+                alertInstance.close();
+            }
+        });
+    }, 7000); // Slightly longer duration to differentiate if needed, or consolidate
+}
+
+function closeAllPanels() {
+    const accentPicker = document.getElementById('accent-color-picker'); // This is the new ID from ThemeManager
+    const performanceWidget = document.getElementById('system-performance-widget');
+    const accessibilityPanel = document.getElementById('accessibility-panel');
+
+    if (accentPicker && window.themeManager && window.themeManager.accentPickerVisible) {
+        window.themeManager.hideAccentPicker();
+    }
+    if (performanceWidget && !performanceWidget.classList.contains('hidden')) {
+        performanceWidget.classList.add('hidden');
+    }
+    if (accessibilityPanel && !accessibilityPanel.classList.contains('hidden')) {
+        accessibilityPanel.classList.add('hidden');
+    }
+}
+
+// Global CoreSecFrame object
+window.CoreSecFrame = {
+    setTheme: function(theme) {
+        if (window.themeManager) window.themeManager.setTheme(theme);
+    },
+    setAccentColor: function(color) {
+        // This function from base.html used a global hexToHsl.
+        // ThemeManager's setAccentColor includes this logic.
+        if (window.themeManager) window.themeManager.setAccentColor(color);
+    },
+    showNotification: function(message, type = 'info', duration = 5000) {
+        if (window.notificationManager) return window.notificationManager.show(message, type, duration);
+        // Fallback if notificationManager is not ready (though it should be)
+        console.warn("NotificationManager not ready, falling back to alert for:", message);
+        alert(`${type.toUpperCase()}: ${message}`);
+        return null; // Or some other indicator of fallback
+    },
+    // Add other global utilities if needed
+    utils: Utils, // Expose general utilities
+    formValidator: FormValidator, // Expose FormValidator class
+    loadingManager: window.loadingManager, // Expose instance
+    modalManager: window.modalManager, // Expose instance
+    storageManager: window.storageManager // Expose instance
+};
+
+
+// Modify the main DOMContentLoaded listener to include new initializations
+document.addEventListener('DOMContentLoaded', () => {
+    // Existing initializations (ThemeManager, NotificationManager, etc. are already here)
+    // ...
+
+    // Add calls to new initialization functions
+    initializeSystemWidgets();
+    initializeAccessibilityPanel(); // This also calls setupAccessibilityOptions
+    initializeKeyboardShortcuts();
+    initializeAdditionalTooltips(); // For title-only tooltips
+    autoHideFlashMessages(); // Consider if this duplicates existing auto-dismiss logic
+
+    // Initial call to update performance metrics display if widget is visible by default (it's hidden by default)
+    // updatePerformanceMetrics(); // Called when widget is shown instead
+
+    // Periodic update for performance metrics if the widget is visible
+    const performanceWidget = document.getElementById('system-performance-widget');
+    if (performanceWidget) {
+        setInterval(() => {
+            if (!performanceWidget.classList.contains('hidden')) {
+                updatePerformanceMetrics();
+            }
+        }, 5000); // Update every 5 seconds for example
+    }
+});
+
+// Custom Modal Functions (from terminal/index.html)
+window.openCustomModal = function(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'block';
+        // Ensure 'show' class is added for Bootstrap 5 if its styles are used,
+        // or for custom animations tied to '.show'.
+        // The current CSS for .custom-modal.show .custom-modal-content uses an animation.
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden'; // Prevent background scrolling
+
+        // Focus trap for accessibility
+        const focusableElements = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (focusableElements.length > 0) {
+            focusableElements[0].focus();
+        }
+    }
+};
+
+window.closeCustomModal = function(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('show');
+        // Delay display none to allow fade-out animations if any
+        setTimeout(() => {
+            modal.style.display = 'none';
+            // Restore body scroll only if no other modals are open
+            if (document.querySelectorAll('.custom-modal.show, .modal.show').length === 0) {
+                 document.body.style.overflow = '';
+            }
+        }, 300); // Adjust timing based on animation duration (e.g., .custom-modal.show animation is 0.3s)
+    }
+};
+
+// Event listener for closing custom modals with backdrop click (globally in main.js)
+document.addEventListener('click', function (e) {
+    if (e.target.classList.contains('custom-modal-backdrop')) {
+        const modal = e.target.closest('.custom-modal');
+        if (modal && modal.classList.contains('show')) { // Check if modal is shown
+            window.closeCustomModal(modal.id);
+        }
+    }
+});
+
+// Event listener for closing custom modals with Escape key (globally in main.js)
+// This needs to be careful not to interfere with Bootstrap's default modal Esc behavior.
+// Bootstrap modals usually handle Esc themselves if `data-bs-keyboard="true"` (default).
+// This is primarily for the custom modals that are not Bootstrap standard.
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+        const visibleCustomModals = document.querySelectorAll('.custom-modal.show');
+        if (visibleCustomModals.length > 0) {
+            // Close the topmost visible custom modal
+            window.closeCustomModal(visibleCustomModals[visibleCustomModals.length - 1].id);
+        }
+        // Note: Bootstrap modals with keyboard=true will also close. This is usually desired.
+    }
+});
+
+// Prevent form submission when modal is not visible (globally in main.js for custom modals)
+document.addEventListener('submit', function(e) {
+    const form = e.target;
+    const modal = form.closest('.custom-modal');
+    // If the form is inside a custom modal AND that modal is not currently shown, prevent submission.
+    if (modal && !modal.classList.contains('show')) {
+        e.preventDefault();
+        console.warn("Prevented submission of form in hidden custom modal:", form.id || form);
+        // return false; // Not strictly needed with preventDefault
+    }
+});

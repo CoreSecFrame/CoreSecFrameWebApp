@@ -360,61 +360,6 @@
 
 {% block scripts %}
 {{ super() }}
-<script>
-    function openCustomModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.style.display = 'block';
-            modal.classList.add('show');
-            document.body.style.overflow = 'hidden';
-            
-            // Focus trap for accessibility
-            const focusableElements = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-            if (focusableElements.length > 0) {
-                focusableElements[0].focus();
-            }
-        }
-    }
-
-    function closeCustomModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.classList.remove('show');
-            setTimeout(() => {
-                modal.style.display = 'none';
-                document.body.style.overflow = '';
-            }, 300);
-        }
-    }
-
-    // Close modal when clicking backdrop
-    document.addEventListener('click', function (e) {
-        if (e.target.classList.contains('custom-modal-backdrop')) {
-            const modal = e.target.closest('.custom-modal');
-            if (modal) {
-                closeCustomModal(modal.id);
-            }
-        }
-    });
-
-    // Close modal with Escape key
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') {
-            const visibleModals = document.querySelectorAll('.custom-modal.show');
-            visibleModals.forEach(modal => {
-                closeCustomModal(modal.id);
-            });
-        }
-    });
-
-    // Prevent form submission when modal is not visible
-    document.addEventListener('submit', function(e) {
-        const form = e.target;
-        const modal = form.closest('.custom-modal');
-        if (modal && !modal.classList.contains('show')) {
-            e.preventDefault();
-            return false;
-        }
-    });
-</script>
+<!-- Custom modal functions (openCustomModal, closeCustomModal) and their event listeners
+     have been moved to app/static/js/main.js and are now globally available. -->
 {% endblock %}

@@ -89,63 +89,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Reemplazar la función showNotification existente por esta:
-function showNotification(message, type = 'info') {
-    // Remove existing notifications
-    const existingNotifications = document.querySelectorAll('.gui-notification');
-    existingNotifications.forEach(notification => notification.remove());
-    
-    // Create notification container if it doesn't exist
-    let notificationContainer = document.getElementById('notification-container');
-    if (!notificationContainer) {
-        notificationContainer = document.createElement('div');
-        notificationContainer.id = 'notification-container';
-        notificationContainer.style.cssText = `
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            z-index: 9999;
-            max-width: 400px;
-            pointer-events: none;
-        `;
-        document.body.appendChild(notificationContainer);
-    }
-    
-    // Create notification
-    const notification = document.createElement('div');
-    notification.className = `alert alert-${type} gui-notification shadow-lg fade show`;
-    notification.style.cssText = `
-        margin-bottom: 10px;
-        pointer-events: auto;
-        animation: slideInRight 0.3s ease-out;
-    `;
-    
-    const iconMap = {
-        'success': 'check-circle',
-        'danger': 'exclamation-circle', 
-        'warning': 'exclamation-triangle',
-        'info': 'info-circle'
-    };
-    
-    notification.innerHTML = `
-        <div class="d-flex align-items-start">
-            <i class="bi bi-${iconMap[type] || 'info-circle'} me-2 mt-1"></i>
-            <div class="flex-grow-1">
-                <div style="white-space: pre-line;">${message}</div>
-            </div>
-            <button type="button" class="btn-close ms-2" onclick="this.closest('.gui-notification').remove()"></button>
-        </div>
-    `;
-    
-    notificationContainer.appendChild(notification);
-    
-    // Auto-remove after 8 seconds
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.style.animation = 'slideOutRight 0.3s ease-in';
-            setTimeout(() => notification.remove(), 300);
-        }
-    }, 8000);
-}
+// The local showNotification function has been removed.
+// Calls should now default to window.CoreSecFrame.showNotification or window.showNotification from main.js
 </script>
 {% endblock %}

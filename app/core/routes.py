@@ -5,6 +5,8 @@ import platform
 import psutil
 from app.modules.models import Module, ModuleCategory
 from app import db
+from sqlalchemy import func # Ensure func is imported
+from sqlalchemy.orm import joinedload # Ensure joinedload is imported
 
 core_bp = Blueprint('core', __name__)
 
@@ -115,17 +117,21 @@ def _get_modules_info():
         total_modules = Module.query.count()
         installed_modules = Module.query.filter_by(installed=True).count()
         
-        categories = []
-        for category in ModuleCategory.query.all():
-            count = Module.query.filter_by(category=category.name).count()
-            if count > 0:
-                categories.append({'name': category.name, 'count': count})
+        # Optimized category counts
+        module_counts_by_category = db.session.query(
+            Module.category, func.count(Module.id)
+        ).group_by(Module.category).all()
+        counts_dict = {name: count for name, count in module_counts_by_category}
+
+        category_objects = ModuleCategory.query.order_by(ModuleCategory.name).all()
+        categories_data = [{'name': cat.name, 'count': counts_dict.get(cat.name, 0)}
+                           for cat in category_objects if counts_dict.get(cat.name, 0) > 0]
         
         return {
             'total': total_modules,
             'installed': installed_modules,
             'available': total_modules - installed_modules,
-            'categories': categories
+            'categories': categories_data
         }
     except Exception as e:
         current_app.logger.warning(f"Error getting modules info: {e}")
@@ -182,17 +188,40 @@ def _get_gui_info():
         active_gui_sessions = GUISession.query.filter_by(user_id=current_user.id, active=True).count()
         available_apps = GUIApplication.query.filter_by(enabled=True, installed=True).count()
         
-        recent_gui_sessions = GUISession.query.filter_by(user_id=current_user.id).order_by(
-            GUISession.last_activity.desc()
-        ).limit(5).all()
+        recent_gui_sessions = GUISession.query.filter_by(user_id=current_user.id)\
+                                      .options(joinedload(GUISession.application), joinedload(GUISession.user))\
+                                      .order_by(GUISession.last_activity.desc())\
+                                      .limit(5).all()
         
+        # Prepare data for template, convert to dict if necessary, or ensure template accesses attributes directly
+        recent_gui_sessions_data = []
+        for session in recent_gui_sessions:
+            # Assuming session.to_dict() or similar is not used in template for these specific fields,
+            # or if it is, that it's optimized.
+            # If session.to_dict() accesses application.name and user.username, the joinedload helps.
+            # Let's assume the template might access these, so joinedload is beneficial.
+            # For the dashboard, it seems like it might just list names or counts,
+            # but being safe with joinedload for `recent_gui_sessions` if details are shown.
+            # The current template `dashboard.html` iterates `gui_info.recent` and accesses `s.name`, `s.application.display_name`.
+            # So joinedload(GUISession.application) is indeed useful. `s.user.username` is not directly used in the loop in dashboard.html.
+            # However, other parts of the GUISession object or its methods might access user.
+            # For consistency and safety, keeping joinedload(GUISession.user).
+            recent_gui_sessions_data.append({
+                'id': session.id, # Assuming id is needed for url_for
+                'session_id': session.session_id, # Assuming session_id is needed for url_for
+                'name': session.name,
+                'application_name': session.application.display_name if session.application else "N/A",
+                'active': session.active
+            })
+
+
         return {
             'total': total_gui_sessions,
             'active': active_gui_sessions,
             'inactive': total_gui_sessions - active_gui_sessions,
             'available_apps': available_apps,
-            'webrtc_sessions': active_gui_sessions,
-            'recent': recent_gui_sessions
+            'webrtc_sessions': active_gui_sessions, # This seems to be a duplicate of 'active'
+            'recent': recent_gui_sessions_data
         }
         
     except ImportError:

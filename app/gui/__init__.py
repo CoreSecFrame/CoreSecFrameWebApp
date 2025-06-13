@@ -310,17 +310,20 @@ def gui_context_processor():
             'gui_session_count': get_session_count(),
             'gui_active_session_count': get_active_session_count(),
             'gui_application_count': get_application_count(),
-            'gui_environment': env_info['display_method'],
-            'gui_uses_wslg': env_info['has_wslg']
+            'gui_environment': env_info.get('display_method', 'unknown'),
+            'gui_uses_wslg': env_info.get('has_wslg', False),
+            'gui_is_wsl': env_info.get('is_wsl', False)  # Added gui_is_wsl
         }
-    except:
+    except Exception as e: # Catch specific exception if possible, or log it
+        current_app.logger.error(f"Error in gui_context_processor: {e}")
         # Fallback si hay problemas
         return {
             'gui_session_count': 0,
             'gui_active_session_count': 0,
             'gui_application_count': 0,
             'gui_environment': 'unknown',
-            'gui_uses_wslg': False
+            'gui_uses_wslg': False,
+            'gui_is_wsl': False  # Fallback for gui_is_wsl
         }
 
 # CLI commands for GUI module

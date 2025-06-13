@@ -2,6 +2,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
 from app import db
+from app.utils import json_success, json_error # Import helpers
 from app.modules.models import Module, ModuleCategory, ModuleShopCache
 from app.modules.utils import scan_local_modules, fetch_remote_modules, download_module, install_module, uninstall_module
 import os
@@ -168,9 +169,12 @@ def shop():
             categories=categories
         )
     except Exception as e:
-        current_app.logger.error(f"Error in module shop route: {str(e)}")
+        # db.session.rollback() # No explicit db.session.commit() in the try block above for initial load.
+        # However, if fetch_remote_modules or cache saving involves DB ops that could fail partially, consider rollback.
+        # For now, assuming cache saving is the main DB op that might fail and it has its own try-except.
+        current_app.logger.error(f"Error in route {request.endpoint}: {str(e)}")
         current_app.logger.error(traceback.format_exc())
-        flash(f'An unexpected error occurred: {str(e)}', 'danger')
+        flash('An error occurred while loading the module shop. Please try again later.', 'danger')
         return redirect(url_for('modules.index'))
 
 @modules_bp.route('/shop/refresh')
@@ -217,9 +221,10 @@ def refresh_shop():
         flash('Module list has been successfully refreshed from the source.', 'success')
 
     except Exception as e:
-        current_app.logger.error(f"Error refreshing module shop: {str(e)}")
+        db.session.rollback() # Cache operations involve db.session.commit()
+        current_app.logger.error(f"Error in route {request.endpoint}: {str(e)}")
         current_app.logger.error(traceback.format_exc())
-        flash(f'An error occurred while refreshing the module list: {str(e)}', 'danger')
+        flash('An error occurred while refreshing the module list. Please try again later.', 'danger')
     
     return redirect(url_for('modules.shop'))
 
@@ -249,9 +254,10 @@ def scan():
         flash(full_message, 'success')
         
     except Exception as e:
-        current_app.logger.error(f"Error during module scan: {str(e)}")
+        db.session.rollback() # clean_module_database and scan_local_modules involve DB operations
+        current_app.logger.error(f"Error in route {request.endpoint}: {str(e)}")
         current_app.logger.error(traceback.format_exc())
-        flash(f'Error during module scan: {str(e)}', 'danger')
+        flash('An error occurred during the module scan. Please check logs for details.', 'danger')
     
     return redirect(url_for('modules.index'))
 
@@ -304,9 +310,10 @@ def sync():
         flash(f'Sync completed: {added} modules added, {updated} modules updated', 'success')
         
     except Exception as e:
-        current_app.logger.error(f"Error syncing modules: {str(e)}")
+        db.session.rollback() # Syncing involves db.session.commit()
+        current_app.logger.error(f"Error in route {request.endpoint}: {str(e)}")
         current_app.logger.error(traceback.format_exc())
-        flash(f'Error syncing modules: {str(e)}', 'danger')
+        flash('An error occurred while syncing modules. Please check logs for details.', 'danger')
     
     return redirect(url_for('modules.shop'))
 
@@ -328,9 +335,10 @@ def cleanup():
             current_app.logger.info("Manual cleanup found no issues")
             
     except Exception as e:
-        current_app.logger.error(f"Error during manual cleanup: {str(e)}")
+        db.session.rollback() # clean_module_database involves DB operations
+        current_app.logger.error(f"Error in route {request.endpoint}: {str(e)}")
         current_app.logger.error(traceback.format_exc())
-        flash(f'Error during database cleanup: {str(e)}', 'danger')
+        flash('An error occurred during database cleanup. Please check logs for details.', 'danger')
     
     return redirect(url_for('modules.index'))
 
@@ -389,9 +397,10 @@ def download():
         return redirect(url_for('modules.shop'))
         
     except Exception as e:
-        current_app.logger.error(f"Error downloading module: {str(e)}")
+        db.session.rollback() # Module and category creation/update involve DB operations
+        current_app.logger.error(f"Error in route {request.endpoint}: {str(e)}")
         current_app.logger.error(traceback.format_exc())
-        flash(f'Error downloading module: {str(e)}', 'danger')
+        flash('An error occurred while downloading the module. Please try again.', 'danger')
         return redirect(url_for('modules.shop'))
 
 @modules_bp.route('/install/<int:id>', methods=['POST'])
@@ -405,29 +414,28 @@ def install(id):
             flash('System modules cannot be modified.', 'danger')
             return redirect(url_for('modules.index'))
         
-        # Always use sudo for module installation - ignore the checkbox
-        use_sudo = True
-        sudo_password = request.form.get('sudo_password', '')
+        # sudo_password is no longer needed for install_module
+        # The function will generate a script to be run manually.
         
-        # Validate that sudo password is provided (it's now required)
-        if not sudo_password:
-            flash('Sudo password is required for module installation.', 'danger')
-            return redirect(url_for('modules.view', id=id))
-        
-        # Install the module
-        success, message = install_module(module, use_sudo, sudo_password)
+        # Install the module (now generates a script)
+        success, script_path_or_none, message = install_module(module)
         
         if success:
-            flash(f'Module {module.name} installed successfully', 'success')
+            # The message from install_module now includes the script path and instructions
+            flash(f"{message}", "info")
+            if script_path_or_none:
+                 current_app.logger.info(f"Installation script for {module.name} generated at {script_path_or_none}")
         else:
-            flash(f'Failed to install module: {message}', 'danger')
+            flash(f"Failed to prepare module for installation: {message}", "danger")
         
         return redirect(url_for('modules.view', id=id))
         
     except Exception as e:
-        current_app.logger.error(f"Error installing module: {str(e)}")
+        # install_module itself does not commit to DB anymore, but Module.query can fail.
+        # No explicit rollback here unless other DB ops were added before calling install_module.
+        current_app.logger.error(f"Error in route {request.endpoint} (preparing for install): {str(e)}")
         current_app.logger.error(traceback.format_exc())
-        flash(f'Error installing module: {str(e)}', 'danger')
+        flash('An error occurred preparing the module for installation. Please check logs.', 'danger')
         return redirect(url_for('modules.view', id=id))
 
 @modules_bp.route('/uninstall/<int:id>', methods=['POST'])
@@ -441,37 +449,27 @@ def uninstall(id):
             flash('System modules cannot be modified.', 'danger')
             return redirect(url_for('modules.view', id=id))
         
-        # Get sudo password from form
-        sudo_password = request.form.get('sudo_password', '')
-        
-        # Validate that sudo password is provided
-        if not sudo_password:
-            flash('Sudo password is required for module uninstallation.', 'danger')
-            return redirect(url_for('modules.view', id=id))
-        
-        # Uninstall the module with sudo password
-        success, message = uninstall_module(module, sudo_password)
+        # sudo_password is no longer needed for uninstall_module
+        # The function will generate a script to be run manually.
+
+        # Uninstall the module (now generates a script)
+        success, script_path_or_none, message = uninstall_module(module)
         
         if success:
-            flash(f'Module {module.name} uninstalled successfully', 'success')
+            # The message from uninstall_module now includes the script path and instructions
+            flash(f"{message}", "info")
+            if script_path_or_none:
+                current_app.logger.info(f"Uninstallation script for {module.name} generated at {script_path_or_none}")
         else:
-            # Check for sudo authentication failures
-            if any(phrase in message.lower() for phrase in [
-                "incorrect password",
-                "sorry, try again", 
-                "sudo authentication failed",
-                "authentication failure"
-            ]):
-                flash('Sudo password authentication failed. Please try again with the correct password.', 'danger')
-            else:
-                flash(f'Failed to uninstall module: {message}', 'danger')
+            flash(f"Failed to prepare module for uninstallation: {message}", "danger")
         
         return redirect(url_for('modules.view', id=id))
         
     except Exception as e:
-        current_app.logger.error(f"Error uninstalling module: {str(e)}")
+        # uninstall_module itself does not commit to DB.
+        current_app.logger.error(f"Error in route {request.endpoint} (preparing for uninstall): {str(e)}")
         current_app.logger.error(traceback.format_exc())
-        flash(f'Error uninstalling module: {str(e)}', 'danger')
+        flash('An error occurred preparing the module for uninstallation. Please check logs.', 'danger')
         return redirect(url_for('modules.view', id=id))
 
 @modules_bp.route('/delete/<int:id>', methods=['POST'])
@@ -497,9 +495,10 @@ def delete(id):
         return redirect(url_for('modules.index'))
         
     except Exception as e:
-        current_app.logger.error(f"Error deleting module: {str(e)}")
+        db.session.rollback() # delete_module can involve DB operations (though it has its own rollback)
+        current_app.logger.error(f"Error in route {request.endpoint}: {str(e)}")
         current_app.logger.error(traceback.format_exc())
-        flash(f'Error deleting module: {str(e)}', 'danger')
+        flash('An error occurred while deleting the module. Please check logs.', 'danger')
         return redirect(url_for('modules.index'))
 
 @modules_bp.route('/search')
@@ -566,11 +565,7 @@ def api_list():
             'remote_url': module.remote_url
         })
     
-    return jsonify({
-        'success': True,
-        'count': len(module_list),
-        'modules': module_list
-    })
+    return json_success(data={'count': len(module_list), 'modules': module_list})
 
 @modules_bp.route('/api/info/<name>')
 @login_required
@@ -579,10 +574,7 @@ def api_info(name):
     module = Module.query.filter_by(name=name).first()
     
     if not module:
-        return jsonify({
-            'success': False,
-            'message': f'Module "{name}" not found'
-        }), 404
+        return json_error(message=f'Module "{name}" not found', status_code=404)
     
     # Try to get module help information
     help_info = {}
@@ -656,20 +648,18 @@ def api_info(name):
         current_app.logger.error(traceback.format_exc())
     
     # Return module info
-    return jsonify({
-        'success': True,
-        'module': {
-            'id': module.id,
-            'name': module.name,
-            'description': module.description,
-            'category': module.category,
-            'installed': module.installed,
-            'command': module.command,
-            'local_path': module.local_path,
-            'remote_url': module.remote_url,
-            'help': help_info
-        }
-    })
+    module_data = {
+        'id': module.id,
+        'name': module.name,
+        'description': module.description,
+        'category': module.category,
+        'installed': module.installed,
+        'command': module.command,
+        'local_path': module.local_path,
+        'remote_url': module.remote_url,
+        'help': help_info
+    }
+    return json_success(data={'module': module_data})
 
 @modules_bp.route('/run/<name>')
 @login_required

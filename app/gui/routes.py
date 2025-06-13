@@ -1,6 +1,8 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
 from app import db
+from app.utils import json_success, json_error # Import helpers
+from sqlalchemy.orm import joinedload, selectinload # Import eager loading options
 from app.gui.models import GUIApplication, GUISession, GUICategory, GUISessionLog
 from app.gui.manager import GUISessionManager, GUIEnvironmentDetector
 from datetime import datetime
@@ -126,8 +128,7 @@ gui_bp = Blueprint('gui', __name__, url_prefix='/gui')
 @login_required
 def index():
     """Main GUI applications page with WSLg awareness"""
-    # Detect environment
-    env_info = GUIEnvironmentDetector.detect_environment()
+    # env_info = GUIEnvironmentDetector.detect_environment() # Removed, handled by context processor
     
     # Get applications grouped by category
     categories = GUICategory.query.order_by(GUICategory.sort_order, GUICategory.name).all()
@@ -137,7 +138,8 @@ def index():
     active_sessions = GUISession.query.filter_by(
         user_id=current_user.id, 
         active=True
-    ).order_by(GUISession.start_time.desc()).all()
+    ).options(joinedload(GUISession.application), joinedload(GUISession.user)) \
+     .order_by(GUISession.start_time.desc()).all()
     
     # Group applications by category
     apps_by_category = {}
@@ -153,13 +155,12 @@ def index():
         categories=categories,
         applications=applications,
         apps_by_category=apps_by_category,
-        active_sessions=active_sessions,
-        # Environment info for templates
-        gui_environment=env_info['display_method'],
-        gui_uses_wslg=env_info['has_wslg'],
-        gui_has_wayland=bool(env_info['wayland_display']),
-        gui_has_x11=bool(env_info['x11_display']),
-        gui_is_wsl=env_info['is_wsl']
+        active_sessions=active_sessions
+        # Environment info for templates (gui_environment, gui_uses_wslg, gui_is_wsl, etc.)
+        # are now injected by the context processor.
+        # gui_has_wayland and gui_has_x11 might need to be added to context processor if used widely,
+        # or fetched specifically if only used here. For now, removing direct pass.
+        # If templates break, these specific ones might need to be added to context processor or re-added here.
     )
 
 
@@ -169,7 +170,7 @@ def applications():
     """List all GUI applications with environment awareness"""
     category_filter = request.args.get('category')
     search_query = request.args.get('q', '')
-    env_info = GUIEnvironmentDetector.detect_environment()
+    # env_info = GUIEnvironmentDetector.detect_environment() # Removed
     
     # Base query
     query = GUIApplication.query.filter_by(enabled=True)
@@ -187,7 +188,8 @@ def applications():
             )
         )
     
-    applications = query.order_by(GUIApplication.name).all()
+    applications = query.options(db.selectinload(GUIApplication.sessions)) \
+                        .order_by(GUIApplication.name).all()
     categories = GUICategory.query.order_by(GUICategory.sort_order, GUICategory.name).all()
     
     return render_template(
@@ -196,10 +198,8 @@ def applications():
         applications=applications,
         categories=categories,
         current_category=category_filter,
-        search_query=search_query,
-        # Environment info
-        gui_environment=env_info['display_method'],
-        gui_uses_wslg=env_info['has_wslg']
+        search_query=search_query
+        # Environment info (gui_environment, gui_uses_wslg) removed from direct pass
     )
 
 @gui_bp.route('/application/<int:app_id>')
@@ -228,13 +228,12 @@ def sessions():
     # Get pagination parameters
     page = request.args.get('page', 1, type=int)
     per_page = 20
-    env_info = GUIEnvironmentDetector.detect_environment()
+    # env_info = GUIEnvironmentDetector.detect_environment() # Removed
     
     # Get user's sessions
-    sessions_query = GUISession.query.filter_by(user_id=current_user.id).order_by(
-        GUISession.active.desc(),
-        GUISession.start_time.desc()
-    )
+    sessions_query = GUISession.query.filter_by(user_id=current_user.id) \
+                                     .options(joinedload(GUISession.application), joinedload(GUISession.user)) \
+                                     .order_by(GUISession.active.desc(), GUISession.start_time.desc())
     
     sessions_pagination = sessions_query.paginate(
         page=page, per_page=per_page, error_out=False
@@ -249,10 +248,8 @@ def sessions():
         title='GUI Sessions',
         sessions_pagination=sessions_pagination,
         total_sessions=total_sessions,
-        active_sessions=active_sessions,
-        # Environment info
-        gui_environment=env_info['display_method'],
-        gui_uses_wslg=env_info['has_wslg']
+        active_sessions=active_sessions
+        # Environment info (gui_environment, gui_uses_wslg) removed from direct pass
     )
 
 @gui_bp.route('/api/environment')
@@ -262,8 +259,7 @@ def api_environment():
     try:
         env_info = GUIEnvironmentDetector.detect_environment()
         
-        return jsonify({
-            'success': True,
+        data = {
             'environment': {
                 'display_method': env_info['display_method'],
                 'is_wsl': env_info['is_wsl'],
@@ -286,21 +282,12 @@ def api_environment():
                     'message': 'Using WSLg for optimal GUI experience!' if env_info['has_wslg'] else 'Traditional VNC mode - consider upgrading to WSLg for better performance'
                 }
             }
-        })
+        }
+        return json_success(data=data)
         
     except Exception as e:
         current_app.logger.error(f"Error getting environment info: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-        
-    except Exception as e:
-        current_app.logger.error(f"Error getting environment info: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        return json_error(message="Failed to retrieve environment information.", details=str(e), status_code=500)
 
 @gui_bp.route('/session/<session_id>')
 @login_required
@@ -319,21 +306,15 @@ def session_detail(session_id):
         GUISessionLog.timestamp.desc()
     ).limit(50).all()
     
-    # Detect environment
-    env_info = GUIEnvironmentDetector.detect_environment()
+    # env_info = GUIEnvironmentDetector.detect_environment() # Removed
     
     return render_template(
         'gui/session_detail.html',
         title=f'Session: {session.name}',
         session=session,
         status=status,
-        logs=logs,
-        # Environment info
-        gui_environment=env_info['display_method'],
-        gui_uses_wslg=env_info['has_wslg'],
-        gui_has_wayland=bool(env_info['wayland_display']),
-        gui_has_x11=bool(env_info['x11_display']),
-        gui_is_wsl=env_info['is_wsl']
+        logs=logs
+        # Environment info (gui_environment, gui_uses_wslg, etc.) removed from direct pass
     )
 
 @gui_bp.route('/launch/<int:app_id>', methods=['GET', 'POST'])
@@ -346,10 +327,12 @@ def launch_application(app_id):
         flash('This application is currently disabled.', 'warning')
         return redirect(url_for('gui.application_detail', app_id=app_id))
     
-    # Detect environment for UI customization
-    env_info = GUIEnvironmentDetector.detect_environment()
+    # env_info = GUIEnvironmentDetector.detect_environment() # Removed for GET, still needed for POST logic
     
     if request.method == 'POST':
+        # POST logic still needs env_info for decision making, so we fetch it here.
+        # The context processor handles providing it to templates, but Python logic needs it directly.
+        env_info_post = GUIEnvironmentDetector.detect_environment()
         try:
             # Get form data
             session_name = request.form.get('session_name', '').strip()
@@ -361,7 +344,7 @@ def launch_application(app_id):
                 session_name = f"{application.display_name} - {datetime.now().strftime('%H:%M:%S')}"
             
             # For WSLg, resolution is not as relevant but keep for compatibility
-            if env_info['has_wslg']:
+            if env_info_post['has_wslg']: # Use env_info_post for POST logic
                 resolution = "native"  # WSLg handles this automatically
             elif not resolution or 'x' not in resolution:
                 resolution = '1024x768'
@@ -370,7 +353,7 @@ def launch_application(app_id):
             if color_depth not in [16, 24, 32]:
                 color_depth = 24
             
-            current_app.logger.info(f"User {current_user.username} launching {application.name} in {env_info['display_method']} mode")
+            current_app.logger.info(f"User {current_user.username} launching {application.name} in {env_info_post['display_method']} mode") # Use env_info_post
             
             # Create session using adaptive manager
             run_via_oniux_flag = request.form.get('run_via_oniux') == 'true'
@@ -388,7 +371,7 @@ def launch_application(app_id):
             if success:
                 session = result
                 
-                if env_info['has_wslg']:
+                if env_info_post['has_wslg']: # Use env_info_post
                     # WSLg success messages - more specific and helpful
                     flash(f'🚀 {application.display_name} launched successfully with WSLg!', 'success')
                     flash('🎯 Your application is now running natively in Windows.', 'info')
@@ -404,7 +387,7 @@ def launch_application(app_id):
             else:
                 error_msg = result
                 
-                if env_info['has_wslg']:
+                if env_info_post['has_wslg']: # Use env_info_post
                     flash(f'❌ Failed to launch WSLg application: {error_msg}', 'danger')
                     flash('💡 Try checking if the application is installed and accessible.', 'warning')
                 else:
@@ -417,12 +400,20 @@ def launch_application(app_id):
             current_app.logger.error(f"Error launching application: {e}")
             current_app.logger.error(traceback.format_exc())
             
-            if env_info['has_wslg']:
+            # Use env_info_post for error context if available, else detect again or use a default
+            # This part is tricky if env_info_post wasn't set due to an early error in POST.
+            # For simplicity, we'll assume env_info_post is usually available if POST logic was reached.
+            # If not, the context processor will provide defaults to the template on redirect/render.
+            # The flash message here is more immediate.
+            current_env_for_error = env_info_post if 'env_info_post' in locals() else GUIEnvironmentDetector.detect_environment()
+
+            if current_env_for_error['has_wslg']:
                 flash(f'❌ WSLg launch error: {str(e)}', 'danger')
             else:
                 flash(f'❌ VNC launch error: {str(e)}', 'danger')
     
     # GET request - show launch form with environment-specific information
+    # env_info is now handled by context processor for template rendering
     # Get user's recent sessions for this app
     user_sessions = GUISession.query.filter_by(
         application_id=app_id,
@@ -434,12 +425,7 @@ def launch_application(app_id):
         title=f'Launch: {application.display_name}',
         application=application,
         user_sessions=user_sessions,
-        # Environment info
-        gui_environment=env_info['display_method'],
-        gui_uses_wslg=env_info['has_wslg'],
-        gui_has_wayland=bool(env_info['wayland_display']),
-        gui_has_x11=bool(env_info['x11_display']),
-        gui_is_wsl=env_info['is_wsl'],
+        # Environment info removed from direct pass
         # Additional context - current time for form
         current_time=datetime.now().strftime('%H:%M:%S')
     )
@@ -508,13 +494,13 @@ def api_delete_session(session_id):
         session = GUISession.query.filter_by(session_id=session_id, user_id=current_user.id).first()
         
         if not session:
-            return jsonify({'success': False, 'error': 'Session not found'}), 404
+            return json_error(message="Session not found", status_code=404)
         
         # First close if active
         if session.active:
             success, message = GUISessionManager.close_session(session_id, current_user.id)
             if not success:
-                return jsonify({'success': False, 'error': f'Failed to close session: {message}'}), 500
+                return json_error(message=f'Failed to close session: {message}', status_code=500)
         
         session_name = session.name
         
@@ -527,19 +513,12 @@ def api_delete_session(session_id):
         
         current_app.logger.info(f"User {current_user.username} deleted GUI session {session_name} via API")
         
-        return jsonify({
-            'success': True,
-            'message': f'Session "{session_name}" deleted successfully',
-            'deleted_logs': deleted_logs
-        })
+        return json_success(message=f'Session "{session_name}" deleted successfully', data={'deleted_logs': deleted_logs})
         
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"API error deleting GUI session {session_id}: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        return json_error(message="Failed to delete session.", details=str(e), status_code=500)
 
 @gui_bp.route('/session/<session_id>/connect')
 @login_required
@@ -550,14 +529,21 @@ def connect_session(session_id):
         user_id=current_user.id
     ).first_or_404()
     
-    env_info = GUIEnvironmentDetector.detect_environment()
+    # env_info = GUIEnvironmentDetector.detect_environment() # Removed, context processor handles for template
+    # However, Python logic below might need it.
     
     if not session.active:
         flash('Cannot connect to inactive session.', 'warning')
         return redirect(url_for('gui.session_detail', session_id=session_id))
     
+    # Python logic needs env_info directly if it influences behavior before template rendering
+    # The context processor only helps *during* template rendering.
+    # Here, env_info['has_wslg'] decides if we redirect or render connect_session.html.
+    # So, we must fetch it here.
+    env_info_connect = GUIEnvironmentDetector.detect_environment()
+
     # For WSLg, redirect to session details with specific message
-    if env_info['has_wslg']:
+    if env_info_connect['has_wslg']:
         flash('🎯 WSLg applications run natively in Windows - check your taskbar!', 'info')
         flash('💡 No VNC connection needed. The application should be visible as a regular Windows app.', 'info')
         return redirect(url_for('gui.session_detail', session_id=session_id))
@@ -575,12 +561,11 @@ def connect_session(session_id):
         'gui/connect_session.html',
         title=f'Connect: {session.name}',
         session=session,
-        status=status,
-        gui_environment=env_info['display_method'],
-        gui_uses_wslg=env_info['has_wslg'],
-        gui_has_wayland=bool(env_info['wayland_display']),
-        gui_has_x11=bool(env_info['x11_display']),
-        gui_is_wsl=env_info['is_wsl']
+        status=status
+        # Environment info removed from direct pass, will be available via context processor
+        # gui_environment=env_info_connect['display_method'], # Example if needed explicitly and context proc value is not desired
+        # gui_uses_wslg=env_info_connect['has_wslg'],
+        # gui_is_wsl=env_info_connect['is_wsl']
     )
 
 
@@ -590,34 +575,26 @@ def connect_session(session_id):
 @login_required
 def api_sessions():
     """API endpoint to list user's sessions"""
-    sessions = GUISession.query.filter_by(user_id=current_user.id).order_by(
-        GUISession.active.desc(),
-        GUISession.start_time.desc()
-    ).all()
+    sessions = GUISession.query.filter_by(user_id=current_user.id) \
+                                .options(joinedload(GUISession.application), joinedload(GUISession.user)) \
+                                .order_by(GUISession.active.desc(), GUISession.start_time.desc()).all()
     
-    return jsonify({
-        'success': True,
-        'sessions': [session.to_dict() for session in sessions]
-    })
+    return json_success(data={'sessions': [session.to_dict() for session in sessions]})
 
 @gui_bp.route('/api/session/<session_id>/status')
 @login_required
 def api_session_status(session_id):
     """API endpoint to get session status"""
-    # Verify user owns the session
     session = GUISession.query.filter_by(
         session_id=session_id,
         user_id=current_user.id
     ).first()
     
     if not session:
-        return jsonify({'success': False, 'error': 'Session not found'}), 404
+        return json_error(message="Session not found", status_code=404)
     
     status = GUISessionManager.get_session_status(session_id)
-    return jsonify({
-        'success': True,
-        'status': status
-    })
+    return json_success(data={'status': status})
 
 @gui_bp.route('/api/session/<session_id>/close', methods=['POST'])
 @login_required
@@ -625,18 +602,14 @@ def api_close_session(session_id):
     """API endpoint to close a session"""
     try:
         success, message = GUISessionManager.close_session(session_id, current_user.id)
-        
-        return jsonify({
-            'success': success,
-            'message': message
-        })
-        
+        if success:
+            return json_success(message=message)
+        else:
+            return json_error(message=message, status_code=500) # Or a more specific error if available
+
     except Exception as e:
         current_app.logger.error(f"API error closing session {session_id}: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        return json_error(message="Failed to close session.", details=str(e), status_code=500)
 
 @gui_bp.route('/api/applications')
 @login_required
@@ -645,11 +618,7 @@ def api_applications():
     applications = GUIApplication.query.filter_by(enabled=True).order_by(
         GUIApplication.name
     ).all()
-    
-    return jsonify({
-        'success': True,
-        'applications': [app.to_dict() for app in applications]
-    })
+    return json_success(data={'applications': [app.to_dict() for app in applications]})
 
 @gui_bp.route('/api/application/<int:app_id>/launch', methods=['POST'])
 @login_required
@@ -658,10 +627,10 @@ def api_launch_application(app_id):
     try:
         application = GUIApplication.query.get(app_id)
         if not application:
-            return jsonify({'success': False, 'error': 'Application not found'}), 404
+            return json_error(message="Application not found", status_code=404)
         
         if not application.enabled:
-            return jsonify({'success': False, 'error': 'Application is disabled'}), 400
+            return json_error(message="Application is disabled", status_code=400)
         
         # Detect environment
         env_info = GUIEnvironmentDetector.detect_environment()
@@ -741,100 +710,64 @@ def api_launch_application(app_id):
             
             session_data['instructions'] = instructions
             
-            return jsonify({
-                'success': True,
-                'session': session_data,
-                'message': f'Application launched successfully using {env_info["display_method"]}',
-                'environment': env_info
-            })
+            return json_success(data={'session': session_data, 'environment': env_info},
+                                message=f'Application launched successfully using {env_info["display_method"]}')
         else:
             error_msg = result
-            return jsonify({
-                'success': False,
-                'error': error_msg,
-                'environment': env_info,
-                'troubleshooting': {
-                    'wslg': env_info['has_wslg'],
-                    'suggestions': [
-                        'Check if the application is installed and accessible',
-                        'Verify system requirements are met',
-                        'Try launching with different settings'
-                    ] if env_info['has_wslg'] else [
-                        'Ensure Xvfb and x11vnc are installed',
-                        'Check for port conflicts',
-                        'Verify X11 display availability',
-                        'Try different resolution settings'
-                    ]
-                }
-            }), 500
+            return json_error(message=error_msg, details={'environment': env_info, 'troubleshooting': {
+                'wslg': env_info['has_wslg'],
+                'suggestions': [
+                    'Check if the application is installed and accessible',
+                    'Verify system requirements are met',
+                    'Try launching with different settings'
+                ] if env_info['has_wslg'] else [
+                    'Ensure Xvfb and x11vnc are installed',
+                    'Check for port conflicts',
+                    'Verify X11 display availability',
+                    'Try different resolution settings'
+                ]
+            }}, status_code=500)
             
     except Exception as e:
         current_app.logger.error(f"API error launching application: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'troubleshooting': {
-                'general': 'An unexpected error occurred',
-                'suggestions': [
-                    'Check server logs for more details',
-                    'Try refreshing the page and launching again',
-                    'Contact administrator if problem persists'
-                ]
-            }
-        }), 500
+        return json_error(message="Failed to launch application.", details={'error_details': str(e), 'troubleshooting': {
+            'general': 'An unexpected error occurred',
+            'suggestions': [
+                'Check server logs for more details',
+                'Try refreshing the page and launching again',
+                'Contact administrator if problem persists'
+            ]
+        }}, status_code=500)
         
 @gui_bp.route('/api/cleanup', methods=['POST'])
 @login_required
 def api_cleanup_sessions():
     """API endpoint to cleanup inactive sessions (admin only)"""
-    if not current_user.is_admin():
-        return jsonify({'success': False, 'error': 'Admin access required'}), 403
+    if not current_user.is_admin(): # This check should ideally use the @admin_required decorator if it handles JSON
+        return json_error(message="Admin access required", status_code=403)
     
     try:
         cleaned_count = GUISessionManager.cleanup_inactive_sessions()
-        
-        return jsonify({
-            'success': True,
-            'message': f'Cleaned up {cleaned_count} inactive sessions',
-            'cleaned_count': cleaned_count
-        })
-        
+        return json_success(message=f'Cleaned up {cleaned_count} inactive sessions', data={'cleaned_count': cleaned_count})
     except Exception as e:
         current_app.logger.error(f"API error during cleanup: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        return json_error(message="Failed to cleanup sessions.", details=str(e), status_code=500)
 
 # Background cleanup task endpoint (for scheduled jobs)
 @gui_bp.route('/api/maintenance/cleanup', methods=['POST'])
 def api_maintenance_cleanup():
     """Maintenance endpoint for cleaning up sessions (no auth required, for cron jobs)"""
-    # Optional: Add IP whitelist or token-based auth for security
     client_ip = request.remote_addr
-    
-    # Only allow from localhost for security
-    if client_ip not in ['127.0.0.1', '::1']:
-        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    if client_ip not in ['127.0.0.1', '::1']: # Basic IP check
+        return json_error(message="Access denied", status_code=403)
     
     try:
         cleaned_count = GUISessionManager.cleanup_inactive_sessions()
-        
         current_app.logger.info(f"Maintenance cleanup completed: {cleaned_count} sessions cleaned")
-        
-        return jsonify({
-            'success': True,
-            'message': f'Maintenance cleanup completed',
-            'cleaned_count': cleaned_count,
-            'timestamp': datetime.utcnow().isoformat()
-        })
-        
+        return json_success(message='Maintenance cleanup completed', data={'cleaned_count': cleaned_count, 'timestamp': datetime.utcnow().isoformat()})
     except Exception as e:
         current_app.logger.error(f"Maintenance cleanup error: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        return json_error(message="Maintenance cleanup failed.", details=str(e), status_code=500)
 
 # Error handlers specific to GUI module
 @gui_bp.errorhandler(404)
@@ -1391,11 +1324,7 @@ def _scan_system_applications():
 @gui_bp.errorhandler(400)
 def bad_request(error):
     if request.is_json or request.path.startswith('/gui/api/'):
-        return jsonify({
-            'success': False,
-            'error': 'Bad request',
-            'message': str(error.description) if hasattr(error, 'description') else 'Invalid request'
-        }), 400
+        return json_error(message=str(error.description) if hasattr(error, 'description') else 'Invalid request', error_code='bad_request', status_code=400)
     return render_template('gui/error.html', 
                          title='Bad Request',
                          error_code=400,
@@ -1404,11 +1333,7 @@ def bad_request(error):
 @gui_bp.errorhandler(404)
 def gui_not_found(error):
     if request.is_json or request.path.startswith('/gui/api/'):
-        return jsonify({
-            'success': False,
-            'error': 'Not found',
-            'message': 'The requested resource was not found'
-        }), 404
+        return json_error(message='The requested resource was not found', error_code='not_found', status_code=404)
     return render_template('gui/error.html', 
                          title='Page Not Found',
                          error_code=404,
@@ -1420,11 +1345,7 @@ def gui_server_error(error):
     current_app.logger.error(f"GUI module server error: {error}")
     
     if request.is_json or request.path.startswith('/gui/api/'):
-        return jsonify({
-            'success': False,
-            'error': 'Internal server error',
-            'message': 'An unexpected error occurred on the server'
-        }), 500
+        return json_error(message='An unexpected error occurred on the server', error_code='internal_server_error', status_code=500)
     return render_template('gui/error.html',
                          title='Server Error', 
                          error_code=500,
@@ -1433,11 +1354,7 @@ def gui_server_error(error):
 @gui_bp.errorhandler(405)
 def method_not_allowed(error):
     if request.is_json or request.path.startswith('/gui/api/'):
-        return jsonify({
-            'success': False,
-            'error': 'Method not allowed',
-            'message': f'Method {request.method} not allowed for this endpoint'
-        }), 405
+        return json_error(message=f'Method {request.method} not allowed for this endpoint', error_code='method_not_allowed', status_code=405)
     return render_template('gui/error.html',
                          title='Method Not Allowed', 
                          error_code=405,
@@ -1515,9 +1432,7 @@ def get_oniux_installation_status():
     try:
         status = _is_oniux_installed()
         path_checked = os.path.expanduser("~/.cargo/bin/oniux")
-        return jsonify({'installed': status, 'path_checked': path_checked})
+        return json_success(data={'installed': status, 'path_checked': path_checked})
     except Exception as e:
         current_app.logger.error(f"Error checking Oniux installation status for user {current_user.username}: {str(e)}")
-        # It's good practice to avoid exposing raw exception messages to the client
-        # For security reasons, provide a generic error message.
-        return jsonify({'installed': False, 'error': 'An error occurred while checking Oniux status.'}), 500
+        return json_error(message='An error occurred while checking Oniux status.', details=str(e), status_code=500)

@@ -2,6 +2,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
 from app import db
+from app.utils import json_success, json_error # Import helpers
 from app.terminal.models import TerminalSession, TerminalLog, TerminalLogSummary
 from app.terminal.manager import TerminalManager
 from datetime import datetime
@@ -280,14 +281,15 @@ def logs_api(session_id):
     # Convert to JSON
     logs_data = [log.to_dict() for log in logs]
     
-    return jsonify({
+    data = {
         'session_id': session_id,
         'session_name': session.name,
         'active': session.active,
         'total_logs': query.count(),
         'returned_logs': len(logs_data),
         'logs': logs_data
-    })
+    }
+    return json_success(data=data)
 
 @terminal_bp.route('/<session_id>/export')
 @login_required
@@ -328,20 +330,14 @@ def execute_command(session_id):
     session = TerminalSession.query.filter_by(session_id=session_id, user_id=current_user.id).first_or_404()
     
     if not session.active:
-        return jsonify({
-            'success': False,
-            'message': 'Session is not active'
-        }), 400
+        return json_error(message='Session is not active', status_code=400)
     
     # Get command from request
     command = request.json.get('command', '')
-    background = request.json.get('background', False)
+    background = request.json.get('background', False) # Added background to data for json_success
     
     if not command:
-        return jsonify({
-            'success': False,
-            'message': 'No command provided'
-        }), 400
+        return json_error(message='No command provided', status_code=400)
     
     # Execute command
     success, message = TerminalManager.execute_command(session_id, command, background)
@@ -350,55 +346,58 @@ def execute_command(session_id):
     session.last_activity = datetime.utcnow()
     db.session.commit()
     
-    return jsonify({
-        'success': success,
-        'message': message
-    })
+    if success:
+        return json_success(message=message, data={'command': command, 'background': background})
+    else:
+        return json_error(message=message, details={'command': command, 'background': background}, status_code=500) # Assuming error is server-side if not success
 
 @terminal_bp.route('/<session_id>/stats')
 @login_required
 def session_stats(session_id):
     """Get detailed session statistics"""
-    session = TerminalSession.query.filter_by(session_id=session_id, user_id=current_user.id).first_or_404()
-    
-    # Update statistics
-    session.update_stats()
-    summary = TerminalLogSummary.update_for_session(session_id)
-    
-    # Get additional statistics
-    event_stats = db.session.query(
-        TerminalLog.event_type,
-        db.func.count(TerminalLog.id).label('count'),
-        db.func.sum(TerminalLog.output_size).label('total_size')
-    ).filter_by(session_id=session_id).group_by(TerminalLog.event_type).all()
-    
-    # Get timeline data (commands over time)
-    timeline_data = db.session.query(
-        db.func.date(TerminalLog.timestamp).label('date'),
-        db.func.count(TerminalLog.id).label('commands')
-    ).filter_by(
-        session_id=session_id,
-        event_type='command_input'
-    ).group_by(db.func.date(TerminalLog.timestamp)).all()
-    
-    stats_data = {
-        'session': session.to_dict(),
-        'summary': summary.to_dict() if summary else None,
-        'event_statistics': [
-            {
-                'event_type': stat.event_type,
-                'count': stat.count,
-                'total_size': stat.total_size or 0
-            }
-            for stat in event_stats
-        ],
-        'timeline': [
-            {
-                'date': stat.date.isoformat(),
-                'commands': stat.commands
-            }
-            for stat in timeline_data
-        ]
-    }
-    
-    return jsonify(stats_data)
+    try:
+        session = TerminalSession.query.filter_by(session_id=session_id, user_id=current_user.id).first_or_404()
+
+        # Update statistics
+        session.update_stats()
+        summary = TerminalLogSummary.update_for_session(session_id)
+
+        # Get additional statistics
+        event_stats = db.session.query(
+            TerminalLog.event_type,
+            db.func.count(TerminalLog.id).label('count'),
+            db.func.sum(TerminalLog.output_size).label('total_size')
+        ).filter_by(session_id=session_id).group_by(TerminalLog.event_type).all()
+
+        # Get timeline data (commands over time)
+        timeline_data = db.session.query(
+            db.func.date(TerminalLog.timestamp).label('date'),
+            db.func.count(TerminalLog.id).label('commands')
+        ).filter_by(
+            session_id=session_id,
+            event_type='command_input'
+        ).group_by(db.func.date(TerminalLog.timestamp)).all()
+
+        stats_data = {
+            'session': session.to_dict(),
+            'summary': summary.to_dict() if summary else None,
+            'event_statistics': [
+                {
+                    'event_type': stat.event_type,
+                    'count': stat.count,
+                    'total_size': stat.total_size or 0
+                }
+                for stat in event_stats
+            ],
+            'timeline': [
+                {
+                    'date': stat.date.isoformat(),
+                    'commands': stat.commands
+                }
+                for stat in timeline_data
+            ]
+        }
+        return json_success(data=stats_data)
+    except Exception as e:
+        current_app.logger.error(f"Error fetching session stats for {session_id}: {e}")
+        return json_error(message="Failed to retrieve session statistics.", details=str(e), status_code=500)
