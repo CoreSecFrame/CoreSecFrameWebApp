@@ -572,18 +572,20 @@ def get_disk_usage():
             except (OSError, IOError):
                 pass  # Handle permission errors gracefully
 
-        return jsonify({
-            'success': True,
-            'total_size': format_file_size(total_size),
+        data_payload = {
+            'total_size_formatted': format_file_size(total_size),
             'total_size_bytes': total_size,
             'file_count': file_count,
             'folder_count': folder_count,
             'path': current_path
         }
-        return json_success(data=data)
+        return json_success(data=data_payload)
 
+    except PermissionError as e:
+        current_app.logger.error(f"Permission error in get_disk_usage for path {request.args.get('path', '/')}: {e}", extra={'user_id': current_user.id if current_user.is_authenticated else None})
+        return json_error(f"Permission denied: {str(e)}", status_code=403)
     except Exception as e:
-        current_app.logger.error(f"Error getting disk usage: {e}", extra={'user_id': current_user.id})
+        current_app.logger.error(f"Error getting disk usage for path {request.args.get('path', '/')}: {e}", extra={'user_id': current_user.id if current_user.is_authenticated else None})
         return json_error("An error occurred while calculating disk usage.", status_code=500)
 
 @bp.route('/quick_navigate')

@@ -138,8 +138,9 @@ def index():
     active_sessions = GUISession.query.filter_by(
         user_id=current_user.id, 
         active=True
-    ).options(joinedload(GUISession.application), joinedload(GUISession.user)) \
+    ).options(joinedload(GUISession.application)) \
      .order_by(GUISession.start_time.desc()).all()
+    # Note: joinedload(GUISession.user) was removed as current template for index() active_sessions loop doesn't seem to use user directly.
     
     # Group applications by category
     apps_by_category = {}
@@ -188,8 +189,25 @@ def applications():
             )
         )
     
-    applications = query.options(db.selectinload(GUIApplication.sessions)) \
-                        .order_by(GUIApplication.name).all()
+    # Optimized applications query
+    applications_list = query.order_by(GUIApplication.name).all() # Remove selectinload(GUIApplication.sessions) for now
+
+    if applications_list:
+        app_ids = [app.id for app in applications_list]
+
+        active_session_counts = db.session.query(
+            GUISession.application_id,
+            func.count(GUISession.id).label('active_count')
+        ).filter(GUISession.application_id.in_(app_ids), GUISession.active == True) \
+         .group_by(GUISession.application_id).all()
+
+        counts_dict = {app_id: count for app_id, count in active_session_counts}
+
+        for app_obj in applications_list:
+            app_obj.active_session_count_display = counts_dict.get(app_obj.id, 0)
+
+    applications = applications_list # Use the modified list
+
     categories = GUICategory.query.order_by(GUICategory.sort_order, GUICategory.name).all()
     
     return render_template(
@@ -232,8 +250,9 @@ def sessions():
     
     # Get user's sessions
     sessions_query = GUISession.query.filter_by(user_id=current_user.id) \
-                                     .options(joinedload(GUISession.application), joinedload(GUISession.user)) \
+                                     .options(joinedload(GUISession.application)) \
                                      .order_by(GUISession.active.desc(), GUISession.start_time.desc())
+    # Note: joinedload(GUISession.user) removed as current template for sessions() list doesn't seem to use user directly.
     
     sessions_pagination = sessions_query.paginate(
         page=page, per_page=per_page, error_out=False
@@ -578,6 +597,7 @@ def api_sessions():
     sessions = GUISession.query.filter_by(user_id=current_user.id) \
                                 .options(joinedload(GUISession.application), joinedload(GUISession.user)) \
                                 .order_by(GUISession.active.desc(), GUISession.start_time.desc()).all()
+    # Keep joinedload(GUISession.user) here because to_dict() accesses it.
     
     return json_success(data={'sessions': [session.to_dict() for session in sessions]})
 

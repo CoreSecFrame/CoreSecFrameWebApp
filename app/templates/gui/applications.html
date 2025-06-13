@@ -129,7 +129,7 @@
                                         <div class="d-flex justify-content-between mt-1">
                                             <span>Sessions:</span>
                                             <span>
-                                                <span class="badge bg-success badge-sm">{{ app.sessions.filter_by(active=True).count() }}</span>
+                                                <span class="badge bg-success badge-sm">{{ app.active_session_count_display }}</span>
                                                 active
                                             </span>
                                         </div>
@@ -147,7 +147,7 @@
                                            class="btn btn-outline-info btn-sm">
                                             <i class="bi bi-info-circle me-1"></i>Details
                                         </a>
-                                        {% if app.sessions.filter_by(active=True).count() > 0 %}
+                                        {% if app.active_session_count_display > 0 %}
                                         <div class="btn-group" role="group">
                                             <button type="button" class="btn btn-outline-primary btn-sm dropdown-toggle" 
                                                     data-bs-toggle="dropdown">
@@ -162,12 +162,12 @@
                                                     </a>
                                                 </li>
                                                 {% endfor %}
-                                                {% if app.sessions.filter_by(active=True).count() > 3 %}
+                                                {% if app.active_session_count_display > 3 %}
                                                 <li><hr class="dropdown-divider"></li>
                                                 <li>
                                                     <a class="dropdown-item" href="{{ url_for('gui.sessions') }}?app={{ app.name }}">
                                                         <i class="bi bi-three-dots me-2"></i>
-                                                        View all ({{ app.sessions.filter_by(active=True).count() }})
+                                                        View all ({{ app.active_session_count_display }})
                                                     </a>
                                                 </li>
                                                 {% endif %}
