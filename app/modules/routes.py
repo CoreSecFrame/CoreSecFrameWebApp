@@ -1,9 +1,9 @@
-# app/modules/routes.py
+# app/modules/routes.py - Simple fix for the original error
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
 from app import db
 from app.modules.models import Module, ModuleCategory, ModuleShopCache
-from app.modules.utils import scan_local_modules, fetch_remote_modules, download_module, install_module, uninstall_module
+from app.modules.utils import scan_local_modules, fetch_remote_modules, download_module, install_module, uninstall_module, delete_module, clean_module_database
 import os
 import traceback
 import json
@@ -21,8 +21,21 @@ def index():
     # Get all modules, filtering out protected ones
     modules = Module.query.filter(~Module.name.in_(protected_modules)).all()
     
-    # Further filter out core modules by checking their paths
-    modules = [m for m in modules if not any(p in m.local_path for p in protected_paths)]
+    # FIXED: Further filter out core modules by checking their paths safely
+    filtered_modules = []
+    for m in modules:
+        try:
+            # Check if local_path exists and is not None before checking if it contains protected paths
+            if m.local_path is not None and not any(p in m.local_path for p in protected_paths):
+                filtered_modules.append(m)
+            elif m.local_path is None:
+                # Log the module with null path but don't crash
+                current_app.logger.warning(f"Module {m.name} has null local_path")
+        except Exception as e:
+            current_app.logger.error(f"Error checking module {m.name}: {e}")
+            continue
+    
+    modules = filtered_modules
     
     categories = ModuleCategory.query.all()
     
@@ -47,7 +60,7 @@ def category(name):
     protected_paths = ['core']
     
     # Get category
-    category = ModuleCategory.query.filter_by(name=name).first_or_404()
+    category_obj = ModuleCategory.query.filter_by(name=name).first_or_404()
     
     # Get modules in category, filtering out protected ones
     modules = Module.query.filter(
@@ -55,8 +68,21 @@ def category(name):
         ~Module.name.in_(protected_modules)
     ).all()
     
-    # Further filter out core modules by checking their paths
-    modules = [m for m in modules if not any(p in m.local_path for p in protected_paths)]
+    # FIXED: Further filter out core modules by checking their paths safely
+    filtered_modules = []
+    for m in modules:
+        try:
+            # Check if local_path exists and is not None before checking if it contains protected paths
+            if m.local_path is not None and not any(p in m.local_path for p in protected_paths):
+                filtered_modules.append(m)
+            elif m.local_path is None:
+                # Log the module with null path but don't crash
+                current_app.logger.warning(f"Module {m.name} has null local_path")
+        except Exception as e:
+            current_app.logger.error(f"Error checking module {m.name}: {e}")
+            continue
+    
+    modules = filtered_modules
     
     categories = ModuleCategory.query.all()
     
@@ -71,7 +97,7 @@ def category(name):
         categories=categories,
         installed_modules=installed_modules,
         total_modules=total_modules,
-        current_category=category
+        current_category=category_obj
     )
 
 @modules_bp.route('/view/<int:id>')
@@ -80,7 +106,7 @@ def view(id):
     module = Module.query.get_or_404(id)
     
     # Check if this is a protected module
-    if module.name in ['base', 'colors'] or 'core' in module.local_path:
+    if module.name in ['base', 'colors'] or (module.local_path and 'core' in module.local_path):
         flash('This system module cannot be modified or viewed directly.', 'danger')
         return redirect(url_for('modules.index'))
         
@@ -151,7 +177,20 @@ def shop():
                     current_app.logger.warning(f"Module data missing 'name' field: {remote_module}")
                     continue # Or assign a default name if appropriate
 
-                remote_module['downloaded'] = remote_module['name'] in existing_modules_db
+                # Check if module exists in database AND file actually exists
+                module_name = remote_module['name']
+                is_downloaded = False
+                
+                if module_name in existing_modules_db:
+                    module_obj = existing_modules_db[module_name]
+                    # Only mark as downloaded if the file actually exists
+                    if module_obj.local_path and os.path.exists(module_obj.local_path):
+                        is_downloaded = True
+                    elif module_obj.local_path and not os.path.exists(module_obj.local_path):
+                        # File is missing - reset the module state in background
+                        current_app.logger.warning(f"Module {module_name} marked as downloaded but file missing: {module_obj.local_path}")
+                
+                remote_module['downloaded'] = is_downloaded
             
             # Get unique categories from the final list of modules
             categories = sorted(list(set(module['category'] for module in remote_modules if 'category' in module)))
@@ -228,8 +267,6 @@ def refresh_shop():
 def scan():
     try:
         # First run enhanced cleanup to remove duplicates and orphaned entries
-        from app.modules.utils import clean_module_database, scan_local_modules
-        
         current_app.logger.info("Starting module scan with enhanced cleanup...")
         
         # Clean up database first
@@ -237,16 +274,18 @@ def scan():
         cleanup_message = ""
         if removed > 0:
             cleanup_message = f"Database cleanup: {removed} duplicate/orphaned modules removed. "
-            current_app.logger.info(f"Cleanup removed {removed} modules")
+            current_app.logger.info(f"Manual cleanup removed {removed} modules")
+        else:
+            flash('Database cleanup completed: no duplicates or orphaned entries found', 'info')
+            current_app.logger.info("Manual cleanup found no issues")
         
-        # Then scan for modules with the new deduplication logic
-        added, updated = scan_local_modules()
+        # Now scan for new modules
+        scanned = scan_local_modules()
+        scan_message = f"Scan completed: {scanned} new modules found."
         
-        scan_message = f"Scan completed: {added} modules added, {updated} modules updated"
-        full_message = cleanup_message + scan_message
-        
-        current_app.logger.info(f"Module scan completed: cleanup removed {removed}, added {added}, updated {updated}")
-        flash(full_message, 'success')
+        combined_message = cleanup_message + scan_message
+        flash(combined_message, 'success')
+        current_app.logger.info(f"Module scan completed: {scanned} new modules, {removed} cleaned up")
         
     except Exception as e:
         current_app.logger.error(f"Error during module scan: {str(e)}")
@@ -255,69 +294,174 @@ def scan():
     
     return redirect(url_for('modules.index'))
 
+# Add alias for sync -> scan (in case templates use sync)
 @modules_bp.route('/sync')
 @login_required
 def sync():
+    """Synchronize with remote repository - download all available modules"""
     try:
-        # Fetch remote modules
-        remote_modules = fetch_remote_modules()
+        current_app.logger.info("Starting module synchronization...")
         
-        # Get existing modules
+        # First, clean up orphaned database entries (modules marked as downloaded but files don't exist)
+        cleaned_count = cleanup_orphaned_modules()
+        
+        # Get remote modules
+        remote_modules = fetch_remote_modules()
+        if not isinstance(remote_modules, list):
+            flash('Error fetching module list from remote repository.', 'danger')
+            return redirect(url_for('modules.shop'))
+        
+        # Get existing modules from database
         existing_modules = {module.name: module for module in Module.query.all()}
         
-        added = 0
-        updated = 0
+        downloaded_count = 0
+        error_count = 0
         
-        # Process remote modules
         for remote_module in remote_modules:
-            name = remote_module['name']
-            
-            if name in existing_modules:
-                # Module exists, update metadata
-                module = existing_modules[name]
-                module.description = remote_module['description']
-                module.category = remote_module['category']
-                module.remote_url = remote_module['url']
-                db.session.add(module)
-                updated += 1
-            else:
-                # New module, create record
-                module = Module(
-                    name=name,
-                    description=remote_module['description'],
-                    category=remote_module['category'],
-                    remote_url=remote_module['url'],
-                    installed=False
-                )
-                db.session.add(module)
-                added += 1
-            
-            # Ensure category exists
-            category = ModuleCategory.query.filter_by(name=remote_module['category']).first()
-            if not category:
-                category = ModuleCategory(name=remote_module['category'])
-                db.session.add(category)
+            try:
+                if 'name' not in remote_module or 'url' not in remote_module:
+                    continue
+                    
+                module_name = remote_module['name']
+                module_url = remote_module['url']
+                module_category = remote_module.get('category', 'misc')
+                module_description = remote_module.get('description', '')
+                
+                # Check if module exists in database and if file actually exists
+                should_download = True
+                if module_name in existing_modules:
+                    module_obj = existing_modules[module_name]
+                    if module_obj.local_path and os.path.exists(module_obj.local_path):
+                        should_download = False  # Skip if file actually exists
+                
+                if should_download:
+                    # Download the module
+                    success, local_path, message = download_module(module_url, module_name, module_category)
+                    
+                    if success:
+                        # Create or update module record
+                        if module_name in existing_modules:
+                            module = existing_modules[module_name]
+                            module.local_path = local_path
+                            module.description = module_description
+                            module.category = module_category
+                            module.remote_url = module_url
+                        else:
+                            module = Module(
+                                name=module_name,
+                                description=module_description,
+                                category=module_category,
+                                command=module_name.lower(),
+                                remote_url=module_url,
+                                local_path=local_path,
+                                installed=False
+                            )
+                            db.session.add(module)
+                        
+                        # Ensure category exists
+                        category = ModuleCategory.query.filter_by(name=module_category).first()
+                        if not category:
+                            category = ModuleCategory(name=module_category)
+                            db.session.add(category)
+                        
+                        downloaded_count += 1
+                        current_app.logger.info(f"Downloaded module: {module_name}")
+                    else:
+                        error_count += 1
+                        current_app.logger.error(f"Failed to download {module_name}: {message}")
+                        
+            except Exception as e:
+                error_count += 1
+                current_app.logger.error(f"Error processing module {remote_module.get('name', 'unknown')}: {e}")
+                continue
         
-        # Commit changes
-        db.session.commit()
+        # Commit all changes
+        try:
+            db.session.commit()
+        except Exception as db_error:
+            db.session.rollback()
+            current_app.logger.error(f"Database error during sync: {db_error}")
+            flash('Database error occurred during synchronization.', 'danger')
+            return redirect(url_for('modules.shop'))
         
-        flash(f'Sync completed: {added} modules added, {updated} modules updated', 'success')
+        # Show results
+        if cleaned_count > 0:
+            flash(f'Cleaned {cleaned_count} orphaned module records.', 'info')
+        
+        if downloaded_count > 0:
+            flash(f'Successfully synchronized {downloaded_count} modules.', 'success')
+        elif error_count == 0:
+            flash('All modules are already up to date.', 'info')
+        
+        if error_count > 0:
+            flash(f'{error_count} modules failed to download. Check logs for details.', 'warning')
+        
+        current_app.logger.info(f"Sync completed: {downloaded_count} downloaded, {error_count} errors, {cleaned_count} cleaned")
         
     except Exception as e:
-        current_app.logger.error(f"Error syncing modules: {str(e)}")
+        current_app.logger.error(f"Critical error during sync: {str(e)}")
         current_app.logger.error(traceback.format_exc())
-        flash(f'Error syncing modules: {str(e)}', 'danger')
+        flash(f'Critical error during synchronization: {str(e)}', 'danger')
+    
+    return redirect(url_for('modules.shop'))
+
+def cleanup_orphaned_modules():
+    """Clean up modules marked as downloaded but files don't exist"""
+    try:
+        orphaned_count = 0
+        all_modules = Module.query.all()
+        
+        for module in all_modules:
+            try:
+                # If module has a local_path but file doesn't exist, clean it up
+                if module.local_path and not os.path.exists(module.local_path):
+                    current_app.logger.warning(f"Orphaned module found: {module.name} at {module.local_path}")
+                    # Reset the module state so it can be downloaded again
+                    module.local_path = None
+                    module.installed = False
+                    orphaned_count += 1
+                elif module.local_path is None and module.name:
+                    # Module with no local_path, keep it but log it
+                    current_app.logger.info(f"Module {module.name} has no local_path")
+                    
+            except Exception as module_error:
+                current_app.logger.error(f"Error checking module {getattr(module, 'name', 'unknown')}: {module_error}")
+                continue
+        
+        if orphaned_count > 0:
+            db.session.commit()
+            current_app.logger.info(f"Cleaned up {orphaned_count} orphaned modules")
+        
+        return orphaned_count
+        
+    except Exception as e:
+        current_app.logger.error(f"Error during orphaned cleanup: {e}")
+        db.session.rollback()
+        return 0
+
+@modules_bp.route('/cleanup-orphaned', methods=['POST'])
+@login_required  
+def cleanup_orphaned():
+    """Manual cleanup of orphaned modules"""
+    try:
+        cleaned_count = cleanup_orphaned_modules()
+        
+        if cleaned_count > 0:
+            flash(f'Cleaned up {cleaned_count} orphaned module records. You can now download them again.', 'success')
+        else:
+            flash('No orphaned modules found.', 'info')
+            
+    except Exception as e:
+        current_app.logger.error(f"Error in manual orphaned cleanup: {e}")
+        flash('Error during cleanup.', 'danger')
     
     return redirect(url_for('modules.shop'))
 
 @modules_bp.route('/cleanup')
 @login_required
 def cleanup():
-    """Manual database cleanup route"""
     try:
-        from app.modules.utils import clean_module_database
-        
-        current_app.logger.info("Starting manual module database cleanup...")
+        # Enhanced cleanup to remove duplicates and orphaned entries
         removed = clean_module_database()
         
         if removed > 0:
@@ -342,9 +486,16 @@ def download():
         module_url = request.form.get('module_url')
         module_category = request.form.get('module_category')
         module_description = request.form.get('module_description')
+        force_download = request.form.get('force_download', 'false').lower() == 'true'
         
         if not all([module_name, module_url, module_category]):
             flash('Invalid module data', 'danger')
+            return redirect(url_for('modules.shop'))
+        
+        # Check if module already exists and if file actually exists
+        existing_module = Module.query.filter_by(name=module_name).first()
+        if existing_module and existing_module.local_path and os.path.exists(existing_module.local_path) and not force_download:
+            flash(f'Module {module_name} is already downloaded.', 'info')
             return redirect(url_for('modules.shop'))
         
         # Download the module
@@ -352,14 +503,14 @@ def download():
         
         if success:
             # Create or update module record
-            module = Module.query.filter_by(name=module_name).first()
-            
-            if module:
+            if existing_module:
                 # Update existing module
-                module.description = module_description
-                module.category = module_category
-                module.remote_url = module_url
-                module.local_path = local_path
+                existing_module.description = module_description
+                existing_module.category = module_category
+                existing_module.remote_url = module_url
+                existing_module.local_path = local_path
+                existing_module.installed = False  # Reset installation status
+                module = existing_module
             else:
                 # Create new module
                 module = Module(
@@ -401,7 +552,7 @@ def install(id):
         module = Module.query.get_or_404(id)
         
         # Protect system modules
-        if module.name in ['base', 'colors'] or 'core' in module.local_path:
+        if module.name in ['base', 'colors'] or (module.local_path and 'core' in module.local_path):
             flash('System modules cannot be modified.', 'danger')
             return redirect(url_for('modules.index'))
         
@@ -420,7 +571,10 @@ def install(id):
         if success:
             flash(f'Module {module.name} installed successfully', 'success')
         else:
-            flash(f'Failed to install module: {message}', 'danger')
+            if "incorrect password" in message.lower():
+                flash('Installation failed. Please try again with the correct password.', 'danger')
+            else:
+                flash(f'Failed to install module: {message}', 'danger')
         
         return redirect(url_for('modules.view', id=id))
         
@@ -437,32 +591,25 @@ def uninstall(id):
         module = Module.query.get_or_404(id)
         
         # Protect system modules
-        if module.name in ['base', 'colors'] or 'core' in module.local_path:
+        if module.name in ['base', 'colors'] or (module.local_path and 'core' in module.local_path):
             flash('System modules cannot be modified.', 'danger')
-            return redirect(url_for('modules.view', id=id))
+            return redirect(url_for('modules.index'))
         
-        # Get sudo password from form
+        # Get sudo password
         sudo_password = request.form.get('sudo_password', '')
         
-        # Validate that sudo password is provided
         if not sudo_password:
             flash('Sudo password is required for module uninstallation.', 'danger')
             return redirect(url_for('modules.view', id=id))
         
-        # Uninstall the module with sudo password
+        # Uninstall the module
         success, message = uninstall_module(module, sudo_password)
         
         if success:
             flash(f'Module {module.name} uninstalled successfully', 'success')
         else:
-            # Check for sudo authentication failures
-            if any(phrase in message.lower() for phrase in [
-                "incorrect password",
-                "sorry, try again", 
-                "sudo authentication failed",
-                "authentication failure"
-            ]):
-                flash('Sudo password authentication failed. Please try again with the correct password.', 'danger')
+            if "incorrect password" in message.lower():
+                flash('Uninstallation failed. Please try again with the correct password.', 'danger')
             else:
                 flash(f'Failed to uninstall module: {message}', 'danger')
         
@@ -486,7 +633,6 @@ def delete(id):
         current_app.logger.info(f"Attempting to delete module: {module_name} at {file_path}")
         
         # Delete the module
-        from app.modules.utils import delete_module
         success, message = delete_module(module)
         
         if success:
@@ -525,8 +671,21 @@ def search():
         ~Module.name.in_(protected_modules)
     ).all()
     
-    # Further filter out core modules by checking their paths
-    modules = [m for m in modules if not any(p in m.local_path for p in protected_paths)]
+    # FIXED: Further filter out core modules by checking their paths safely
+    filtered_modules = []
+    for m in modules:
+        try:
+            # Check if local_path exists and is not None before checking if it contains protected paths
+            if m.local_path is not None and not any(p in m.local_path for p in protected_paths):
+                filtered_modules.append(m)
+            elif m.local_path is None:
+                # Log the module with null path but don't crash
+                current_app.logger.warning(f"Module {m.name} has null local_path")
+        except Exception as e:
+            current_app.logger.error(f"Error checking module {m.name}: {e}")
+            continue
+    
+    modules = filtered_modules
     
     # Get categories for sidebar
     categories = ModuleCategory.query.all()
@@ -545,7 +704,6 @@ def search():
         search_query=query
     )
 
-
 @modules_bp.route('/api/list')
 @login_required
 def api_list():
@@ -563,7 +721,7 @@ def api_list():
             'installed': module.installed,
             'command': module.command,
             'local_path': module.local_path,
-            'remote_url': module.remote_url
+            'remote_url': getattr(module, 'remote_url', '')
         })
     
     return jsonify({
@@ -584,78 +742,6 @@ def api_info(name):
             'message': f'Module "{name}" not found'
         }), 404
     
-    # Try to get module help information
-    help_info = {}
-    try:
-        # Import the module
-        module_path = Path(module.local_path)
-        if "modules" in str(module_path):
-            if module_path.parent.name == "modules":
-                import_path = f"modules.{module.name}"
-            else:
-                category = module_path.parent.name
-                import_path = f"modules.{category}.{module.name}"
-        else:
-            import_path = module.name
-        
-        # Add modules directory to Python path
-        modules_dir = current_app.config['MODULES_DIR']
-        project_dir = str(Path(modules_dir).parent)
-        
-        if project_dir not in sys.path:
-            sys.path.insert(0, project_dir)
-        
-        if modules_dir not in sys.path:
-            sys.path.insert(0, modules_dir)
-        
-        # Try to import the module
-        try:
-            imported_module = importlib.import_module(import_path)
-        except ImportError:
-            spec = importlib.util.spec_from_file_location(import_path, str(module_path))
-            if spec:
-                imported_module = importlib.util.module_from_spec(spec)
-                sys.modules[import_path] = imported_module
-                spec.loader.exec_module(imported_module)
-            else:
-                raise ImportError(f"Could not create spec for module: {module_path}")
-        
-        # Find the module class
-        module_class = None
-        for attr_name in dir(imported_module):
-            if attr_name.startswith('__'):
-                continue
-            
-            attr = getattr(imported_module, attr_name)
-            if not isinstance(attr, type):
-                continue
-            
-            try:
-                instance = attr()
-                if hasattr(instance, 'get_help'):
-                    help_info = instance.get_help()
-                    break
-                if hasattr(instance, 'run_guided') and hasattr(instance, 'run_direct'):
-                    module_class = instance
-            except Exception as e:
-                continue
-        
-        # If we found a module class but no help_info, try to get some basic info
-        if module_class and not help_info:
-            help_info = {
-                'title': module.name,
-                'usage': f"Use {module.name} via CoreSecFrame",
-                'desc': module.description,
-                'modes': {
-                    'Guided': 'Interactive guided mode',
-                    'Direct': 'Direct command execution mode'
-                }
-            }
-    except Exception as e:
-        current_app.logger.error(f"Error getting module help info: {e}")
-        current_app.logger.error(traceback.format_exc())
-    
-    # Return module info
     return jsonify({
         'success': True,
         'module': {
@@ -666,18 +752,6 @@ def api_info(name):
             'installed': module.installed,
             'command': module.command,
             'local_path': module.local_path,
-            'remote_url': module.remote_url,
-            'help': help_info
+            'remote_url': getattr(module, 'remote_url', '')
         }
     })
-
-@modules_bp.route('/run/<name>')
-@login_required
-def run(name):
-    """Launch a module in the terminal"""
-    module = Module.query.filter_by(name=name).first_or_404()
-    
-    mode = request.args.get('mode', 'guided')
-    
-    # Redirect to the terminal creation page with module parameters
-    return redirect(url_for('terminal.new', module=name, mode=mode))
