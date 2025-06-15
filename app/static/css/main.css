@@ -1,65 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
 /* Windows 11 Design System Variables - MEJORADO */
 :root {
     /* Accent Color System - Personalizable */
-    --w11-accent-hue: 210;
+    --w11-accent-hue: 300;
     --w11-accent-saturation: 100%;
-    --w11-accent-lightness: 42%;
+    --w11-accent-lightness: 50%; /* Magenta accent */
     
     /* Dynamic Accent Colors */
     --w11-accent: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), var(--w11-accent-lightness));
-    --w11-accent-light1: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), 50%);
-    --w11-accent-light2: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), 60%);
-    --w11-accent-light3: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), 70%);
-    --w11-accent-dark1: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), 35%);
-    --w11-accent-dark2: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), 28%);
-    --w11-accent-dark3: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), 20%);
+    --w11-accent-light1: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), calc(var(--w11-accent-lightness) + 10%));
+    --w11-accent-light2: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), calc(var(--w11-accent-lightness) + 20%));
+    --w11-accent-light3: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), calc(var(--w11-accent-lightness) + 30%));
+    --w11-accent-dark1: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), calc(var(--w11-accent-lightness) - 7%));
+    --w11-accent-dark2: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), calc(var(--w11-accent-lightness) - 14%));
+    --w11-accent-dark3: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), calc(var(--w11-accent-lightness) - 20%));
     
-    /* Light Theme Colors */
-    --w11-bg-primary: #fafafa;
-    --w11-bg-secondary: #f9f9f9;
-    --w11-bg-tertiary: #f3f3f3;
-    --w11-bg-quarternary: #eeeeee;
-    --w11-bg-solid: #ffffff;
-    --w11-surface-stroke: #e5e5e5;
-    --w11-divider-stroke: #d1d1d1;
-    --w11-text-primary: #1c1c1c;
-    --w11-text-secondary: #757575;
-    --w11-text-tertiary: #616161;
-    --w11-text-disabled: #a6a6a6;
-    --w11-text-muted: #999999;
+    /* Hacker Green Theme Colors */
+    --w11-bg-primary: #0A0F0A; /* Very dark green/black */
+    --w11-bg-secondary: #0D1A0D; /* Slightly lighter dark green/black */
+    --w11-bg-tertiary: #102510;
+    --w11-bg-quarternary: #153015;
+    --w11-bg-solid: #0A0F0A;
+    --w11-text-primary: #00FF41; /* Bright green */
+    --w11-text-secondary: #00B02D; /* Dimmer green */
+    --w11-text-tertiary: #80C080; /* Lighter green */
+    --w11-text-disabled: #406040; /* Very dim green */
+    --w11-text-muted: #608060;
+    --w11-surface-stroke: #00FF41; /* Bright green borders */
+    --w11-divider-stroke: #00B02D; /* Dimmer green dividers */
 
     /* Card Backgrounds */
-    --w11-card-bg: rgba(255, 255, 255, 0.8);
-    --w11-card-stroke: rgba(0, 0, 0, 0.08);
+    --w11-card-bg: var(--w11-bg-secondary); /* Solid dark background for cards */
+    --w11-card-stroke: var(--w11-text-secondary);
     
     /* Semantic Colors */
-    --w11-success: #107c10;
-    --w11-success-light: #4dc247;
-    --w11-success-bg: rgba(16, 124, 16, 0.1);
+    --w11-success: #00FF41; /* Bright green */
+    --w11-success-light: #60FF80;
+    --w11-success-bg: rgba(0, 255, 65, 0.1);
     
-    --w11-danger: #c42b1c;
-    --w11-danger-light: #ff6b6b;
-    --w11-danger-bg: rgba(196, 43, 28, 0.1);
+    --w11-danger: #FF2D2D; /* Bright red */
+    --w11-danger-light: #FF6060;
+    --w11-danger-bg: rgba(255, 45, 45, 0.1);
     
-    --w11-warning: #ffb900;
-    --w11-warning-light: #ffd93d;
-    --w11-warning-bg: rgba(255, 185, 0, 0.1);
+    --w11-warning: #FFB800; /* Amber/Yellow */
+    --w11-warning-light: #FFD050;
+    --w11-warning-bg: rgba(255, 184, 0, 0.1);
     
-    --w11-info: var(--w11-accent);
-    --w11-info-light: var(--w11-accent-light1);
+    --w11-info: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), var(--w11-accent-lightness)); /* Magenta */
+    --w11-info-light: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), calc(var(--w11-accent-lightness) + 10%));
     --w11-info-bg: hsla(var(--w11-accent-hue), var(--w11-accent-saturation), var(--w11-accent-lightness), 0.1);
     
     /* Shadows */
-    --w11-shadow-2: 0 2px 4px rgba(0, 0, 0, 0.1);
-    --w11-shadow-4: 0 4px 8px rgba(0, 0, 0, 0.12);
-    --w11-shadow-8: 0 8px 16px rgba(0, 0, 0, 0.14);
-    --w11-shadow-16: 0 16px 32px rgba(0, 0, 0, 0.16);
+    --w11-shadow-2: 0 1px 2px rgba(0, 80, 20, 0.3);
+    --w11-shadow-4: 0 2px 4px rgba(0, 80, 20, 0.3);
+    --w11-shadow-8: 0 3px 6px rgba(0, 80, 20, 0.3);
+    --w11-shadow-16: 0 4px 8px rgba(0, 80, 20, 0.3);
 
     /* Border Radius */
-    --w11-radius-small: 4px;
-    --w11-radius-medium: 8px;
-    --w11-radius-large: 12px;
-    --w11-radius-xlarge: 16px;
+    --w11-radius-small: 2px;
+    --w11-radius-medium: 3px;
+    --w11-radius-large: 4px;
+    --w11-radius-xlarge: 5px;
 
     /* Transitions */
     --w11-duration-fast: 150ms;
@@ -68,35 +70,39 @@
     --w11-ease-standard: cubic-bezier(0.4, 0.0, 0.2, 1);
 }
 
-/* Dark Theme */
+/* Dark Theme (now same as root for Hacker Green) */
 [data-theme="dark"] {
-    --w11-bg-primary: #1c1c1c;
-    --w11-bg-secondary: #2c2c2c;
-    --w11-bg-tertiary: #383838;
-    --w11-bg-quarternary: #404040;
-    --w11-bg-solid: #2c2c2c;
-    --w11-surface-stroke: #383838;
-    --w11-divider-stroke: #404040;
-    --w11-text-primary: #ffffff;
-    --w11-text-secondary: #c7c7c7;
-    --w11-text-tertiary: #a6a6a6;
-    --w11-text-disabled: #757575;
-    --w11-text-muted: #999999;
-    --w11-card-bg: rgba(44, 44, 44, 0.9);
-    --w11-card-stroke: rgba(255, 255, 255, 0.08);
+    --w11-bg-primary: #0A0F0A;
+    --w11-bg-secondary: #0D1A0D;
+    --w11-bg-tertiary: #102510;
+    --w11-bg-quarternary: #153015;
+    --w11-bg-solid: #0A0F0A;
+    --w11-text-primary: #00FF41;
+    --w11-text-secondary: #00B02D;
+    --w11-text-tertiary: #80C080;
+    --w11-text-disabled: #406040;
+    --w11-text-muted: #608060;
+    --w11-surface-stroke: #00FF41;
+    --w11-divider-stroke: #00B02D;
+    --w11-card-bg: var(--w11-bg-secondary);
+    --w11-card-stroke: var(--w11-text-secondary);
     
-    /* Dark theme semantic colors */
-    --w11-success: #4dc247;
-    --w11-success-bg: rgba(16, 124, 16, 0.2);
+    /* Dark theme semantic colors (now same as root) */
+    --w11-success: #00FF41;
+    --w11-success-light: #60FF80;
+    --w11-success-bg: rgba(0, 255, 65, 0.1);
     
-    --w11-danger: #ff6b6b;
-    --w11-danger-bg: rgba(196, 43, 28, 0.2);
+    --w11-danger: #FF2D2D;
+    --w11-danger-light: #FF6060;
+    --w11-danger-bg: rgba(255, 45, 45, 0.1);
     
-    --w11-warning: #ffd93d;
-    --w11-warning-bg: rgba(255, 185, 0, 0.2);
+    --w11-warning: #FFB800;
+    --w11-warning-light: #FFD050;
+    --w11-warning-bg: rgba(255, 184, 0, 0.1);
     
-    --w11-info: var(--w11-accent-light1);
-    --w11-info-bg: hsla(var(--w11-accent-hue), var(--w11-accent-saturation), calc(var(--w11-accent-lightness) + 10%), 0.2);
+    --w11-info: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), var(--w11-accent-lightness));
+    --w11-info-light: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), calc(var(--w11-accent-lightness) + 10%));
+    --w11-info-bg: hsla(var(--w11-accent-hue), var(--w11-accent-saturation), var(--w11-accent-lightness), 0.1);
 }
 
 /* Base Styles */
@@ -110,8 +116,10 @@ body {
     flex-direction: column;
     background: var(--w11-bg-primary);
     color: var(--w11-text-primary);
-    font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-family: 'VT323', 'Courier New', Courier, monospace;
     font-size: 14px;
+    text-shadow: 0 0 1px rgba(0, 255, 65, 0.15); /* Base CRT glow */
+    animation: subtleTextFlicker 2s ease-in-out infinite; /* Subtle text flicker */
     line-height: 1.5;
     overflow-x: hidden;
     transition: background var(--w11-duration-normal) var(--w11-ease-standard),
@@ -124,6 +132,7 @@ h1, h2, h3, h4, h5, h6 {
     color: var(--w11-text-primary);
     margin-bottom: 16px;
     transition: color var(--w11-duration-normal) var(--w11-ease-standard);
+    text-shadow: 0 0 2px rgba(0, 255, 65, 0.4), 0 0 4px rgba(0, 255, 65, 0.2); /* Pronounced CRT glow */
 }
 
 h1 { font-size: 28px; font-weight: 400; }
@@ -155,7 +164,6 @@ small {
 /* Navigation */
 .navbar {
     background: var(--w11-card-bg);
-    backdrop-filter: blur(20px);
     box-shadow: var(--w11-shadow-2);
     padding: 0.75rem 1rem;
     border-bottom: 1px solid var(--w11-surface-stroke);
@@ -171,6 +179,7 @@ small {
     align-items: center;
     transition: transform var(--w11-duration-fast) var(--w11-ease-standard),
                 color var(--w11-duration-normal) var(--w11-ease-standard);
+    text-shadow: 0 0 2px rgba(0, 255, 65, 0.4), 0 0 4px rgba(0, 255, 65, 0.2); /* Pronounced CRT glow */
 }
 
 .navbar-brand:hover { 
@@ -198,17 +207,17 @@ small {
 .navbar-nav .nav-link:hover {
     background: var(--w11-bg-tertiary);
     color: var(--w11-text-primary) !important;
+    text-shadow: 0 0 2px rgba(0, 255, 65, 0.4), 0 0 4px rgba(0, 255, 65, 0.2); /* Pronounced CRT glow for hover link */
 }
 
 .navbar-nav .nav-link.active {
     background: var(--w11-accent);
-    color: white !important;
+    color: var(--w11-bg-primary) !important; /* Dark text on magenta */
 }
 
 /* Cards */
 .card {
     background: var(--w11-card-bg);
-    backdrop-filter: blur(20px);
     border: 1px solid var(--w11-card-stroke);
     border-radius: var(--w11-radius-large);
     box-shadow: var(--w11-shadow-2);
@@ -230,12 +239,14 @@ small {
     font-size: 16px;
     color: var(--w11-text-primary);
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
+    text-shadow: 0 0 2px rgba(0, 255, 65, 0.4), 0 0 4px rgba(0, 255, 65, 0.2); /* Pronounced CRT glow */
 }
 
 .card-body { 
     padding: 24px;
     color: var(--w11-text-primary);
     transition: color var(--w11-duration-normal) var(--w11-ease-standard);
+    /* Applying glow to all card body text might be too much, skipping for now */
 }
 
 .card-footer {
@@ -265,49 +276,51 @@ small {
 
 .btn-primary {
     background: var(--w11-accent);
-    color: white;
+    color: var(--w11-bg-primary); /* Dark text on magenta */
     border-color: var(--w11-accent);
 }
 
 .btn-primary:hover {
     background: var(--w11-accent-light1);
     border-color: var(--w11-accent-light1);
-    color: white;
+    color: var(--w11-bg-primary); /* Dark text on magenta */
 }
 
 .btn-secondary {
     background: var(--w11-bg-tertiary);
     color: var(--w11-text-primary);
     border-color: var(--w11-surface-stroke);
+    text-shadow: 0 0 2px rgba(0, 255, 65, 0.4), 0 0 4px rgba(0, 255, 65, 0.2); /* Pronounced CRT glow */
 }
 
 .btn-secondary:hover { 
     background: var(--w11-bg-quarternary);
     color: var(--w11-text-primary);
+    /* Glow should remain from normal state or be redefined if needed */
 }
 
 .btn-success {
     background: var(--w11-success);
-    color: white;
+    color: var(--w11-bg-primary); /* Dark text on bright green */
     border-color: var(--w11-success);
 }
 
 .btn-success:hover {
     background: var(--w11-success-light);
     border-color: var(--w11-success-light);
-    color: white;
+    color: var(--w11-bg-primary); /* Dark text on bright green */
 }
 
 .btn-danger {
     background: var(--w11-danger);
-    color: white;
+    color: var(--w11-bg-primary); /* Dark text on bright red */
     border-color: var(--w11-danger);
 }
 
 .btn-danger:hover {
     background: var(--w11-danger-light);
     border-color: var(--w11-danger-light);
-    color: white;
+    color: var(--w11-bg-primary); /* Dark text on bright red */
 }
 
 .btn-warning {
@@ -324,14 +337,14 @@ small {
 
 .btn-info {
     background: var(--w11-info);
-    color: white;
+    color: var(--w11-bg-primary); /* Dark text on magenta */
     border-color: var(--w11-info);
 }
 
 .btn-info:hover {
     background: var(--w11-info-light);
     border-color: var(--w11-info-light);
-    color: white;
+    color: var(--w11-bg-primary); /* Dark text on magenta */
 }
 
 /* Outline buttons */
@@ -343,7 +356,7 @@ small {
 
 .btn-outline-primary:hover {
     background: var(--w11-accent);
-    color: white;
+    color: var(--w11-bg-primary); /* Dark text on magenta */
 }
 
 .btn-outline-secondary {
@@ -386,6 +399,7 @@ small {
     font-weight: 500;
     margin-bottom: 8px;
     transition: color var(--w11-duration-normal) var(--w11-ease-standard);
+    text-shadow: 0 0 2px rgba(0, 255, 65, 0.4), 0 0 4px rgba(0, 255, 65, 0.2); /* Pronounced CRT glow */
 }
 
 .form-text {
@@ -415,6 +429,7 @@ small {
 .form-check-label {
     color: var(--w11-text-primary);
     transition: color var(--w11-duration-normal) var(--w11-ease-standard);
+    text-shadow: 0 0 2px rgba(0, 255, 65, 0.4), 0 0 4px rgba(0, 255, 65, 0.2); /* Pronounced CRT glow */
 }
 
 /* Tables */
@@ -565,7 +580,6 @@ small {
 /* Dropdown */
 .dropdown-menu {
     background: var(--w11-card-bg);
-    backdrop-filter: blur(20px);
     border: 1px solid var(--w11-card-stroke);
     border-radius: var(--w11-radius-large);
     box-shadow: var(--w11-shadow-16);
@@ -617,6 +631,7 @@ small {
     background: var(--w11-card-bg);
     border: 1px solid var(--w11-card-stroke);
     border-radius: var(--w11-radius-large);
+    /* backdrop-filter: blur(20px); -- Removed */
     box-shadow: var(--w11-shadow-16);
     color: var(--w11-text-primary);
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
@@ -646,6 +661,7 @@ small {
 .modal-title {
     color: var(--w11-text-primary);
     transition: color var(--w11-duration-normal) var(--w11-ease-standard);
+    text-shadow: 0 0 2px rgba(0, 255, 65, 0.4), 0 0 4px rgba(0, 255, 65, 0.2); /* Pronounced CRT glow */
 }
 
 /* Code elements */
@@ -653,8 +669,8 @@ code {
     background: var(--w11-bg-tertiary);
     color: var(--w11-text-primary);
     padding: 2px 6px;
-    border-radius: 4px;
-    font-family: 'Cascadia Code', 'Consolas', 'Monaco', 'Courier New', monospace;
+    border-radius: var(--w11-radius-small); /* Use new radius */
+    font-family: 'VT323', 'Courier New', Courier, monospace;
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
@@ -662,8 +678,9 @@ pre {
     background: var(--w11-bg-tertiary);
     color: var(--w11-text-primary);
     border: 1px solid var(--w11-surface-stroke);
-    border-radius: var(--w11-radius-medium);
+    border-radius: var(--w11-radius-medium); /* Use new radius */
     padding: 16px;
+    font-family: 'VT323', 'Courier New', Courier, monospace;
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
@@ -684,7 +701,7 @@ pre {
 .page-item.active .page-link {
     background: var(--w11-accent);
     border-color: var(--w11-accent);
-    color: white;
+    color: var(--w11-bg-primary); /* Dark text on magenta */
 }
 
 /* Progress bars */
@@ -731,7 +748,7 @@ footer {
     height: 32px;
     border-radius: 50%;
     background: var(--w11-accent);
-    color: white;
+    color: var(--w11-bg-primary); /* Dark text on magenta */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -761,7 +778,6 @@ footer {
     top: 80px;
     right: 20px;
     background: var(--w11-card-bg);
-    backdrop-filter: blur(20px);
     border: 1px solid var(--w11-card-stroke);
     border-radius: var(--w11-radius-large);
     box-shadow: var(--w11-shadow-16);
@@ -820,10 +836,10 @@ footer {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    color: white;
+    color: var(--w11-bg-primary); /* Dark text on accent */
     font-weight: bold;
     font-size: 16px;
-    text-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+    text-shadow: 0 0 4px rgba(0, 0, 0, 0.5); /* Keep shadow for visibility if needed */
 }
 
 .custom-color-section {
@@ -1021,7 +1037,6 @@ footer {
     top: 70px;
     right: 20px;
     background: var(--w11-card-bg);
-    backdrop-filter: blur(20px);
     border: 1px solid var(--w11-card-stroke);
     border-radius: var(--w11-radius-large);
     box-shadow: var(--w11-shadow-16);
@@ -1198,7 +1213,6 @@ footer {
     bottom: 20px;
     right: 20px;
     background: var(--w11-card-bg);
-    backdrop-filter: blur(20px);
     border: 1px solid var(--w11-card-stroke);
     border-radius: var(--w11-radius-large);
     box-shadow: var(--w11-shadow-16);
@@ -1342,7 +1356,7 @@ footer {
     top: -40px;
     left: 6px;
     background: var(--w11-accent);
-    color: white;
+    color: var(--w11-bg-primary); /* Dark text on magenta */
     padding: 8px 12px;
     text-decoration: none;
     border-radius: var(--w11-radius-small);
@@ -1354,7 +1368,7 @@ footer {
 
 .skip-link:focus {
     top: 6px;
-    color: white;
+    color: var(--w11-bg-primary); /* Dark text on magenta */
     text-decoration: none;
 }
 
@@ -1519,15 +1533,15 @@ footer {
 /* Asegurar que el color se aplique correctamente al icono de cebolla */
 /* These might be redundant if text-success/danger directly apply color, but good for specificity */
 .bi-onion.text-success {
-    color: var(--bs-success) !important; 
+    color: var(--w11-success) !important;
 }
 
 .bi-onion.text-danger {
-    color: var(--bs-danger) !important;
+    color: var(--w11-danger) !important;
 }
 
 .bi-onion.text-warning { /* Though the JS doesn't use text-warning for the icon itself */
-    color: var(--bs-warning) !important;
+    color: var(--w11-warning) !important;
 }
 
 /* Animación sutil para el hover del indicador */
@@ -1569,15 +1583,15 @@ footer {
 }
 
 .oniux-indicator .status-dot.ready {
-    background-color: var(--bs-success); /* Bootstrap success color */
+    background-color: var(--w11-success); /* Use new theme color */
 }
 
 .oniux-indicator .status-dot.not-ready {
-    background-color: var(--bs-danger); /* Bootstrap danger color */
+    background-color: var(--w11-danger); /* Use new theme color */
 }
 
 .oniux-indicator .status-dot.unknown {
-    background-color: var(--bs-warning); /* Bootstrap warning color for unknown */
+    background-color: var(--w11-warning); /* Use new theme color */
 }
 
 /* Ensure the base icon itself still has the correct font-family (from previous step, ensure it's there) */
@@ -1585,4 +1599,33 @@ footer {
     font-family: 'bootstrap-icons' !important; 
     /* Keep other temporary debug styles for color/size for now if they are still in main.css */
     /* e.g. color: magenta !important; background-color: lime !important; etc. */
+}
+
+body::after {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+        transparent,
+        transparent 2px,
+        rgba(0, 255, 65, 0.03) 2px, /* Faint green scan line */
+        rgba(0, 255, 65, 0.03) 3px
+    );
+    z-index: 99999; /* Ensure it's on top */
+    opacity: 0.7;
+    animation: flickerScanlines 15s linear infinite; /* Subtle movement */
+}
+
+@keyframes flickerScanlines {
+    0% { background-position: 0 0; }
+    100% { background-position: 0 100%; } /* Slow scroll or flicker */
+}
+
+@keyframes subtleTextFlicker {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.98; } /* Very slight dimming */
 }

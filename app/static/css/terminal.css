@@ -7,9 +7,9 @@
     align-items: center;
     margin-bottom: 1rem;
     padding: 1rem;
-    background: var(--w11-bg-secondary);
-    border-radius: 8px;
-    border: 1px solid var(--w11-surface-stroke);
+    background: var(--w11-bg-secondary); /* Theme variable */
+    border-radius: var(--w11-radius-large); /* Theme variable */
+    border: 1px solid var(--w11-surface-stroke); /* Theme variable */
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
@@ -17,13 +17,13 @@
     margin: 0;
     font-size: 1.5rem;
     font-weight: 600;
-    color: var(--w11-text-primary);
+    color: var(--w11-text-primary); /* Theme variable */
     transition: color var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .terminal-page-subtitle {
     margin: 0.5rem 0 0 0;
-    color: var(--w11-text-secondary);
+    color: var(--w11-text-secondary); /* Theme variable */
     font-size: 0.9rem;
     transition: color var(--w11-duration-normal) var(--w11-ease-standard);
 }
@@ -33,23 +33,23 @@
     display: flex;
     flex-direction: column;
     height: 600px;
-    background: var(--w11-bg-solid);
-    border: 1px solid var(--w11-surface-stroke);
-    border-radius: 8px;
+    background: var(--w11-bg-solid); /* Theme variable */
+    border: 1px solid var(--w11-surface-stroke); /* Theme variable */
+    border-radius: var(--w11-radius-large); /* Theme variable */
     overflow: hidden;
-    box-shadow: var(--w11-shadow-4);
+    box-shadow: var(--w11-shadow-4); /* Theme variable */
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 /* Terminal header */
 .terminal-header {
-    background: var(--w11-bg-secondary);
-    border-bottom: 1px solid var(--w11-surface-stroke);
+    background: var(--w11-bg-secondary); /* Theme variable */
+    border-bottom: 1px solid var(--w11-surface-stroke); /* Theme variable */
     padding: 12px 16px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    color: var(--w11-text-primary);
+    color: var(--w11-text-primary); /* Theme variable */
     flex-shrink: 0;
     height: 50px;
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
@@ -62,7 +62,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    color: var(--w11-text-primary);
+    color: var(--w11-text-primary); /* Theme variable */
     transition: color var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
@@ -82,22 +82,22 @@
 }
 
 .status-active {
-    background-color: var(--w11-success);
-    box-shadow: 0 0 4px var(--w11-success);
+    background-color: var(--w11-success); /* Theme variable */
+    box-shadow: 0 0 4px var(--w11-success); /* Theme variable */
 }
 
 .status-inactive {
-    background-color: var(--w11-danger);
-    box-shadow: 0 0 4px var(--w11-danger);
+    background-color: var(--w11-danger); /* Theme variable */
+    box-shadow: 0 0 4px var(--w11-danger); /* Theme variable */
 }
 
 /* Terminal buttons */
 .terminal-btn {
-    background: var(--w11-bg-tertiary);
-    border: 1px solid var(--w11-surface-stroke);
-    color: var(--w11-text-primary);
+    background: var(--w11-bg-tertiary); /* Theme variable */
+    border: 1px solid var(--w11-surface-stroke); /* Theme variable */
+    color: var(--w11-text-primary); /* Theme variable */
     padding: 6px 10px;
-    border-radius: 4px;
+    border-radius: var(--w11-radius-small); /* Theme variable */
     font-size: 12px;
     cursor: pointer;
     transition: all var(--w11-duration-fast) var(--w11-ease-standard);
@@ -107,57 +107,65 @@
 }
 
 .terminal-btn:hover:not(:disabled) {
-    background: var(--w11-bg-quarternary);
-    border-color: var(--w11-accent);
-    color: var(--w11-text-primary);
+    background: var(--w11-bg-quarternary); /* Theme variable */
+    border-color: var(--w11-accent); /* Theme variable */
+    color: var(--w11-text-primary); /* Theme variable */
     text-decoration: none;
     transform: translateY(-1px);
-    box-shadow: var(--w11-shadow-2);
+    box-shadow: var(--w11-shadow-2); /* Theme variable */
 }
+
+.terminal-btn:focus, .terminal-btn:active:not(:disabled) {
+    background: var(--w11-bg-quarternary);
+    border-color: var(--w11-accent);
+    color: var(--w11-accent); /* Use accent color for text on focus/active */
+    box-shadow: var(--w11-shadow-4); /* Slightly larger shadow */
+    outline: none;
+}
+
 
 .terminal-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-    background: var(--w11-bg-tertiary);
-    color: var(--w11-text-disabled);
+    background: var(--w11-bg-tertiary); /* Theme variable */
+    color: var(--w11-text-disabled); /* Theme variable */
 }
 
 /* CRITICAL: Terminal display area - Always dark */
 .terminal-display {
     flex: 1;
-    background: #0c0c0c; /* Always dark background for terminal */
+    background: var(--w11-bg-primary) !important; /* Hacker Green Theme */
     position: relative;
     height: calc(600px - 100px); /* Fixed height minus header and footer */
     min-height: 400px;
 }
 
-/* Ensure terminal area stays dark regardless of theme */
+/* Ensure terminal area uses theme background */
 .terminal-display,
 .terminal-display .xterm,
 .terminal-display .xterm-viewport,
-.terminal-display .xterm-screen {
-    background-color: #0c0c0c !important;
-}
-
-.terminal-display .xterm-viewport {
-    background-color: #0c0c0c !important;
-}
-
+.terminal-display .xterm-screen,
 .terminal-display .xterm-screen canvas {
-    background-color: #0c0c0c !important;
+    background-color: var(--w11-bg-primary) !important; /* Hacker Green Theme */
 }
 
-/* The following rules for cursor and selection should be removed or commented out
+/* Default text color for terminal content */
+.terminal-display .xterm .xterm-rows span {
+    color: var(--w11-text-primary); /* Hacker Green Text */
+}
+
+/* XTerm cursor styling */
 .terminal-display .xterm-cursor-layer .xterm-cursor {
-    background-color: #ffffff !important; 
-    color: #0c0c0c !important; 
+    background-color: var(--w11-text-primary) !important; /* Bright green block cursor */
+    color: var(--w11-bg-primary) !important; /* Dark text under cursor */
+    border: 1px solid var(--w11-text-primary) !important; /* Optional: cursor border */
 }
 
+/* XTerm selection styling */
 .terminal-display ::selection {
-    background-color: #ffffff !important; 
-    color: #0c0c0c !important; 
+    background-color: var(--w11-accent) !important; /* Magenta selection */
+    color: var(--w11-text-primary) !important; /* Bright green text on selection */
 }
-*/
 
 /* CRITICAL: XTerm.js container */
 #terminal {
@@ -178,34 +186,34 @@
     height: 100%;
     color: var(--w11-text-secondary);
     text-align: center;
-    background: var(--w11-bg-primary);
+    background: var(--w11-bg-primary); /* Already uses variable, ensure it's correct */
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .terminal-access-denied h3 {
-    color: var(--w11-text-primary);
+    color: var(--w11-text-primary); /* Already uses variable */
     transition: color var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .terminal-access-denied p {
-    color: var(--w11-text-secondary);
+    color: var(--w11-text-secondary); /* Already uses variable */
     transition: color var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .terminal-access-denied i {
-    color: var(--w11-text-disabled);
+    color: var(--w11-text-disabled); /* Already uses variable */
     transition: color var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 /* Terminal footer */
 .terminal-footer {
-    background: var(--w11-bg-secondary);
-    border-top: 1px solid var(--w11-surface-stroke);
+    background: var(--w11-bg-secondary); /* Theme variable */
+    border-top: 1px solid var(--w11-surface-stroke); /* Theme variable */
     padding: 8px 16px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    color: var(--w11-text-secondary);
+    color: var(--w11-text-secondary); /* Theme variable */
     font-size: 11px;
     flex-shrink: 0;
     height: 50px;
@@ -219,7 +227,7 @@
 }
 
 .terminal-info strong {
-    color: var(--w11-text-primary);
+    color: var(--w11-text-primary); /* Theme variable */
     transition: color var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
@@ -233,10 +241,10 @@
     position: absolute;
     top: 60px;
     right: 20px;
-    background: var(--w11-card-bg);
-    border: 1px solid var(--w11-card-stroke);
-    border-radius: 8px;
-    box-shadow: var(--w11-shadow-8);
+    background: var(--w11-card-bg); /* Theme variable */
+    border: 1px solid var(--w11-card-stroke); /* Theme variable */
+    border-radius: var(--w11-radius-large); /* Theme variable */
+    box-shadow: var(--w11-shadow-8); /* Theme variable */
     z-index: 1000;
     width: 600px;
     max-width: 90vw;
@@ -248,21 +256,21 @@
 }
 
 .shortcuts-header {
-    background: var(--w11-bg-secondary);
+    background: var(--w11-bg-secondary); /* Theme variable */
     padding: 12px 16px;
-    border-bottom: 1px solid var(--w11-surface-stroke);
+    border-bottom: 1px solid var(--w11-surface-stroke); /* Theme variable */
     font-weight: 600;
     display: flex;
     align-items: center;
-    color: var(--w11-text-primary);
-    border-radius: 8px 8px 0 0;
+    color: var(--w11-text-primary); /* Theme variable */
+    border-radius: var(--w11-radius-large) var(--w11-radius-large) 0 0; /* Theme variable */
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .shortcuts-content {
     padding: 16px;
-    background: var(--w11-card-bg);
-    color: var(--w11-text-primary);
+    background: var(--w11-card-bg); /* Theme variable */
+    color: var(--w11-text-primary); /* Theme variable */
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
@@ -273,7 +281,7 @@
 .shortcut-title {
     font-weight: 600;
     margin-bottom: 8px;
-    color: var(--w11-text-primary);
+    color: var(--w11-text-primary); /* Theme variable */
     transition: color var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
@@ -284,8 +292,8 @@
 
 .shortcut-table td {
     padding: 4px 8px;
-    border: none;
-    color: var(--w11-text-primary);
+    border: none; /* Keep no border or use var(--w11-divider-stroke) if needed */
+    color: var(--w11-text-secondary); /* Dimmer text for table data */
     transition: color var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
@@ -295,14 +303,14 @@
 }
 
 .kbd {
-    background: var(--w11-bg-tertiary);
-    border: 1px solid var(--w11-surface-stroke);
-    border-radius: 3px;
+    background: var(--w11-bg-tertiary); /* Theme variable */
+    border: 1px solid var(--w11-surface-stroke); /* Theme variable */
+    border-radius: var(--w11-radius-small); /* Theme variable */
     padding: 2px 6px;
-    font-family: monospace;
-    font-size: 11px;
+    font-family: 'VT323', 'Courier New', Courier, monospace; /* Theme font */
+    font-size: 11px; /* Keep or adjust if needed */
     font-weight: 600;
-    color: var(--w11-text-primary);
+    color: var(--w11-text-primary); /* Theme variable */
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
@@ -378,8 +386,8 @@
 }
 
 .xterm .composition-view {
-    background: #000 !important;
-    color: #FFF !important;
+    background: var(--w11-bg-primary) !important; /* Theme variable */
+    color: var(--w11-text-primary) !important; /* Theme variable */
     display: none !important;
     position: absolute !important;
     white-space: nowrap !important;
@@ -391,7 +399,7 @@
 }
 
 .xterm .xterm-viewport {
-    background-color: #000 !important;
+    background-color: var(--w11-bg-primary) !important; /* Hacker Green Theme */
     overflow-y: scroll !important;
     cursor: default !important;
     position: absolute !important;
@@ -630,8 +638,8 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
+    background: rgba(10, 15, 10, 0.5); /* Dark green tint for backdrop */
+    backdrop-filter: blur(4px); /* Keep blur for backdrop */
 }
 
 .custom-modal-content {
@@ -639,11 +647,11 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: var(--w11-card-bg);
-    backdrop-filter: blur(20px);
-    border: 1px solid var(--w11-card-stroke);
-    border-radius: var(--w11-radius-large);
-    box-shadow: var(--w11-shadow-16);
+    background: var(--w11-card-bg); /* Theme variable */
+    /* backdrop-filter: blur(20px); -- Removed for consistency */
+    border: 1px solid var(--w11-card-stroke); /* Theme variable */
+    border-radius: var(--w11-radius-large); /* Theme variable */
+    box-shadow: var(--w11-shadow-16); /* Theme variable */
     min-width: 400px;
     max-width: 600px;
     color: var(--w11-text-primary);
