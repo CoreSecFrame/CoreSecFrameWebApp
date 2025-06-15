@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "_formhelpers.html" import render_field %}
+
+{% block title %}Edit Note: {{ note.title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Edit Note: {{ note.title }}</h1>
+    <form method="POST" action="{{ url_for('notes.edit_note', note_id=note.id) }}">
+        {{ form.csrf_token }}
+        {{ render_field(form.title, class="form-control") }}
+        {{ render_field(form.content, class="form-control", rows=10) }}
+        {{ form.submit(class="btn btn-primary") }}
+        <a href="{{ url_for('notes.view_note', note_id=note.id) }}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}

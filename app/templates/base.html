@@ -134,6 +134,13 @@
                                 <i class="bi bi-folder me-1" aria-hidden="true"></i> File Manager
                             </a>
                         </li>
+                        <li class="nav-item" role="none">
+                            <a class="nav-link {% if request.endpoint and 'notes' in request.endpoint %}active{% endif %}"
+                                href="{{ url_for('notes.index') }}" role="menuitem"
+                                {% if request.endpoint and 'notes' in request.endpoint %}aria-current="page"{% endif %}>
+                                <i class="bi bi-journal-text me-1" aria-hidden="true"></i> Notes
+                            </a>
+                        </li>
                         {% endif %}
                     </ul>
 
