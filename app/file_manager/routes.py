@@ -5,6 +5,8 @@ import mimetypes
 import pwd
 import grp
 import stat
+import subprocess
+import re
 from datetime import datetime
 from flask import render_template, request, jsonify, current_app, send_file, abort
 from flask_login import login_required, current_user
@@ -202,21 +204,13 @@ def list_files(path=None):
                                  title="File Manager",
                                  is_admin=is_admin_user())
 
-        # Check read permissions
-        if not os.access(current_path, os.R_OK):
-            return render_template('file_manager/file_manager.html', 
-                                 error="Permission denied: Cannot read directory", 
-                                 current_path=current_path, 
-                                 items=[], 
-                                 parent_dir=None,
-                                 title="File Manager",
-                                 is_admin=is_admin_user())
-
         items = []
         show_hidden = request.args.get('show_hidden', 'false').lower() == 'true'
         
         try:
-            # Get directory contents
+            if not os.access(current_path, os.R_OK) or not os.access(current_path, os.X_OK if os.name != 'nt' else os.R_OK):
+                raise PermissionError(f"Lacking read/execute permissions for directory: {current_path}")
+
             dir_contents = os.listdir(current_path)
             
             # Filter hidden files if not requested
@@ -231,12 +225,15 @@ def list_files(path=None):
                 file_info = get_file_info(item_path, item_path)
                 items.append(file_info)
                 
-        except PermissionError:
+        except PermissionError as e:
+            current_app.logger.warning(f"Permission denied listing {current_path}: {e}", 
+                                     extra={'user_id': current_user.id, 'path': current_path})
             return render_template('file_manager/file_manager.html', 
-                                 error="Permission denied: Cannot access directory contents", 
+                                 error=f"Permission denied to access directory '{os.path.basename(current_path)}'. You may need administrator privileges.", 
                                  current_path=current_path, 
                                  items=[], 
-                                 parent_dir=None,
+                                 parent_dir=os.path.dirname(current_path) if current_path != '/' else None,
+                                 show_hidden=show_hidden,
                                  title="File Manager",
                                  is_admin=is_admin_user())
 
@@ -268,23 +265,23 @@ def list_files(path=None):
                              show_hidden=show_hidden,
                              title="File Manager",
                              is_admin=is_admin_user())
-                             
-    except PermissionError as e:
-        current_app.logger.warning(f"Permission denied in file manager: {e}", 
+
+    except PermissionError as e: 
+        current_app.logger.warning(f"Access denied by get_safe_path for {request.args.get('path', path)}: {e}", 
                                    extra={'user_id': current_user.id})
         return render_template('file_manager/file_manager.html', 
                              error=str(e), 
-                             current_path='/', 
+                             current_path=request.args.get('path', path) or '/', 
                              items=[], 
                              parent_dir=None,
                              title="File Manager",
                              is_admin=is_admin_user())
     except Exception as e:
-        current_app.logger.error(f"Error in file manager: {e}", 
+        current_app.logger.error(f"Error in file manager for path {request.args.get('path', path)}: {e}", 
                                 extra={'user_id': current_user.id})
         return render_template('file_manager/file_manager.html', 
                              error="An error occurred while accessing the file system.", 
-                             current_path='/', 
+                             current_path=request.args.get('path', path) or '/', 
                              items=[], 
                              parent_dir=None,
                              title="File Manager",
@@ -393,7 +390,11 @@ def delete_item():
         # Check if we can write to the parent directory
         parent_dir = os.path.dirname(full_path)
         if not os.access(parent_dir, os.W_OK):
-            return jsonify(success=False, error="Permission denied: Cannot delete from this directory.")
+            # Check if it's a permission issue that might be resolved with sudo
+            if os.path.exists(full_path):
+                return jsonify(success=False, error="Permission denied. Root privileges may be required to delete this item.", requires_sudo=True), 403
+            else:
+                return jsonify(success=False, error="Permission denied: Cannot delete from this directory.")
 
         # Additional safety check for important system directories
         if full_path in ['/', '/home', '/usr', '/var', '/etc', '/boot', '/sys', '/proc', '/dev']:
@@ -402,26 +403,197 @@ def delete_item():
         # Check if it's a directory or file
         is_directory = os.path.isdir(full_path)
         
-        if is_directory:
-            shutil.rmtree(full_path)
-            action = "delete_folder"
-        else:
-            os.remove(full_path)
-            action = "delete_file"
-            
-        # Log deletion
-        current_app.logger.info(
-            f"Item deleted: {full_path}",
-            extra={'user_id': current_user.id, 'action': action, 'is_directory': is_directory}
-        )
+        try:
+            if is_directory:
+                shutil.rmtree(full_path)
+                action = "delete_folder"
+            else:
+                os.remove(full_path)
+                action = "delete_file"
+                
+            # Log deletion
+            current_app.logger.info(
+                f"Item deleted: {full_path}",
+                extra={'user_id': current_user.id, 'action': action, 'is_directory': is_directory}
+            )
 
-        return jsonify(success=True, message="Item deleted successfully.")
+            return jsonify(success=True, message="Item deleted successfully.")
+            
+        except PermissionError:
+            # If we get here, it's likely a permission issue that requires sudo
+            current_app.logger.warning(f"Permission error during delete item {item_path}: requires sudo", 
+                                     extra={'user_id': current_user.id})
+            return jsonify(success=False, error="Permission denied. Root privileges may be required to delete this item.", requires_sudo=True), 403
         
     except PermissionError as e:
-        return jsonify(success=False, error=f"Permission denied: {str(e)}")
+        current_app.logger.warning(f"Permission error during delete item {item_path}: {e}", extra={'user_id': current_user.id})
+        return jsonify(success=False, error="Permission denied. Root privileges may be required to delete this item.", requires_sudo=True), 403
     except Exception as e:
         current_app.logger.error(f"Error deleting item {item_path}: {e}", extra={'user_id': current_user.id})
         return jsonify(success=False, error="An error occurred while deleting the item.")
+
+@bp.route('/sudo_delete_item', methods=['POST'])
+@login_required
+def sudo_delete_item():
+    """Delete a file or folder using sudo privileges"""
+    item_path_param = request.form.get('item_path')
+    password = request.form.get('password')
+
+    if not item_path_param or not password:
+        return jsonify(success=False, error="Item path and password are required."), 400
+
+    try:
+        # Validate the path
+        validated_item_path = get_safe_path(item_path_param)
+
+        # Check if the item exists
+        if not os.path.exists(validated_item_path):
+            return jsonify(success=False, error="Item not found."), 404
+
+        # Additional safety check for critical system directories
+        critical_paths = ['/', '/home', '/usr', '/var', '/etc', '/boot', '/sys', '/proc', '/dev', '/bin', '/sbin', '/lib', '/lib64']
+        if validated_item_path in critical_paths:
+            current_app.logger.warning(f"Attempted sudo delete of critical system path: {validated_item_path}", 
+                                     extra={'user_id': current_user.id})
+            return jsonify(success=False, error="Cannot delete critical system directories."), 403
+
+        # Construct the sudo command
+        command = ['sudo', '-S', 'rm', '-rf', validated_item_path]
+
+        try:
+            process = subprocess.run(
+                command,
+                input=password + '\n',
+                text=True,
+                capture_output=True,
+                timeout=30,  # Add timeout to prevent hanging
+                check=False
+            )
+
+            if process.returncode == 0:
+                current_app.logger.info(
+                    f"Sudo delete successful: path='{validated_item_path}'",
+                    extra={'user_id': current_user.id, 'item_path': validated_item_path, 'status': 'success'}
+                )
+                return jsonify(success=True, message=f"Item '{os.path.basename(validated_item_path)}' deleted successfully.")
+            else:
+                error_message = process.stderr.strip()
+                
+                # Check for common error patterns
+                if any(phrase in error_message.lower() for phrase in [
+                    "incorrect password", "sorry, try again", "authentication failure"
+                ]):
+                    user_friendly_error = "Incorrect password provided."
+                elif "sudo:" in error_message.lower():
+                    user_friendly_error = "Sudo command failed. Please check your system configuration."
+                elif "permission denied" in error_message.lower():
+                    user_friendly_error = "Permission denied even with sudo privileges."
+                else:
+                    user_friendly_error = "Failed to delete item with root privileges."
+                
+                current_app.logger.warning(
+                    f"Sudo delete failed: path='{validated_item_path}', error='{error_message}'",
+                    extra={'user_id': current_user.id, 'item_path': validated_item_path, 'status': 'failed'}
+                )
+                return jsonify(success=False, error=user_friendly_error), 400
+
+        except subprocess.TimeoutExpired:
+            current_app.logger.error(f"Sudo delete timeout for path: {validated_item_path}", 
+                                   extra={'user_id': current_user.id})
+            return jsonify(success=False, error="Operation timed out. Please try again."), 408
+
+    except PermissionError as e:
+        current_app.logger.warning(f"Sudo delete permission error: {e}", 
+                                 extra={'user_id': current_user.id, 'item_path': item_path_param})
+        return jsonify(success=False, error=str(e)), 403
+    except Exception as e:
+        current_app.logger.error(f"Exception in sudo_delete_item: {e}", 
+                               extra={'user_id': current_user.id, 'item_path': item_path_param})
+        return jsonify(success=False, error="An unexpected server error occurred."), 500
+
+@bp.route('/search')
+@login_required
+def search_files():
+    """Search for files and directories"""
+    try:
+        query = request.args.get('query', '').strip()
+        search_path_param = request.args.get('path') 
+        show_hidden = request.args.get('show_hidden', 'false').lower() == 'true'
+        
+        if not query:
+            return jsonify(success=True, items=[], message="Search query is empty.")
+
+        # Use get_safe_path to validate and get the absolute path to search in
+        base_search_path = get_safe_path(search_path_param)
+
+        if not os.path.exists(base_search_path) or not os.path.isdir(base_search_path):
+            return jsonify(success=False, error=f"Search path does not exist or is not a directory.")
+
+        if not os.access(base_search_path, os.R_OK):
+            return jsonify(success=False, error=f"Permission denied: Cannot read search path.")
+
+        results = []
+        query_lower = query.lower()
+
+        try:
+            for root, dirs, files_in_dir in os.walk(base_search_path, topdown=True):
+                # Skip permission-denied directories
+                if not os.access(root, os.R_OK):
+                    dirs[:] = []  # Don't descend into this directory
+                    continue
+
+                # Filter hidden directories from traversal if not requested
+                if not show_hidden:
+                    dirs[:] = [d for d in dirs if not d.startswith('.')]
+                    files_in_dir = [f for f in files_in_dir if not f.startswith('.')]
+
+                # Check directories
+                for name in dirs:
+                    if query_lower in name.lower():
+                        item_path = os.path.join(root, name)
+                        try:
+                            # Ensure the found item is still within allowed paths
+                            get_safe_path(item_path)
+                            if os.access(item_path, os.R_OK):
+                                results.append(get_file_info(item_path))
+                        except (PermissionError, OSError):
+                            continue
+
+                # Check files
+                for name in files_in_dir:
+                    if query_lower in name.lower():
+                        item_path = os.path.join(root, name)
+                        try:
+                            get_safe_path(item_path)
+                            if os.access(item_path, os.R_OK):
+                                results.append(get_file_info(item_path))
+                        except (PermissionError, OSError):
+                            continue
+
+                # Limit results to prevent performance issues
+                if len(results) >= 1000:
+                    break
+
+        except Exception as e:
+            current_app.logger.warning(f"Error during search walk: {e}", extra={'user_id': current_user.id})
+            # Continue with partial results
+
+        # Sort results: directories first, then files, then by name
+        results.sort(key=lambda x: (not x['is_dir'], x['name'].lower()))
+
+        current_app.logger.info(
+            f"File search performed: query='{query}', path='{base_search_path}', results_count={len(results)}",
+            extra={'user_id': current_user.id, 'query': query, 'path': base_search_path}
+        )
+        
+        return jsonify(success=True, items=results)
+
+    except PermissionError as e:
+        current_app.logger.warning(f"Permission denied during search: {e}", extra={'user_id': current_user.id})
+        return jsonify(success=False, error=f"Permission denied: {str(e)}")
+    except Exception as e:
+        current_app.logger.error(f"Error during search: {e}", extra={'user_id': current_user.id})
+        return jsonify(success=False, error="An error occurred during search.")
 
 @bp.route('/view_file')
 @login_required
@@ -632,8 +804,6 @@ def quick_navigate():
             continue
     
     return jsonify(shortcuts=accessible_shortcuts)
-
-# Agregar esta función a app/file_manager/routes.py
 
 @bp.route('/rename_item', methods=['POST'])
 @login_required
