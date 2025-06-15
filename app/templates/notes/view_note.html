@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}{{ note.title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>{{ note.title }}</h1>
+        <div>
+            <a href="{{ url_for('notes.edit_note', note_id=note.id) }}" class="btn btn-primary">Edit Note</a>
+        </div>
+    </div>
+    <p><small>Created: {{ note.created_at.strftime('%Y-%m-%d %H:%M') }} | Last Updated: {{ note.updated_at.strftime('%Y-%m-%d %H:%M') }}</small></p>
+    <hr>
+    <div class="note-content">
+        {{ note_content_html|safe }}
+    </div>
+    <hr>
+    <a href="{{ url_for('notes.index') }}" class="btn btn-secondary">Back to Notes</a>
+</div>
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    .note-content img {
+        max-width: 100%;
+        height: auto;
+    }
+    .note-content pre {
+        background-color: #f8f9fa;
+        padding: 1em;
+        border-radius: 0.25rem;
+        overflow-x: auto;
+    }
+    .note-content blockquote {
+        border-left: 5px solid #ccc;
+        padding-left: 10px;
+        color: #666;
+        margin-left: 0;
+    }
+</style>
+{% endblock %}

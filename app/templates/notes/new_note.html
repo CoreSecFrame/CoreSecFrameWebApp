@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% from "_formhelpers.html" import render_field %}
+
+{% block title %}New Note{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>New Note</h1>
+    <form method="POST" action="{{ url_for('notes.new_note') }}">
+        {{ form.csrf_token }}
+        {{ render_field(form.title, class="form-control") }}
+        {{ render_field(form.content, class="form-control", rows=10) }} {# Assuming you want a larger text area #}
+        {{ form.submit(class="btn btn-primary") }}
+    </form>
+</div>
+{% endblock %}

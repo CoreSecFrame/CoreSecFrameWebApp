@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}My Notes{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>My Notes</h1>
+        <a href="{{ url_for('notes.new_note') }}" class="btn btn-primary">New Note</a>
+    </div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    {% if notes %}
+        <ul class="list-group">
+            {% for note in notes %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <a href="{{ url_for('notes.view_note', note_id=note.id) }}"><h5>{{ note.title }}</h5></a>
+                        <small>Last updated: {{ note.updated_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                    </div>
+                    <div>
+                        <a href="{{ url_for('notes.edit_note', note_id=note.id) }}" class="btn btn-sm btn-outline-secondary mr-2">Edit</a>
+                        <form action="{{ url_for('notes.delete_note', note_id=note.id) }}" method="POST" style="display: inline;">
+                            <input type="submit" value="Delete" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to delete this note?');">
+                        </form>
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>You don't have any notes yet. <a href="{{ url_for('notes.new_note') }}">Create one now!</a></p>
+    {% endif %}
+</div>
+{% endblock %}
