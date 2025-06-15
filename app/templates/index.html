@@ -139,7 +139,7 @@
 </section>
 
 <!-- How It Works Section -->
-<section class="how-it-works py-5 bg-light rounded-3 my-5">
+<section class="how-it-works py-5 bg-gradient rounded-3 my-5">
     <div class="container">
         <div class="text-center mb-5">
             <h2 class="display-5 fw-bold">How It Works</h2>
@@ -179,28 +179,6 @@
                     <p class="text-muted small">Run tools and analyze results in real-time</p>
                 </div>
             </div>
-        </div>
-    </div>
-</section>
-
-<!-- CTA Section -->
-<section class="cta-section text-center py-5">
-    <div class="container">
-        <h2 class="display-5 fw-bold mb-3">Ready to Enhance Your Security Operations?</h2>
-        <p class="lead text-muted mb-4">Join security professionals using CoreSecFrame</p>
-        <div class="d-flex gap-3 justify-content-center">
-            {% if current_user.is_authenticated %}
-            <a href="{{ url_for('core.dashboard') }}" class="btn btn-primary btn-lg px-5">
-                <i class="bi bi-speedometer2 me-2"></i> Go to Dashboard
-            </a>
-            {% else %}
-            <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg px-5">
-                <i class="bi bi-rocket-takeoff me-2"></i> Get Started Free
-            </a>
-            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary btn-lg px-5">
-                <i class="bi bi-box-arrow-in-right me-2"></i> Sign In
-            </a>
-            {% endif %}
         </div>
     </div>
 </section>

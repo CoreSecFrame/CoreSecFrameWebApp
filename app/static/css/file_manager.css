@@ -93,7 +93,7 @@
    HEADER SECTION
    ==================================== */
 .file-manager-header {
-    background: linear-gradient(135deg, var(--fm-primary) 0%, var(--fm-primary-hover) 50%, #005a9e 100%);
+    background: linear-gradient(135deg, var(--fm-dark) 0%, var(--fm-primary-hover) 50%, #0066eb91 100%);
     color: white;
     padding: 1.5rem;
     position: relative;

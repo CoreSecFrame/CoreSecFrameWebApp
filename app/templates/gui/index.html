@@ -30,7 +30,7 @@
 <div class="row mb-4">
     <div class="col-12">
         <div class="card border-0 shadow-sm">
-            <div class="card-header {% if gui_uses_wslg %}bg-success{% else %}bg-info{% endif %} text-white">
+            <div class="card-header {% if gui_uses_wslg %}bg-gradient{% else %}bg-info{% endif %} text-white">
                 <h6 class="mb-0 fw-semibold">
                     <i class="bi bi-{% if gui_uses_wslg %}windows{% else %}display{% endif %} me-2"></i>
                     GUI Environment: {{ gui_environment|title }}
@@ -219,40 +219,13 @@
 </div>
 {% endif %}
 
-<!-- WSLg Feature Highlight (only show if WSLg is available) -->
-{% if gui_uses_wslg %}
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card border-0 shadow-sm bg-gradient" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea;">
-            <div class="card-body text-white">
-                <div class="row align-items-center">
-                    <div class="col-md-8">
-                        <h5 class="fw-bold mb-2">
-                            <i class="bi bi-stars me-2"></i>WSLg Native Integration Active!
-                        </h5>
-                        <p class="mb-2">Your GUI applications run natively in Windows with full integration:</p>
-                        <ul class="list-unstyled mb-0">
-                            <li><i class="bi bi-check-circle me-2"></i>Native Windows taskbar integration</li>
-                            <li><i class="bi bi-check-circle me-2"></i>Seamless clipboard sharing</li>
-                            <li><i class="bi bi-check-circle me-2"></i>Audio and file system access</li>
-                            <li><i class="bi bi-check-circle me-2"></i>No VNC client required</li>
-                        </ul>
-                    </div>
-                    <div class="col-md-4 text-center">
-                        <i class="bi bi-windows" style="font-size: 4rem; opacity: 0.8;"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
+
 
 <!-- Applications by Category -->
 <div class="row">
     <div class="col-12">
         <div class="card border-0 shadow-sm">
-            <div class="card-header bg-primary text-white">
+            <div class="card-header bg-gradient text-white">
                 <h5 class="mb-0 fw-semibold">
                     <i class="bi bi-grid-3x3-gap me-2"></i>Available Applications
                     {% if gui_uses_wslg %}
@@ -391,6 +364,35 @@
         </div>
     </div>
 </div>
+
+<!-- WSLg Feature Highlight (only show if WSLg is available) -->
+{% if gui_uses_wslg %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm bg-gradient" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea;">
+            <div class="card-body text-white">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h5 class="fw-bold mb-2">
+                            <i class="bi bi-stars me-2"></i>WSLg Native Integration Active!
+                        </h5>
+                        <p class="mb-2">Your GUI applications run natively in Windows with full integration:</p>
+                        <ul class="list-unstyled mb-0">
+                            <li><i class="bi bi-check-circle me-2"></i>Native Windows taskbar integration</li>
+                            <li><i class="bi bi-check-circle me-2"></i>Seamless clipboard sharing</li>
+                            <li><i class="bi bi-check-circle me-2"></i>Audio and file system access</li>
+                            <li><i class="bi bi-check-circle me-2"></i>No VNC client required</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <i class="bi bi-windows" style="font-size: 4rem; opacity: 0.8;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <!-- Close Session Modal -->
 <div class="modal fade" id="closeSessionModal" tabindex="-1">

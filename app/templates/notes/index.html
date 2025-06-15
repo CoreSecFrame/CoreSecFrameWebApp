@@ -8,13 +8,6 @@
         <h1>My Notes</h1>
         <a href="{{ url_for('notes.new_note') }}" class="btn btn-primary">New Note</a>
     </div>
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }}">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
     {% if notes %}
         <ul class="list-group">
             {% for note in notes %}

@@ -29,7 +29,8 @@
 
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml"
-        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🛡️</text></svg>">
+        href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='16'%20height='16'%20fill='currentColor'%3E%3Ctext%20x='1'%20y='13'%20font-family='monospace'%20font-size='12px'%3E&gt;_%3C/text%3E%3C/svg%3E">
+
 
     <!-- Theme initialization to prevent flash -->
     <script>
@@ -79,7 +80,10 @@
         <nav class="navbar navbar-expand-lg" role="navigation" aria-label="Main navigation">
             <div class="container-fluid">
                 <a class="navbar-brand" href="{{ url_for('core.index') }}" aria-label="CoreSecFrame Home">
-                    <i class="bi bi-shield-lock-fill" aria-hidden="true"></i>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="me-2"
+                        style="vertical-align: -0.125em;" aria-hidden="true">
+                        <text x="2" y="15" font-family="monospace" font-size="14px">&gt;_</text>
+                    </svg>
                     <span>CoreSecFrame</span>
                 </a>
 
@@ -94,50 +98,50 @@
                         {% if current_user.is_authenticated %}
                         <li class="nav-item" role="none">
                             <a class="nav-link {% if request.endpoint == 'core.dashboard' %}active{% endif %}"
-                                href="{{ url_for('core.dashboard') }}" role="menuitem"
-                                {% if request.endpoint == 'core.dashboard' %}aria-current="page"{% endif %}>
+                                href="{{ url_for('core.dashboard') }}" role="menuitem" {% if
+                                request.endpoint=='core.dashboard' %}aria-current="page" {% endif %}>
                                 <i class="bi bi-speedometer2 me-1" aria-hidden="true"></i> Dashboard
                             </a>
                         </li>
                         <li class="nav-item" role="none">
                             <a class="nav-link {% if request.endpoint and 'modules' in request.endpoint %}active{% endif %}"
-                                href="{{ url_for('modules.index') }}" role="menuitem"
-                                {% if request.endpoint and 'modules' in request.endpoint %}aria-current="page"{% endif %}>
+                                href="{{ url_for('modules.index') }}" role="menuitem" {% if request.endpoint
+                                and 'modules' in request.endpoint %}aria-current="page" {% endif %}>
                                 <i class="bi bi-puzzle me-1" aria-hidden="true"></i> Modules
                             </a>
                         </li>
                         <li class="nav-item" role="none">
                             <a class="nav-link {% if request.endpoint and 'sessions' in request.endpoint %}active{% endif %}"
-                                href="{{ url_for('sessions.index') }}" role="menuitem"
-                                {% if request.endpoint and 'sessions' in request.endpoint %}aria-current="page"{% endif %}>
+                                href="{{ url_for('sessions.index') }}" role="menuitem" {% if request.endpoint
+                                and 'sessions' in request.endpoint %}aria-current="page" {% endif %}>
                                 <i class="bi bi-layers me-1" aria-hidden="true"></i> Sessions
                             </a>
                         </li>
                         <li class="nav-item" role="none">
                             <a class="nav-link {% if request.endpoint and 'terminal' in request.endpoint %}active{% endif %}"
-                                href="{{ url_for('terminal.index') }}" role="menuitem"
-                                {% if request.endpoint and 'terminal' in request.endpoint %}aria-current="page"{% endif %}>
+                                href="{{ url_for('terminal.index') }}" role="menuitem" {% if request.endpoint
+                                and 'terminal' in request.endpoint %}aria-current="page" {% endif %}>
                                 <i class="bi bi-terminal me-1" aria-hidden="true"></i> Terminal
                             </a>
                         </li>
                         <li class="nav-item" role="none">
                             <a class="nav-link {% if request.endpoint and 'gui' in request.endpoint %}active{% endif %}"
-                                href="{{ url_for('gui.index') }}" role="menuitem"
-                                {% if request.endpoint and 'gui' in request.endpoint %}aria-current="page"{% endif %}>
+                                href="{{ url_for('gui.index') }}" role="menuitem" {% if request.endpoint and 'gui' in
+                                request.endpoint %}aria-current="page" {% endif %}>
                                 <i class="bi bi-display me-1" aria-hidden="true"></i> GUI Apps
                             </a>
                         </li>
                         <li class="nav-item" role="none">
                             <a class="nav-link {% if request.endpoint and 'file_manager' in request.endpoint %}active{% endif %}"
-                                href="{{ url_for('file_manager.index') }}" role="menuitem"
-                                {% if request.endpoint and 'file_manager' in request.endpoint %}aria-current="page"{% endif %}>
+                                href="{{ url_for('file_manager.index') }}" role="menuitem" {% if request.endpoint
+                                and 'file_manager' in request.endpoint %}aria-current="page" {% endif %}>
                                 <i class="bi bi-folder me-1" aria-hidden="true"></i> File Manager
                             </a>
                         </li>
                         <li class="nav-item" role="none">
                             <a class="nav-link {% if request.endpoint and 'notes' in request.endpoint %}active{% endif %}"
-                                href="{{ url_for('notes.index') }}" role="menuitem"
-                                {% if request.endpoint and 'notes' in request.endpoint %}aria-current="page"{% endif %}>
+                                href="{{ url_for('notes.index') }}" role="menuitem" {% if request.endpoint and 'notes'
+                                in request.endpoint %}aria-current="page" {% endif %}>
                                 <i class="bi bi-journal-text me-1" aria-hidden="true"></i> Notes
                             </a>
                         </li>
@@ -152,20 +156,22 @@
                                 <i class="bi bi-moon-fill" id="theme-icon" aria-hidden="true"></i>
                             </button>
                         </li>
-                        
+
                         <!-- Accent Color Picker -->
                         <li class="nav-item">
-                            <button class="nav-link btn btn-link" id="accent-color-toggle" title="Change accent color (Ctrl+Shift+C)"
-                                aria-label="Open accent color picker">
+                            <button class="nav-link btn btn-link" id="accent-color-toggle"
+                                title="Change accent color (Ctrl+Shift+C)" aria-label="Open accent color picker">
                                 <i class="bi bi-palette" aria-hidden="true"></i>
                             </button>
                         </li>
 
                         <!-- Oniux Installation Indicator -->
                         <li class="nav-item" id="oniux-status-indicator-li">
-                            <span class="nav-link oniux-indicator" id="oniux-indicator-span" title="Oniux Status: Unknown" style="display: flex; align-items: center;">
-                                <i id="oniux-indicator-icon" class="bi"></i> 
-                                <span id="oniux-indicator-text" class="d-none d-lg-inline ms-1" style="line-height: 1;"></span>
+                            <span class="nav-link oniux-indicator" id="oniux-indicator-span"
+                                title="Oniux Status: Unknown" style="display: flex; align-items: center;">
+                                <i id="oniux-indicator-icon" class="bi"></i>
+                                <span id="oniux-indicator-text" class="d-none d-lg-inline ms-1"
+                                    style="line-height: 1;"></span>
                                 <span id="oniux-status-dot" class="status-dot unknown ms-1"></span>
                             </span>
                         </li>
@@ -258,8 +264,8 @@
                 <div class="custom-color-input-group">
                     <input type="color" id="custom-color-input" value="#0078d4" class="custom-color-input"
                         aria-label="Pick custom accent color">
-                    <input type="text" id="hex-color-input" value="#0078d4" class="hex-color-input" placeholder="#0078d4"
-                        pattern="^#[0-9A-Fa-f]{6}$" aria-label="Enter hex color code">
+                    <input type="text" id="hex-color-input" value="#0078d4" class="hex-color-input"
+                        placeholder="#0078d4" pattern="^#[0-9A-Fa-f]{6}$" aria-label="Enter hex color code">
                 </div>
             </div>
         </div>
@@ -300,15 +306,15 @@
                 </div>
                 <div class="col-md-6 text-md-end">
                     <div class="footer-controls">
-                        <span>Version 1.2.0</span>
+                        <span>Version 1.2.1</span>
                         <span class="footer-separator">|</span>
-                        <button type="button" class="footer-btn" id="system-info-toggle"
-                            title="System Performance" aria-label="View system performance information">
+                        <button type="button" class="footer-btn" id="system-info-toggle" title="System Performance"
+                            aria-label="View system performance information">
                             <i class="bi bi-cpu" aria-hidden="true"></i>
                         </button>
                         <span class="footer-separator">|</span>
-                        <button type="button" class="footer-btn" id="accessibility-toggle"
-                            title="Accessibility Options" aria-label="Toggle accessibility options">
+                        <button type="button" class="footer-btn" id="accessibility-toggle" title="Accessibility Options"
+                            aria-label="Toggle accessibility options">
                             <i class="bi bi-universal-access" aria-hidden="true"></i>
                         </button>
                     </div>
@@ -399,18 +405,22 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="oniuxInfoModalLabel"><i id="oniuxModalIcon" class="bi me-2"></i>Oniux Status & Information</h5>
+                    <h5 class="modal-title" id="oniuxInfoModalLabel"><i id="oniuxModalIcon" class="bi me-2"></i>Oniux
+                        Status & Information</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <p><strong>Status:</strong> <span id="oniuxModalStatusText">Loading...</span></p>
                     <p><strong>Path Checked:</strong> <code id="oniuxModalPathText">~/.cargo/bin/oniux</code></p>
                     <hr>
-                    <p>Oniux is a tool used by this application to optionally route network traffic for individual terminal sessions or GUI applications through the Tor network, enhancing privacy and anonymity for those specific tasks.</p>
+                    <p>Oniux is a tool used by this application to optionally route network traffic for individual
+                        terminal sessions or GUI applications through the Tor network, enhancing privacy and anonymity
+                        for those specific tasks.</p>
                     <p id="oniuxModalPathNote" class="small text-muted"></p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" id="oniuxInstallButton" style="display:none;">Install Oniux</button>
+                    <button type="button" class="btn btn-primary" id="oniuxInstallButton" style="display:none;">Install
+                        Oniux</button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
@@ -442,21 +452,21 @@
         function initializeThemeSystem() {
             const themeToggle = document.getElementById('theme-toggle');
             const themeIcon = document.getElementById('theme-icon');
-            
+
             if (themeToggle && themeIcon) {
                 function updateThemeIcon() {
                     const currentTheme = document.documentElement.getAttribute('data-theme');
                     themeIcon.className = currentTheme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-fill';
                 }
 
-                themeToggle.addEventListener('click', function() {
+                themeToggle.addEventListener('click', function () {
                     const currentTheme = document.documentElement.getAttribute('data-theme');
                     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-                    
+
                     document.documentElement.setAttribute('data-theme', newTheme);
                     localStorage.setItem('theme', newTheme);
                     updateThemeIcon();
-                    
+
                     window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: newTheme } }));
                 });
 
@@ -473,16 +483,16 @@
             const colorPresets = document.querySelectorAll('.color-preset');
 
             if (accentToggle && accentPicker) {
-                accentToggle.addEventListener('click', function() {
+                accentToggle.addEventListener('click', function () {
                     accentPicker.classList.toggle('hidden');
                 });
 
-                closeAccentPicker.addEventListener('click', function() {
+                closeAccentPicker.addEventListener('click', function () {
                     accentPicker.classList.add('hidden');
                 });
 
                 colorPresets.forEach(button => {
-                    button.addEventListener('click', function() {
+                    button.addEventListener('click', function () {
                         const color = this.getAttribute('data-color');
                         setAccentColor(color);
                         customColorInput.value = color;
@@ -491,14 +501,14 @@
                     });
                 });
 
-                customColorInput.addEventListener('change', function() {
+                customColorInput.addEventListener('change', function () {
                     const color = this.value;
                     setAccentColor(color);
                     hexColorInput.value = color;
                     updateActivePreset(color);
                 });
 
-                hexColorInput.addEventListener('change', function() {
+                hexColorInput.addEventListener('change', function () {
                     const color = this.value;
                     if (/^#[0-9A-F]{6}$/i.test(color)) {
                         setAccentColor(color);
@@ -521,7 +531,7 @@
             document.documentElement.style.setProperty('--w11-accent-saturation', s + '%');
             document.documentElement.style.setProperty('--w11-accent-lightness', l + '%');
             localStorage.setItem('accent-color', color);
-            
+
             const metaThemeColor = document.querySelector('meta[name="theme-color"]');
             if (metaThemeColor) {
                 metaThemeColor.setAttribute('content', color);
@@ -567,14 +577,14 @@
             const closePerformanceWidget = document.getElementById('close-performance-widget');
 
             if (systemInfoToggle && performanceWidget) {
-                systemInfoToggle.addEventListener('click', function() {
+                systemInfoToggle.addEventListener('click', function () {
                     performanceWidget.classList.toggle('hidden');
                     if (!performanceWidget.classList.contains('hidden')) {
                         updatePerformanceMetrics();
                     }
                 });
 
-                closePerformanceWidget.addEventListener('click', function() {
+                closePerformanceWidget.addEventListener('click', function () {
                     performanceWidget.classList.add('hidden');
                 });
             }
@@ -586,11 +596,11 @@
             const closeAccessibilityPanel = document.getElementById('close-accessibility-panel');
 
             if (accessibilityToggle && accessibilityPanel) {
-                accessibilityToggle.addEventListener('click', function() {
+                accessibilityToggle.addEventListener('click', function () {
                     accessibilityPanel.classList.toggle('hidden');
                 });
 
-                closeAccessibilityPanel.addEventListener('click', function() {
+                closeAccessibilityPanel.addEventListener('click', function () {
                     accessibilityPanel.classList.add('hidden');
                 });
 
@@ -673,7 +683,7 @@
         }
 
         function initializeKeyboardShortcuts() {
-            document.addEventListener('keydown', function(e) {
+            document.addEventListener('keydown', function (e) {
                 // Theme toggle shortcut
                 if (e.ctrlKey && e.shiftKey && e.key === 'T') {
                     e.preventDefault();
@@ -756,27 +766,27 @@
         }
 
         // Click outside to close panels
-        document.addEventListener('click', function(e) {
+        document.addEventListener('click', function (e) {
             const accentPicker = document.getElementById('accent-color-picker');
             const accentToggle = document.getElementById('accent-color-toggle');
-            
+
             if (!accentPicker.contains(e.target) && !accentToggle.contains(e.target)) {
                 accentPicker.classList.add('hidden');
             }
         });
 
         // Error handling
-        window.addEventListener('error', function(e) {
+        window.addEventListener('error', function (e) {
             console.error('JavaScript Error:', e.error);
         });
 
-        window.addEventListener('unhandledrejection', function(e) {
+        window.addEventListener('unhandledrejection', function (e) {
             console.error('Unhandled Promise Rejection:', e.reason);
         });
 
         // Global utility functions
         window.CoreSecFrame = {
-            setTheme: function(theme) {
+            setTheme: function (theme) {
                 if (['light', 'dark'].includes(theme)) {
                     document.documentElement.setAttribute('data-theme', theme);
                     localStorage.setItem('theme', theme);
@@ -786,8 +796,8 @@
                     }
                 }
             },
-            
-            setAccentColor: function(color) {
+
+            setAccentColor: function (color) {
                 if (/^#[0-9A-F]{6}$/i.test(color)) {
                     setAccentColor(color);
                     const customColorInput = document.getElementById('custom-color-input');
@@ -797,8 +807,8 @@
                     updateActivePreset(color);
                 }
             },
-            
-            showNotification: function(message, type = 'info', duration = 5000) {
+
+            showNotification: function (message, type = 'info', duration = 5000) {
                 const alertTypes = {
                     'success': 'success',
                     'error': 'danger',
@@ -806,7 +816,7 @@
                     'warning': 'warning',
                     'info': 'info'
                 };
-                
+
                 const alertClass = alertTypes[type] || 'info';
                 const icons = {
                     'success': 'check-circle',
@@ -814,7 +824,7 @@
                     'warning': 'exclamation-triangle',
                     'info': 'info-circle'
                 };
-                
+
                 const alertId = 'alert-' + Date.now();
                 const alertHTML = `
                     <div id="${alertId}" class="alert alert-${alertClass} alert-dismissible fade show position-fixed" 
@@ -824,9 +834,9 @@
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 `;
-                
+
                 document.body.insertAdjacentHTML('beforeend', alertHTML);
-                
+
                 setTimeout(() => {
                     const alert = document.getElementById(alertId);
                     if (alert) {
