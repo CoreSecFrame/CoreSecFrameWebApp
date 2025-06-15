@@ -26,6 +26,7 @@
                     <div>
                         <a href="{{ url_for('notes.edit_note', note_id=note.id) }}" class="btn btn-sm btn-outline-secondary mr-2">Edit</a>
                         <form action="{{ url_for('notes.delete_note', note_id=note.id) }}" method="POST" style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="submit" value="Delete" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to delete this note?');">
                         </form>
                     </div>
