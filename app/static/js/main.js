@@ -191,6 +191,75 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     // The initial theme application and icon update are already handled by updateTheme(savedTheme)
     // and the logic within updateTheme itself.
+
+    // --- Theme Switcher Logic ---
+    const htmlElement = document.documentElement;
+    const themeSwitcherDropdown = document.getElementById('themeSwitcherDropdown');
+    const themeChoices = document.querySelectorAll('.theme-choice');
+    const activeThemeLabel = document.getElementById('activeThemeLabel'); // Optional label
+    const themeSwitcherIcon = document.getElementById('themeSwitcherIcon'); // Optional icon
+    // const activeThemeIndicators = document.querySelectorAll('.active-theme-indicator'); // Already defined in the new block
+
+    const defaultActiveTheme = 'original'; // Renamed to avoid conflict
+
+    function applyActiveTheme(themeValue) {
+        if (!themeValue) {
+            themeValue = defaultActiveTheme;
+        }
+
+        htmlElement.setAttribute('data-active-theme', themeValue);
+        localStorage.setItem('selectedTheme', themeValue); // This key is for the active theme (original, retro)
+
+        // Update UI elements for theme switcher dropdown
+        themeChoices.forEach(choice => {
+            const isActive = choice.getAttribute('data-theme-value') === themeValue;
+            const checkmark = choice.querySelector('.active-theme-indicator');
+            if (checkmark) {
+                checkmark.style.display = isActive ? 'inline' : 'none';
+            }
+        });
+
+        if (activeThemeLabel) {
+            const selectedChoice = document.querySelector(`.theme-choice[data-theme-value='${themeValue}']`);
+            if (selectedChoice) {
+                let themeName = selectedChoice.innerText.replace(/✓$/, '').trim();
+                const iconElement = selectedChoice.querySelector('i.bi');
+                if (iconElement) {
+                    themeName = themeName.replace(iconElement.innerText, '').trim();
+                }
+                activeThemeLabel.textContent = themeName;
+            } else {
+                 activeThemeLabel.textContent = themeValue.charAt(0).toUpperCase() + themeValue.slice(1);
+            }
+        }
+
+        if (themeSwitcherIcon) {
+            if (themeValue === 'retro') {
+                themeSwitcherIcon.className = 'bi bi-joystick';
+            } else {
+                themeSwitcherIcon.className = 'bi bi-brightness-high-fill';
+            }
+        }
+        // Dispatch a custom event for active theme change
+        window.dispatchEvent(new CustomEvent('activeThemeChanged', { detail: { activeTheme: themeValue } }));
+    }
+
+    // Set initial active theme on page load
+    const savedActiveTheme = localStorage.getItem('selectedTheme');
+    applyActiveTheme(savedActiveTheme || defaultActiveTheme);
+
+    if (themeChoices.length > 0) {
+        themeChoices.forEach(choice => {
+            choice.addEventListener('click', function(e) {
+                e.preventDefault();
+                const selectedThemeValue = this.getAttribute('data-theme-value');
+                applyActiveTheme(selectedThemeValue);
+            });
+        });
+    } else if(themeSwitcherDropdown) {
+        console.warn("Theme switcher dropdown found, but no .theme-choice elements within it.");
+    }
+    // --- End of Theme Switcher Logic ---
 });
 
 // Windows 11 Theme System - Enhanced
@@ -249,13 +318,13 @@ class ThemeManager {
     setAccentColor(color) {
         const { h, s, l } = this.hexToHsl(color);
         
-        // Update CSS custom properties
-        document.documentElement.style.setProperty('--w11-accent-hue', h);
-        document.documentElement.style.setProperty('--w11-accent-saturation', `${s}%`);
-        document.documentElement.style.setProperty('--w11-accent-lightness', `${l}%`);
+        // Update CSS custom properties to generic theme names
+        document.documentElement.style.setProperty('--theme-accent-hue', h);
+        document.documentElement.style.setProperty('--theme-accent-saturation', `${s}%`);
+        document.documentElement.style.setProperty('--theme-accent-lightness', `${l}%`);
         
         this.currentAccent = color;
-        localStorage.setItem('accent-color', color);
+        localStorage.setItem('accent-color', color); // Key for localStorage
         
         // Update accent picker toggle button
         const toggleBtn = document.querySelector('.accent-picker-toggle');

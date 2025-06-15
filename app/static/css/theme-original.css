@@ -1,0 +1,111 @@
+/* app/static/css/theme-original.css */
+
+[data-active-theme="original"] {
+    /* Base Font */
+    --theme-font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+    /* Accent Color System */
+    --theme-accent-hue: 210;
+    --theme-accent-saturation: 100%;
+    --theme-accent-lightness: 42%; /* Original accent lightness */
+
+    /* Dynamic Accent Colors */
+    --theme-accent: hsl(var(--theme-accent-hue), var(--theme-accent-saturation), var(--theme-accent-lightness));
+    --theme-accent-light1: hsl(var(--theme-accent-hue), var(--theme-accent-saturation), 50%);
+    --theme-accent-light2: hsl(var(--theme-accent-hue), var(--theme-accent-saturation), 60%);
+    --theme-accent-light3: hsl(var(--theme-accent-hue), var(--theme-accent-saturation), 70%);
+    --theme-accent-dark1: hsl(var(--theme-accent-hue), var(--theme-accent-saturation), 35%);
+    --theme-accent-dark2: hsl(var(--theme-accent-hue), var(--theme-accent-saturation), 28%);
+    --theme-accent-dark3: hsl(var(--theme-accent-hue), var(--theme-accent-saturation), 20%);
+
+    /* Light Theme Colors (Default for original) */
+    --theme-bg-primary: #fafafa;
+    --theme-bg-secondary: #f9f9f9;
+    --theme-bg-tertiary: #f3f3f3;
+    --theme-bg-quarternary: #eeeeee;
+    --theme-bg-solid: #ffffff;
+    --theme-surface-stroke: #e5e5e5;
+    --theme-divider-stroke: #d1d1d1;
+    --theme-text-primary: #1c1c1c;
+    --theme-text-secondary: #757575;
+    --theme-text-tertiary: #616161;
+    --theme-text-disabled: #a6a6a6;
+    --theme-text-muted: #999999;
+    --theme-text-on-accent: #ffffff; /* White text on accent color */
+
+    /* Card Backgrounds */
+    --theme-card-bg: rgba(255, 255, 255, 0.8);
+    --theme-card-stroke: rgba(0, 0, 0, 0.08);
+
+    /* Semantic Colors */
+    --theme-success: #107c10;
+    --theme-success-light: #4dc247;
+    --theme-success-bg: rgba(16, 124, 16, 0.1);
+    --theme-danger: #c42b1c;
+    --theme-danger-light: #ff6b6b;
+    --theme-danger-bg: rgba(196, 43, 28, 0.1);
+    --theme-warning: #ffb900;
+    --theme-warning-light: #ffd93d;
+    --theme-warning-bg: rgba(255, 185, 0, 0.1);
+    --theme-info: var(--theme-accent);
+    --theme-info-light: var(--theme-accent-light1);
+    --theme-info-bg: hsla(var(--theme-accent-hue), var(--theme-accent-saturation), var(--theme-accent-lightness), 0.1);
+
+    /* Shadows */
+    --theme-shadow-2: 0 2px 4px rgba(0, 0, 0, 0.1);
+    --theme-shadow-4: 0 4px 8px rgba(0, 0, 0, 0.12);
+    --theme-shadow-8: 0 8px 16px rgba(0, 0, 0, 0.14);
+    --theme-shadow-16: 0 16px 32px rgba(0, 0, 0, 0.16);
+
+    /* Border Radius */
+    --theme-radius-small: 4px;
+    --theme-radius-medium: 8px;
+    --theme-radius-large: 12px;
+    --theme-radius-xlarge: 16px;
+
+    /* Transitions (can remain generic if not theme-specific) */
+    /* --theme-duration-fast: 150ms; */
+    /* --theme-duration-normal: 250ms; */
+    /* --theme-duration-slow: 350ms; */
+    /* --theme-ease-standard: cubic-bezier(0.4, 0.0, 0.2, 1); */
+
+    /* Backdrop Filter */
+    --theme-backdrop-filter: blur(20px);
+
+    /* Retro Effects (Disabled for original theme) */
+    --theme-scanlines-display: none;
+    --theme-text-glow-primary: none;
+    --theme-text-glow-header: none;
+    --theme-text-flicker-animation: none;
+}
+
+[data-active-theme="original"][data-theme="dark"] {
+    /* Dark Theme Colors for original */
+    --theme-bg-primary: #1c1c1c;
+    --theme-bg-secondary: #2c2c2c;
+    --theme-bg-tertiary: #383838;
+    --theme-bg-quarternary: #404040;
+    --theme-bg-solid: #2c2c2c;
+    --theme-surface-stroke: #383838;
+    --theme-divider-stroke: #404040;
+    --theme-text-primary: #ffffff;
+    --theme-text-secondary: #c7c7c7;
+    --theme-text-tertiary: #a6a6a6;
+    --theme-text-disabled: #757575;
+    --theme-text-muted: #999999;
+    --theme-text-on-accent: #ffffff; /* White text on accent for dark mode too */
+
+    --theme-card-bg: rgba(44, 44, 44, 0.9);
+    --theme-card-stroke: rgba(255, 255, 255, 0.08);
+
+    /* Dark theme semantic colors */
+    --theme-success: #4dc247; /* Brighter green for dark mode */
+    --theme-success-bg: rgba(77, 194, 71, 0.2); /* Adjusted success bg */
+    --theme-danger: #ff6b6b; /* Brighter red for dark mode */
+    --theme-danger-bg: rgba(255, 107, 107, 0.2); /* Adjusted danger bg */
+    --theme-warning: #ffd93d; /* Brighter yellow for dark mode */
+    --theme-warning-bg: rgba(255, 217, 61, 0.2); /* Adjusted warning bg */
+
+    --theme-info: var(--theme-accent-light1); /* Lighter accent for info in dark mode */
+    --theme-info-bg: hsla(var(--theme-accent-hue), var(--theme-accent-saturation), calc(var(--theme-accent-lightness) + 10%), 0.2);
+}

@@ -1,0 +1,161 @@
+/* app/static/css/theme-retro.css */
+
+[data-active-theme="retro"] {
+    /* Base Font */
+    --theme-font-family: 'VT323', 'Courier New', Courier, monospace;
+
+    /* Accent Color System */
+    --theme-accent-hue: 300;
+    --theme-accent-saturation: 100%;
+    --theme-accent-lightness: 50%; /* Magenta accent */
+
+    /* Dynamic Accent Colors */
+    --theme-accent: hsl(var(--theme-accent-hue), var(--theme-accent-saturation), var(--theme-accent-lightness));
+    --theme-accent-light1: hsl(var(--theme-accent-hue), var(--theme-accent-saturation), calc(var(--theme-accent-lightness) + 10%));
+    --theme-accent-light2: hsl(var(--theme-accent-hue), var(--theme-accent-saturation), calc(var(--theme-accent-lightness) + 20%));
+    --theme-accent-light3: hsl(var(--theme-accent-hue), var(--theme-accent-saturation), calc(var(--theme-accent-lightness) + 30%));
+    --theme-accent-dark1: hsl(var(--theme-accent-hue), var(--theme-accent-saturation), calc(var(--theme-accent-lightness) - 7%));
+    --theme-accent-dark2: hsl(var(--theme-accent-hue), var(--theme-accent-saturation), calc(var(--theme-accent-lightness) - 14%));
+    --theme-accent-dark3: hsl(var(--theme-accent-hue), var(--theme-accent-saturation), calc(var(--theme-accent-lightness) - 20%));
+
+    /* Hacker Green Theme Colors (used for both light/dark mode in retro) */
+    --theme-bg-primary: #0A0F0A; /* Very dark green/black */
+    --theme-bg-secondary: #0D1A0D; /* Slightly lighter dark green/black */
+    --theme-bg-tertiary: #102510;
+    --theme-bg-quarternary: #153015;
+    --theme-bg-solid: #0A0F0A;
+    --theme-text-primary: #00FF41; /* Bright green */
+    --theme-text-secondary: #00B02D; /* Dimmer green */
+    --theme-text-tertiary: #80C080; /* Lighter green */
+    --theme-text-disabled: #406040; /* Very dim green */
+    --theme-text-muted: #608060;
+    --theme-text-on-accent: #0A0F0A; /* Dark text on accent (magenta) for retro */
+
+    --theme-surface-stroke: #00FF41; /* Bright green borders */
+    --theme-divider-stroke: #00B02D; /* Dimmer green dividers */
+
+    /* Card Backgrounds */
+    --theme-card-bg: var(--theme-bg-secondary);
+    --theme-card-stroke: var(--theme-text-secondary);
+
+    /* Semantic Colors */
+    --theme-success: #00FF41;
+    --theme-success-light: #60FF80;
+    --theme-success-bg: rgba(0, 255, 65, 0.1);
+    --theme-danger: #FF2D2D;
+    --theme-danger-light: #FF6060;
+    --theme-danger-bg: rgba(255, 45, 45, 0.1);
+    --theme-warning: #FFB800;
+    --theme-warning-light: #FFD050;
+    --theme-warning-bg: rgba(255, 184, 0, 0.1);
+    --theme-info: var(--theme-accent);
+    --theme-info-light: var(--theme-accent-light1);
+    --theme-info-bg: hsla(var(--theme-accent-hue), var(--theme-accent-saturation), var(--theme-accent-lightness), 0.1);
+
+    /* Shadows */
+    --theme-shadow-2: 0 1px 2px rgba(0, 80, 20, 0.3);
+    --theme-shadow-4: 0 2px 4px rgba(0, 80, 20, 0.3);
+    --theme-shadow-8: 0 3px 6px rgba(0, 80, 20, 0.3);
+    --theme-shadow-16: 0 4px 8px rgba(0, 80, 20, 0.3);
+
+    /* Border Radius */
+    --theme-radius-small: 2px;
+    --theme-radius-medium: 3px;
+    --theme-radius-large: 4px;
+    --theme-radius-xlarge: 5px;
+
+    /* Backdrop Filter */
+    --theme-backdrop-filter: none;
+
+    /* Retro Effects Specific Variables */
+    --theme-scanlines-display: block; /* Or use 'fixed' if body::after is directly used */
+    --theme-text-glow-primary: 0 0 2px rgba(0, 255, 65, 0.4), 0 0 4px rgba(0, 255, 65, 0.2);
+    --theme-text-glow-base: 0 0 1px rgba(0, 255, 65, 0.15);
+    --theme-text-flicker-animation: subtleTextFlicker 2s ease-in-out infinite;
+}
+
+/* Retro theme makes no distinction for data-theme="dark", it's always dark */
+[data-active-theme="retro"][data-theme="dark"] {
+    /* Variables are identical to [data-active-theme="retro"] */
+}
+
+/* Retro Effects - Scoped to this theme */
+[data-active-theme="retro"] body {
+    text-shadow: var(--theme-text-glow-base);
+    animation: var(--theme-text-flicker-animation);
+}
+
+[data-active-theme="retro"] body::after {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+        transparent,
+        transparent 2px,
+        rgba(0, 255, 65, 0.03) 2px, /* Faint green scan line */
+        rgba(0, 255, 65, 0.03) 3px
+    );
+    z-index: 99999; /* Ensure it's on top */
+    opacity: 0.7;
+    animation: flickerScanlinesRetro 15s linear infinite; /* Subtle movement */
+    display: var(--theme-scanlines-display, block); /* Controlled by variable */
+}
+
+@keyframes flickerScanlinesRetro { /* Renamed to avoid conflict if main.css had it */
+    0% { background-position: 0 0; }
+    100% { background-position: 0 100%; }
+}
+
+@keyframes subtleTextFlicker { /* Assuming this can be global or rename if needed */
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.98; }
+}
+
+/* Apply specific text glow to elements when retro theme is active */
+[data-active-theme="retro"] h1,
+[data-active-theme="retro"] h2,
+[data-active-theme="retro"] h3,
+[data-active-theme="retro"] h4,
+[data-active-theme="retro"] h5,
+[data-active-theme="retro"] h6,
+[data-active-theme="retro"] .navbar-brand,
+[data-active-theme="retro"] .navbar-nav .nav-link:hover,
+[data-active-theme="retro"] .btn-secondary, /* Example, more specific selectors might be needed */
+[data-active-theme="retro"] .card-header,
+[data-active-theme="retro"] .modal-title,
+[data-active-theme="retro"] .form-label,
+[data-active-theme="retro"] .form-check-label {
+    text-shadow: var(--theme-text-glow-primary);
+}
+
+/* Ensure text on accent uses the dark theme text for retro */
+[data-active-theme="retro"] .navbar-nav .nav-link.active,
+[data-active-theme="retro"] .btn-primary,
+[data-active-theme="retro"] .btn-primary:hover,
+[data-active-theme="retro"] .btn-success,
+[data-active-theme="retro"] .btn-success:hover,
+[data-active-theme="retro"] .btn-danger,
+[data-active-theme="retro"] .btn-danger:hover,
+[data-active-theme="retro"] .btn-info,
+[data-active-theme="retro"] .btn-info:hover,
+[data-active-theme="retro"] .btn-outline-primary:hover,
+[data-active-theme="retro"] .page-item.active .page-link,
+[data-active-theme="retro"] .user-avatar,
+[data-active-theme="retro"] .color-preset.active::after,
+[data-active-theme="retro"] .skip-link,
+[data-active-theme="retro"] .skip-link:focus,
+[data-active-theme="retro"] .badge.bg-primary,
+[data-active-theme="retro"] .badge.bg-success,
+[data-active-theme="retro"] .badge.bg-danger,
+[data-active-theme="retro"] .badge.bg-info {
+    color: var(--theme-text-on-accent) !important; /* Important to override existing badge/btn colors */
+}
+
+/* Specific for retro theme if .oniux-indicator .status-dot border was white */
+[data-active-theme="retro"] .oniux-indicator .status-dot {
+    border: 1px solid var(--theme-bg-primary); /* Use dark bg for border */
+}

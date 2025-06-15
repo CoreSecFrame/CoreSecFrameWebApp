@@ -1,108 +1,23 @@
 @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+/* Import for Inter font can remain if used for non-themed elements or as a general fallback. */
+/* @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap'); */
 
-/* Windows 11 Design System Variables - MEJORADO */
+/* Global settings - these are not theme variables but base settings */
 :root {
-    /* Accent Color System - Personalizable */
-    --w11-accent-hue: 300;
-    --w11-accent-saturation: 100%;
-    --w11-accent-lightness: 50%; /* Magenta accent */
-    
-    /* Dynamic Accent Colors */
-    --w11-accent: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), var(--w11-accent-lightness));
-    --w11-accent-light1: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), calc(var(--w11-accent-lightness) + 10%));
-    --w11-accent-light2: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), calc(var(--w11-accent-lightness) + 20%));
-    --w11-accent-light3: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), calc(var(--w11-accent-lightness) + 30%));
-    --w11-accent-dark1: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), calc(var(--w11-accent-lightness) - 7%));
-    --w11-accent-dark2: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), calc(var(--w11-accent-lightness) - 14%));
-    --w11-accent-dark3: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), calc(var(--w11-accent-lightness) - 20%));
-    
-    /* Hacker Green Theme Colors */
-    --w11-bg-primary: #0A0F0A; /* Very dark green/black */
-    --w11-bg-secondary: #0D1A0D; /* Slightly lighter dark green/black */
-    --w11-bg-tertiary: #102510;
-    --w11-bg-quarternary: #153015;
-    --w11-bg-solid: #0A0F0A;
-    --w11-text-primary: #00FF41; /* Bright green */
-    --w11-text-secondary: #00B02D; /* Dimmer green */
-    --w11-text-tertiary: #80C080; /* Lighter green */
-    --w11-text-disabled: #406040; /* Very dim green */
-    --w11-text-muted: #608060;
-    --w11-surface-stroke: #00FF41; /* Bright green borders */
-    --w11-divider-stroke: #00B02D; /* Dimmer green dividers */
-
-    /* Card Backgrounds */
-    --w11-card-bg: var(--w11-bg-secondary); /* Solid dark background for cards */
-    --w11-card-stroke: var(--w11-text-secondary);
-    
-    /* Semantic Colors */
-    --w11-success: #00FF41; /* Bright green */
-    --w11-success-light: #60FF80;
-    --w11-success-bg: rgba(0, 255, 65, 0.1);
-    
-    --w11-danger: #FF2D2D; /* Bright red */
-    --w11-danger-light: #FF6060;
-    --w11-danger-bg: rgba(255, 45, 45, 0.1);
-    
-    --w11-warning: #FFB800; /* Amber/Yellow */
-    --w11-warning-light: #FFD050;
-    --w11-warning-bg: rgba(255, 184, 0, 0.1);
-    
-    --w11-info: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), var(--w11-accent-lightness)); /* Magenta */
-    --w11-info-light: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), calc(var(--w11-accent-lightness) + 10%));
-    --w11-info-bg: hsla(var(--w11-accent-hue), var(--w11-accent-saturation), var(--w11-accent-lightness), 0.1);
-    
-    /* Shadows */
-    --w11-shadow-2: 0 1px 2px rgba(0, 80, 20, 0.3);
-    --w11-shadow-4: 0 2px 4px rgba(0, 80, 20, 0.3);
-    --w11-shadow-8: 0 3px 6px rgba(0, 80, 20, 0.3);
-    --w11-shadow-16: 0 4px 8px rgba(0, 80, 20, 0.3);
-
-    /* Border Radius */
-    --w11-radius-small: 2px;
-    --w11-radius-medium: 3px;
-    --w11-radius-large: 4px;
-    --w11-radius-xlarge: 5px;
-
-    /* Transitions */
-    --w11-duration-fast: 150ms;
+    --w11-duration-fast: 150ms; /* Kept as w11- for now, can be generic later if needed */
     --w11-duration-normal: 250ms;
     --w11-duration-slow: 350ms;
     --w11-ease-standard: cubic-bezier(0.4, 0.0, 0.2, 1);
-}
 
-/* Dark Theme (now same as root for Hacker Green) */
-[data-theme="dark"] {
-    --w11-bg-primary: #0A0F0A;
-    --w11-bg-secondary: #0D1A0D;
-    --w11-bg-tertiary: #102510;
-    --w11-bg-quarternary: #153015;
-    --w11-bg-solid: #0A0F0A;
-    --w11-text-primary: #00FF41;
-    --w11-text-secondary: #00B02D;
-    --w11-text-tertiary: #80C080;
-    --w11-text-disabled: #406040;
-    --w11-text-muted: #608060;
-    --w11-surface-stroke: #00FF41;
-    --w11-divider-stroke: #00B02D;
-    --w11-card-bg: var(--w11-bg-secondary);
-    --w11-card-stroke: var(--w11-text-secondary);
-    
-    /* Dark theme semantic colors (now same as root) */
-    --w11-success: #00FF41;
-    --w11-success-light: #60FF80;
-    --w11-success-bg: rgba(0, 255, 65, 0.1);
-    
-    --w11-danger: #FF2D2D;
-    --w11-danger-light: #FF6060;
-    --w11-danger-bg: rgba(255, 45, 45, 0.1);
-    
-    --w11-warning: #FFB800;
-    --w11-warning-light: #FFD050;
-    --w11-warning-bg: rgba(255, 184, 0, 0.1);
-    
-    --w11-info: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), var(--w11-accent-lightness));
-    --w11-info-light: hsl(var(--w11-accent-hue), var(--w11-accent-saturation), calc(var(--w11-accent-lightness) + 10%));
-    --w11-info-bg: hsla(var(--w11-accent-hue), var(--w11-accent-saturation), var(--w11-accent-lightness), 0.1);
+    /* Fallback theme variables in case theme CSS files are not loaded - minimal set */
+    --theme-font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --theme-bg-primary: #ffffff;
+    --theme-text-primary: #000000;
+    --theme-accent: #0078d4;
+    --theme-radius-medium: 8px;
+    --theme-shadow-4: 0 4px 8px rgba(0,0,0,0.12);
+    --theme-backdrop-filter: blur(20px);
+    /* Add other critical fallbacks as needed */
 }
 
 /* Base Styles */
@@ -114,12 +29,11 @@ body {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    background: var(--w11-bg-primary);
-    color: var(--w11-text-primary);
-    font-family: 'VT323', 'Courier New', Courier, monospace;
+    background: var(--theme-bg-primary);
+    color: var(--theme-text-primary);
+    font-family: var(--theme-font-family);
     font-size: 14px;
-    text-shadow: 0 0 1px rgba(0, 255, 65, 0.15); /* Base CRT glow */
-    animation: subtleTextFlicker 2s ease-in-out infinite; /* Subtle text flicker */
+    /* Retro effects like text-shadow and animation are now theme-specific */
     line-height: 1.5;
     overflow-x: hidden;
     transition: background var(--w11-duration-normal) var(--w11-ease-standard),
@@ -129,10 +43,10 @@ body {
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
     font-weight: 600;
-    color: var(--w11-text-primary);
+    color: var(--theme-text-primary);
     margin-bottom: 16px;
     transition: color var(--w11-duration-normal) var(--w11-ease-standard);
-    text-shadow: 0 0 2px rgba(0, 255, 65, 0.4), 0 0 4px rgba(0, 255, 65, 0.2); /* Pronounced CRT glow */
+    /* Retro text-shadow is theme-specific */
 }
 
 h1 { font-size: 28px; font-weight: 400; }
@@ -145,28 +59,29 @@ h6 { font-size: 14px; font-weight: 600; }
 
 
 small {
-    color: var(--w11-text-secondary);
+    color: var(--theme-text-secondary);
     transition: color var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .text-muted {
-    color: var(--w11-text-muted) !important;
+    color: var(--theme-text-muted) !important;
 }
 
 .text-secondary {
-    color: var(--w11-text-secondary) !important;
+    color: var(--theme-text-secondary) !important;
 }
 
 .text-disabled {
-    color: var(--w11-text-disabled) !important;
+    color: var(--theme-text-disabled) !important;
 }
 
 /* Navigation */
 .navbar {
-    background: var(--w11-card-bg);
-    box-shadow: var(--w11-shadow-2);
+    background: var(--theme-card-bg);
+    backdrop-filter: var(--theme-backdrop-filter);
+    box-shadow: var(--theme-shadow-2);
     padding: 0.75rem 1rem;
-    border-bottom: 1px solid var(--w11-surface-stroke);
+    border-bottom: 1px solid var(--theme-surface-stroke);
     z-index: 1030;
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
@@ -174,86 +89,86 @@ small {
 .navbar-brand {
     font-weight: 600;
     font-size: 18px;
-    color: var(--w11-text-primary) !important;
+    color: var(--theme-text-primary) !important;
     display: flex;
     align-items: center;
     transition: transform var(--w11-duration-fast) var(--w11-ease-standard),
                 color var(--w11-duration-normal) var(--w11-ease-standard);
-    text-shadow: 0 0 2px rgba(0, 255, 65, 0.4), 0 0 4px rgba(0, 255, 65, 0.2); /* Pronounced CRT glow */
+    /* Retro text-shadow is theme-specific */
 }
 
 .navbar-brand:hover { 
     transform: scale(1.02); 
-    color: var(--w11-accent) !important;
+    color: var(--theme-accent) !important;
 }
 
 .navbar-brand i {
     font-size: 20px;
-    color: var(--w11-accent);
+    color: var(--theme-accent);
     margin-right: 8px;
     transition: color var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .navbar-nav .nav-link {
-    color: var(--w11-text-secondary) !important;
+    color: var(--theme-text-secondary) !important;
     font-weight: 400;
     padding: 8px 16px !important;
     margin: 0 4px;
-    border-radius: var(--w11-radius-medium);
+    border-radius: var(--theme-radius-medium);
     transition: all var(--w11-duration-fast) var(--w11-ease-standard);
     position: relative;
 }
 
 .navbar-nav .nav-link:hover {
-    background: var(--w11-bg-tertiary);
-    color: var(--w11-text-primary) !important;
-    text-shadow: 0 0 2px rgba(0, 255, 65, 0.4), 0 0 4px rgba(0, 255, 65, 0.2); /* Pronounced CRT glow for hover link */
+    background: var(--theme-bg-tertiary);
+    color: var(--theme-text-primary) !important;
+    /* Retro text-shadow is theme-specific */
 }
 
 .navbar-nav .nav-link.active {
-    background: var(--w11-accent);
-    color: var(--w11-bg-primary) !important; /* Dark text on magenta */
+    background: var(--theme-accent);
+    color: var(--theme-text-on-accent) !important;
 }
 
 /* Cards */
 .card {
-    background: var(--w11-card-bg);
-    border: 1px solid var(--w11-card-stroke);
-    border-radius: var(--w11-radius-large);
-    box-shadow: var(--w11-shadow-2);
+    background: var(--theme-card-bg);
+    backdrop-filter: var(--theme-backdrop-filter);
+    border: 1px solid var(--theme-card-stroke);
+    border-radius: var(--theme-radius-large);
+    box-shadow: var(--theme-shadow-2);
     margin-bottom: 24px;
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .card:hover {
-    box-shadow: var(--w11-shadow-8);
+    box-shadow: var(--theme-shadow-8);
     transform: translateY(-2px);
 }
 
 .card-header {
-    background: var(--w11-bg-secondary);
-    border-bottom: 1px solid var(--w11-surface-stroke);
-    border-radius: var(--w11-radius-large) var(--w11-radius-large) 0 0 !important;
+    background: var(--theme-bg-secondary);
+    border-bottom: 1px solid var(--theme-surface-stroke);
+    border-radius: var(--theme-radius-large) var(--theme-radius-large) 0 0 !important;
     padding: 20px 24px;
     font-weight: 600;
     font-size: 16px;
-    color: var(--w11-text-primary);
+    color: var(--theme-text-primary);
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
-    text-shadow: 0 0 2px rgba(0, 255, 65, 0.4), 0 0 4px rgba(0, 255, 65, 0.2); /* Pronounced CRT glow */
+    /* Retro text-shadow is theme-specific */
 }
 
 .card-body { 
     padding: 24px;
-    color: var(--w11-text-primary);
+    color: var(--theme-text-primary);
     transition: color var(--w11-duration-normal) var(--w11-ease-standard);
-    /* Applying glow to all card body text might be too much, skipping for now */
 }
 
 .card-footer {
-    background: var(--w11-bg-secondary);
-    border-top: 1px solid var(--w11-surface-stroke);
+    background: var(--theme-bg-secondary);
+    border-top: 1px solid var(--theme-surface-stroke);
     padding: 20px 24px;
-    color: var(--w11-text-primary);
+    color: var(--theme-text-primary);
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
@@ -262,7 +177,7 @@ small {
     padding: 8px 20px;
     font-weight: 500;
     font-size: 14px;
-    border-radius: var(--w11-radius-medium);
+    border-radius: var(--theme-radius-medium);
     transition: all var(--w11-duration-fast) var(--w11-ease-standard);
     border: 1px solid transparent;
     position: relative;
@@ -271,185 +186,184 @@ small {
 
 .btn:hover {
     transform: translateY(-1px);
-    box-shadow: var(--w11-shadow-4);
+    box-shadow: var(--theme-shadow-4);
 }
 
 .btn-primary {
-    background: var(--w11-accent);
-    color: var(--w11-bg-primary); /* Dark text on magenta */
-    border-color: var(--w11-accent);
+    background: var(--theme-accent);
+    color: var(--theme-text-on-accent);
+    border-color: var(--theme-accent);
 }
 
 .btn-primary:hover {
-    background: var(--w11-accent-light1);
-    border-color: var(--w11-accent-light1);
-    color: var(--w11-bg-primary); /* Dark text on magenta */
+    background: var(--theme-accent-light1);
+    border-color: var(--theme-accent-light1);
+    color: var(--theme-text-on-accent);
 }
 
 .btn-secondary {
-    background: var(--w11-bg-tertiary);
-    color: var(--w11-text-primary);
-    border-color: var(--w11-surface-stroke);
-    text-shadow: 0 0 2px rgba(0, 255, 65, 0.4), 0 0 4px rgba(0, 255, 65, 0.2); /* Pronounced CRT glow */
+    background: var(--theme-bg-tertiary);
+    color: var(--theme-text-primary);
+    border-color: var(--theme-surface-stroke);
+    /* Retro text-shadow is theme-specific */
 }
 
 .btn-secondary:hover { 
-    background: var(--w11-bg-quarternary);
-    color: var(--w11-text-primary);
-    /* Glow should remain from normal state or be redefined if needed */
+    background: var(--theme-bg-quarternary);
+    color: var(--theme-text-primary);
 }
 
 .btn-success {
-    background: var(--w11-success);
-    color: var(--w11-bg-primary); /* Dark text on bright green */
-    border-color: var(--w11-success);
+    background: var(--theme-success);
+    color: var(--theme-text-on-accent); /* Or specific color if success is not accent based */
+    border-color: var(--theme-success);
 }
 
 .btn-success:hover {
-    background: var(--w11-success-light);
-    border-color: var(--w11-success-light);
-    color: var(--w11-bg-primary); /* Dark text on bright green */
+    background: var(--theme-success-light);
+    border-color: var(--theme-success-light);
+    color: var(--theme-text-on-accent);
 }
 
 .btn-danger {
-    background: var(--w11-danger);
-    color: var(--w11-bg-primary); /* Dark text on bright red */
-    border-color: var(--w11-danger);
+    background: var(--theme-danger);
+    color: var(--theme-text-on-accent); /* Or specific color */
+    border-color: var(--theme-danger);
 }
 
 .btn-danger:hover {
-    background: var(--w11-danger-light);
-    border-color: var(--w11-danger-light);
-    color: var(--w11-bg-primary); /* Dark text on bright red */
+    background: var(--theme-danger-light);
+    border-color: var(--theme-danger-light);
+    color: var(--theme-text-on-accent);
 }
 
 .btn-warning {
-    background: var(--w11-warning);
-    color: #000;
-    border-color: var(--w11-warning);
+    background: var(--theme-warning);
+    color: #000; /* Usually black or dark text on yellow/amber */
+    border-color: var(--theme-warning);
 }
 
 .btn-warning:hover {
-    background: var(--w11-warning-light);
-    border-color: var(--w11-warning-light);
+    background: var(--theme-warning-light);
+    border-color: var(--theme-warning-light);
     color: #000;
 }
 
 .btn-info {
-    background: var(--w11-info);
-    color: var(--w11-bg-primary); /* Dark text on magenta */
-    border-color: var(--w11-info);
+    background: var(--theme-info);
+    color: var(--theme-text-on-accent);
+    border-color: var(--theme-info);
 }
 
 .btn-info:hover {
-    background: var(--w11-info-light);
-    border-color: var(--w11-info-light);
-    color: var(--w11-bg-primary); /* Dark text on magenta */
+    background: var(--theme-info-light);
+    border-color: var(--theme-info-light);
+    color: var(--theme-text-on-accent);
 }
 
 /* Outline buttons */
 .btn-outline-primary {
-    color: var(--w11-accent);
-    border-color: var(--w11-accent);
+    color: var(--theme-accent);
+    border-color: var(--theme-accent);
     background: transparent;
 }
 
 .btn-outline-primary:hover {
-    background: var(--w11-accent);
-    color: var(--w11-bg-primary); /* Dark text on magenta */
+    background: var(--theme-accent);
+    color: var(--theme-text-on-accent);
 }
 
 .btn-outline-secondary {
-    color: var(--w11-text-secondary);
-    border-color: var(--w11-surface-stroke);
+    color: var(--theme-text-secondary);
+    border-color: var(--theme-surface-stroke);
     background: transparent;
 }
 
 .btn-outline-secondary:hover {
-    background: var(--w11-bg-tertiary);
-    color: var(--w11-text-primary);
-    border-color: var(--w11-surface-stroke);
+    background: var(--theme-bg-tertiary);
+    color: var(--theme-text-primary);
+    border-color: var(--theme-surface-stroke);
 }
 
 /* Form Controls */
 .form-control, .form-select {
-    background: var(--w11-bg-secondary);
-    color: var(--w11-text-primary);
-    border: 1px solid var(--w11-surface-stroke);
-    border-radius: var(--w11-radius-medium);
+    background: var(--theme-bg-secondary);
+    color: var(--theme-text-primary);
+    border: 1px solid var(--theme-surface-stroke);
+    border-radius: var(--theme-radius-medium);
     padding: 12px 16px;
     font-size: 14px;
     transition: all var(--w11-duration-fast) var(--w11-ease-standard);
 }
 
 .form-control:focus, .form-select:focus {
-    border-color: var(--w11-accent);
-    box-shadow: 0 0 0 2px hsla(var(--w11-accent-hue), var(--w11-accent-saturation), var(--w11-accent-lightness), 0.2);
-    background: var(--w11-bg-secondary);
-    color: var(--w11-text-primary);
+    border-color: var(--theme-accent);
+    box-shadow: 0 0 0 2px hsla(var(--theme-accent-hue, 210), var(--theme-accent-saturation, 100%), var(--theme-accent-lightness, 50%), 0.2);
+    background: var(--theme-bg-secondary);
+    color: var(--theme-text-primary);
     outline: none;
 }
 
 .form-control::placeholder {
-    color: var(--w11-text-disabled);
+    color: var(--theme-text-disabled);
 }
 
 .form-label {
-    color: var(--w11-text-primary);
+    color: var(--theme-text-primary);
     font-weight: 500;
     margin-bottom: 8px;
     transition: color var(--w11-duration-normal) var(--w11-ease-standard);
-    text-shadow: 0 0 2px rgba(0, 255, 65, 0.4), 0 0 4px rgba(0, 255, 65, 0.2); /* Pronounced CRT glow */
+    /* Retro text-shadow is theme-specific */
 }
 
 .form-text {
-    color: var(--w11-text-secondary);
+    color: var(--theme-text-secondary);
     transition: color var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 /* Input groups */
 .input-group-text {
-    background: var(--w11-bg-secondary);
-    border: 1px solid var(--w11-surface-stroke);
-    color: var(--w11-text-secondary);
+    background: var(--theme-bg-secondary);
+    border: 1px solid var(--theme-surface-stroke);
+    color: var(--theme-text-secondary);
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 /* Checkboxes and radios */
 .form-check-input:checked {
-    background-color: var(--w11-accent);
-    border-color: var(--w11-accent);
+    background-color: var(--theme-accent);
+    border-color: var(--theme-accent);
 }
 
 .form-check-input:focus {
-    border-color: var(--w11-accent);
-    box-shadow: 0 0 0 2px hsla(var(--w11-accent-hue), var(--w11-accent-saturation), var(--w11-accent-lightness), 0.2);
+    border-color: var(--theme-accent);
+    box-shadow: 0 0 0 2px hsla(var(--theme-accent-hue, 210), var(--theme-accent-saturation, 100%), var(--theme-accent-lightness, 50%), 0.2);
 }
 
 .form-check-label {
-    color: var(--w11-text-primary);
+    color: var(--theme-text-primary);
     transition: color var(--w11-duration-normal) var(--w11-ease-standard);
-    text-shadow: 0 0 2px rgba(0, 255, 65, 0.4), 0 0 4px rgba(0, 255, 65, 0.2); /* Pronounced CRT glow */
+    /* Retro text-shadow is theme-specific */
 }
 
 /* Tables */
 .table {
-    border-radius: var(--w11-radius-large);
+    border-radius: var(--theme-radius-large);
     overflow: hidden;
     background: transparent;
-    --bs-table-striped-bg: transparent;
-    --bs-table-striped-color: var(--w11-text-primary);
-    color: var(--w11-text-primary);
+    --bs-table-striped-bg: transparent; /* Use CSS var for Bootstrap internal */
+    --bs-table-striped-color: var(--theme-text-primary); /* Use CSS var for Bootstrap internal */
+    color: var(--theme-text-primary);
 }
 
 .table thead th {
-    background: var(--w11-bg-secondary);
-    border-bottom: 1px solid var(--w11-surface-stroke);
+    background: var(--theme-bg-secondary);
+    border-bottom: 1px solid var(--theme-surface-stroke);
     font-weight: 600;
     font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: var(--w11-text-secondary);
+    color: var(--theme-text-secondary);
     padding: 16px 20px;
     border-top: none;
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
@@ -457,20 +371,20 @@ small {
 
 .table tbody tr {
     transition: background var(--w11-duration-fast) var(--w11-ease-standard);
-    border-bottom: 1px solid var(--w11-surface-stroke);
+    border-bottom: 1px solid var(--theme-surface-stroke);
     background: transparent;
 }
 
 .table tbody tr:hover {
-    background: var(--w11-bg-secondary) !important;
+    background: var(--theme-bg-secondary) !important;
 }
 
 .table td, .table th {
     padding: 16px 20px;
     vertical-align: middle;
     border-top: none;
-    border-bottom: 1px solid var(--w11-surface-stroke);
-    color: var(--w11-text-primary);
+    border-bottom: 1px solid var(--theme-surface-stroke);
+    color: var(--theme-text-primary);
     background: transparent;
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
@@ -485,57 +399,57 @@ small {
 
 /* Table variants */
 .table .table-success {
-    background: var(--w11-success-bg) !important;
-    color: var(--w11-text-primary) !important;
+    background: var(--theme-success-bg) !important;
+    color: var(--theme-text-primary) !important;
 }
 
 .table .table-danger {
-    background: var(--w11-danger-bg) !important;
-    color: var(--w11-text-primary) !important;
+    background: var(--theme-danger-bg) !important;
+    color: var(--theme-text-primary) !important;
 }
 
 .table .table-warning {
-    background: var(--w11-warning-bg) !important;
-    color: var(--w11-text-primary) !important;
+    background: var(--theme-warning-bg) !important;
+    color: var(--theme-text-primary) !important;
 }
 
 .table .table-info {
-    background: var(--w11-info-bg) !important;
-    color: var(--w11-text-primary) !important;
+    background: var(--theme-info-bg) !important;
+    color: var(--theme-text-primary) !important;
 }
 
 /* Alerts */
 .alert {
-    border-radius: var(--w11-radius-large);
+    border-radius: var(--theme-radius-large);
     padding: 16px 20px;
     border: 1px solid transparent;
     border-left-width: 4px;
-    color: var(--w11-text-primary);
+    color: var(--theme-text-primary); /* Base text color, specific alerts override */
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .alert-success {
-    background: var(--w11-success-bg);
-    border-left-color: var(--w11-success);
-    color: var(--w11-success);
+    background: var(--theme-success-bg);
+    border-left-color: var(--theme-success);
+    color: var(--theme-success);
 }
 
 .alert-danger {
-    background: var(--w11-danger-bg);
-    border-left-color: var(--w11-danger);
-    color: var(--w11-danger);
+    background: var(--theme-danger-bg);
+    border-left-color: var(--theme-danger);
+    color: var(--theme-danger);
 }
 
 .alert-warning {
-    background: var(--w11-warning-bg);
-    border-left-color: var(--w11-warning);
-    color: var(--w11-warning);
+    background: var(--theme-warning-bg);
+    border-left-color: var(--theme-warning);
+    color: var(--theme-warning);
 }
 
 .alert-info {
-    background: var(--w11-info-bg);
-    border-left-color: var(--w11-info);
-    color: var(--w11-info);
+    background: var(--theme-info-bg);
+    border-left-color: var(--theme-info);
+    color: var(--theme-info);
 }
 
 /* Badges */
@@ -543,202 +457,203 @@ small {
     padding: 6px 12px;
     font-weight: 500;
     font-size: 12px;
-    border-radius: var(--w11-radius-large);
+    border-radius: var(--theme-radius-large);
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .badge.bg-primary {
-    background: var(--w11-accent) !important;
-    color: white;
+    background: var(--theme-accent) !important;
+    color: var(--theme-text-on-accent) !important;
 }
 
 .badge.bg-success {
-    background: var(--w11-success) !important;
-    color: white;
+    background: var(--theme-success) !important;
+    color: var(--theme-text-on-accent) !important; /* Or specific if success not accent based */
 }
 
 .badge.bg-danger {
-    background: var(--w11-danger) !important;
-    color: white;
+    background: var(--theme-danger) !important;
+    color: var(--theme-text-on-accent) !important; /* Or specific */
 }
 
 .badge.bg-warning {
-    background: var(--w11-warning) !important;
-    color: #000;
+    background: var(--theme-warning) !important;
+    color: #000 !important; /* Black text on yellow/amber */
 }
 
 .badge.bg-info {
-    background: var(--w11-info) !important;
-    color: white;
+    background: var(--theme-info) !important;
+    color: var(--theme-text-on-accent) !important;
 }
 
 .badge.bg-secondary {
-    background: var(--w11-bg-tertiary) !important;
-    color: var(--w11-text-primary);
+    background: var(--theme-bg-tertiary) !important;
+    color: var(--theme-text-primary) !important;
 }
 
 /* Dropdown */
 .dropdown-menu {
-    background: var(--w11-card-bg);
-    border: 1px solid var(--w11-card-stroke);
-    border-radius: var(--w11-radius-large);
-    box-shadow: var(--w11-shadow-16);
+    background: var(--theme-card-bg);
+    backdrop-filter: var(--theme-backdrop-filter);
+    border: 1px solid var(--theme-card-stroke);
+    border-radius: var(--theme-radius-large);
+    box-shadow: var(--theme-shadow-16);
     padding: 8px;
-    color: var(--w11-text-primary);
+    color: var(--theme-text-primary);
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .dropdown-item {
-    border-radius: var(--w11-radius-medium);
+    border-radius: var(--theme-radius-medium);
     padding: 8px 12px;
     transition: background var(--w11-duration-fast) var(--w11-ease-standard);
-    color: var(--w11-text-primary);
+    color: var(--theme-text-primary);
 }
 
 .dropdown-item:hover { 
-    background: var(--w11-bg-tertiary);
-    color: var(--w11-text-primary);
+    background: var(--theme-bg-tertiary);
+    color: var(--theme-text-primary);
 }
 
 .dropdown-header {
-    color: var(--w11-text-secondary);
+    color: var(--theme-text-secondary);
     transition: color var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .dropdown-divider {
-    border-color: var(--w11-surface-stroke);
+    border-color: var(--theme-divider-stroke);
 }
 
 /* List groups */
 .list-group-item {
-    background: var(--w11-bg-secondary);
-    border: 1px solid var(--w11-surface-stroke);
-    color: var(--w11-text-primary);
+    background: var(--theme-bg-secondary);
+    border: 1px solid var(--theme-surface-stroke);
+    color: var(--theme-text-primary);
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .list-group-item:hover {
-    background: var(--w11-bg-tertiary);
+    background: var(--theme-bg-tertiary);
 }
 
 .list-group-item-action:hover {
-    background: var(--w11-bg-tertiary);
-    color: var(--w11-text-primary);
+    background: var(--theme-bg-tertiary);
+    color: var(--theme-text-primary);
 }
 
 /* Modals */
 .modal-content {
-    background: var(--w11-card-bg);
-    border: 1px solid var(--w11-card-stroke);
-    border-radius: var(--w11-radius-large);
-    /* backdrop-filter: blur(20px); -- Removed */
-    box-shadow: var(--w11-shadow-16);
-    color: var(--w11-text-primary);
+    background: var(--theme-card-bg);
+    backdrop-filter: var(--theme-backdrop-filter);
+    border: 1px solid var(--theme-card-stroke);
+    border-radius: var(--theme-radius-large);
+    box-shadow: var(--theme-shadow-16);
+    color: var(--theme-text-primary);
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .modal-header {
-    background: var(--w11-bg-secondary);
-    border-bottom: 1px solid var(--w11-surface-stroke);
-    color: var(--w11-text-primary);
-    border-radius: var(--w11-radius-large) var(--w11-radius-large) 0 0;
+    background: var(--theme-bg-secondary);
+    border-bottom: 1px solid var(--theme-surface-stroke);
+    color: var(--theme-text-primary);
+    border-radius: var(--theme-radius-large) var(--theme-radius-large) 0 0;
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .modal-body {
-    background: var(--w11-card-bg);
-    color: var(--w11-text-primary);
+    background: var(--theme-card-bg); /* Or var(--theme-bg-primary) if no transparency */
+    color: var(--theme-text-primary);
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .modal-footer {
-    background: var(--w11-bg-secondary);
-    border-top: 1px solid var(--w11-surface-stroke);
-    border-radius: 0 0 var(--w11-radius-large) var(--w11-radius-large);
+    background: var(--theme-bg-secondary);
+    border-top: 1px solid var(--theme-surface-stroke);
+    border-radius: 0 0 var(--theme-radius-large) var(--theme-radius-large);
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .modal-title {
-    color: var(--w11-text-primary);
+    color: var(--theme-text-primary);
     transition: color var(--w11-duration-normal) var(--w11-ease-standard);
-    text-shadow: 0 0 2px rgba(0, 255, 65, 0.4), 0 0 4px rgba(0, 255, 65, 0.2); /* Pronounced CRT glow */
+    /* Retro text-shadow is theme-specific */
 }
 
 /* Code elements */
 code {
-    background: var(--w11-bg-tertiary);
-    color: var(--w11-text-primary);
+    background: var(--theme-bg-tertiary);
+    color: var(--theme-text-primary);
     padding: 2px 6px;
-    border-radius: var(--w11-radius-small); /* Use new radius */
-    font-family: 'VT323', 'Courier New', Courier, monospace;
+    border-radius: var(--theme-radius-small);
+    font-family: var(--theme-font-family); /* Should inherit from body or specific retro font */
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 pre {
-    background: var(--w11-bg-tertiary);
-    color: var(--w11-text-primary);
-    border: 1px solid var(--w11-surface-stroke);
-    border-radius: var(--w11-radius-medium); /* Use new radius */
+    background: var(--theme-bg-tertiary);
+    color: var(--theme-text-primary);
+    border: 1px solid var(--theme-surface-stroke);
+    border-radius: var(--theme-radius-medium);
     padding: 16px;
-    font-family: 'VT323', 'Courier New', Courier, monospace;
+    font-family: var(--theme-font-family); /* Should inherit from body or specific retro font */
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 /* Pagination */
 .page-link {
-    background: var(--w11-bg-secondary);
-    border: 1px solid var(--w11-surface-stroke);
-    color: var(--w11-text-primary);
+    background: var(--theme-bg-secondary);
+    border: 1px solid var(--theme-surface-stroke);
+    color: var(--theme-text-primary);
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .page-link:hover {
-    background: var(--w11-bg-tertiary);
-    border-color: var(--w11-surface-stroke);
-    color: var(--w11-text-primary);
+    background: var(--theme-bg-tertiary);
+    border-color: var(--theme-surface-stroke);
+    color: var(--theme-text-primary);
 }
 
 .page-item.active .page-link {
-    background: var(--w11-accent);
-    border-color: var(--w11-accent);
-    color: var(--w11-bg-primary); /* Dark text on magenta */
+    background: var(--theme-accent);
+    border-color: var(--theme-accent);
+    color: var(--theme-text-on-accent);
 }
 
 /* Progress bars */
 .progress {
-    background: var(--w11-bg-tertiary);
-    border-radius: var(--w11-radius-medium);
+    background: var(--theme-bg-tertiary);
+    border-radius: var(--theme-radius-medium);
     transition: background var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .progress-bar {
-    background: var(--w11-accent);
+    background: var(--theme-accent);
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
 .progress-bar.bg-success {
-    background: var(--w11-success) !important;
+    background: var(--theme-success) !important;
 }
 
 .progress-bar.bg-danger {
-    background: var(--w11-danger) !important;
+    background: var(--theme-danger) !important;
 }
 
 .progress-bar.bg-warning {
-    background: var(--w11-warning) !important;
+    background: var(--theme-warning) !important;
 }
 
 .progress-bar.bg-info {
-    background: var(--w11-info) !important;
+    background: var(--theme-info) !important;
 }
 
 /* Footer */
 footer {
-    background: var(--w11-bg-secondary);
-    border-top: 1px solid var(--w11-surface-stroke);
+    background: var(--theme-bg-secondary);
+    border-top: 1px solid var(--theme-surface-stroke);
     padding: 20px 0;
     margin-top: auto;
-    color: var(--w11-text-secondary);
+    color: var(--theme-text-secondary);
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
 }
 
@@ -747,8 +662,8 @@ footer {
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: var(--w11-accent);
-    color: var(--w11-bg-primary); /* Dark text on magenta */
+    background: var(--theme-accent);
+    color: var(--theme-text-on-accent);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -761,15 +676,15 @@ footer {
 #theme-toggle, #accent-color-toggle {
     background: transparent;
     border: none;
-    color: var(--w11-text-secondary);
+    color: var(--theme-text-secondary);
     padding: 8px;
-    border-radius: var(--w11-radius-medium);
+    border-radius: var(--theme-radius-medium);
     transition: all var(--w11-duration-fast) var(--w11-ease-standard);
 }
 
 #theme-toggle:hover, #accent-color-toggle:hover {
-    background: var(--w11-bg-tertiary);
-    color: var(--w11-text-primary);
+    background: var(--theme-bg-tertiary);
+    color: var(--theme-text-primary);
 }
 
 /* Accent Color Picker */
@@ -777,10 +692,11 @@ footer {
     position: fixed;
     top: 80px;
     right: 20px;
-    background: var(--w11-card-bg);
-    border: 1px solid var(--w11-card-stroke);
-    border-radius: var(--w11-radius-large);
-    box-shadow: var(--w11-shadow-16);
+    background: var(--theme-card-bg);
+    backdrop-filter: var(--theme-backdrop-filter);
+    border: 1px solid var(--theme-card-stroke);
+    border-radius: var(--theme-radius-large);
+    box-shadow: var(--theme-shadow-16);
     padding: 20px;
     z-index: 9999;
     width: 280px;
@@ -797,7 +713,7 @@ footer {
 }
 
 .accent-color-picker h6 {
-    color: var(--w11-text-primary);
+    color: var(--theme-text-primary);
     margin-bottom: 16px;
     font-size: 14px;
     font-weight: 600;
@@ -822,11 +738,11 @@ footer {
 
 .color-preset:hover {
     transform: scale(1.1);
-    box-shadow: var(--w11-shadow-4);
+    box-shadow: var(--theme-shadow-4);
 }
 
 .color-preset.active {
-    border-color: var(--w11-text-primary);
+    border-color: var(--theme-text-primary);
     transform: scale(1.15);
 }
 
@@ -836,19 +752,19 @@ footer {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    color: var(--w11-bg-primary); /* Dark text on accent */
+    color: var(--theme-text-on-accent);
     font-weight: bold;
     font-size: 16px;
-    text-shadow: 0 0 4px rgba(0, 0, 0, 0.5); /* Keep shadow for visibility if needed */
+    text-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
 }
 
 .custom-color-section {
-    border-top: 1px solid var(--w11-surface-stroke);
+    border-top: 1px solid var(--theme-surface-stroke);
     padding-top: 16px;
 }
 
 .custom-color-section label {
-    color: var(--w11-text-secondary);
+    color: var(--theme-text-secondary);
     font-size: 12px;
     margin-bottom: 8px;
     display: block;
@@ -863,8 +779,8 @@ footer {
 .color-picker-input {
     width: 50px;
     height: 40px;
-    border: 1px solid var(--w11-surface-stroke);
-    border-radius: var(--w11-radius-medium);
+    border: 1px solid var(--theme-surface-stroke);
+    border-radius: var(--theme-radius-medium);
     cursor: pointer;
     padding: 0;
     background: none;
@@ -872,24 +788,24 @@ footer {
 
 .color-picker-input::-webkit-color-swatch {
     border: none;
-    border-radius: calc(var(--w11-radius-medium) - 2px);
+    border-radius: calc(var(--theme-radius-medium) - 2px);
 }
 
 .color-input {
     flex: 1;
-    background: var(--w11-bg-secondary);
-    border: 1px solid var(--w11-surface-stroke);
-    border-radius: var(--w11-radius-medium);
+    background: var(--theme-bg-secondary);
+    border: 1px solid var(--theme-surface-stroke);
+    border-radius: var(--theme-radius-medium);
     padding: 8px 12px;
     font-size: 12px;
-    color: var(--w11-text-primary);
-    font-family: 'Cascadia Code', monospace;
+    color: var(--theme-text-primary);
+    font-family: 'Cascadia Code', monospace; /* Keep specific font for hex input */
 }
 
 .color-input:focus {
-    border-color: var(--w11-accent);
+    border-color: var(--theme-accent);
     outline: none;
-    box-shadow: 0 0 0 2px hsla(var(--w11-accent-hue), var(--w11-accent-saturation), var(--w11-accent-lightness), 0.2);
+    box-shadow: 0 0 0 2px hsla(var(--theme-accent-hue, 210), var(--theme-accent-saturation, 100%), var(--theme-accent-lightness, 50%), 0.2);
 }
 
 .accent-picker-toggle {
@@ -897,13 +813,13 @@ footer {
     top: 50%;
     right: 20px;
     transform: translateY(-50%);
-    background: var(--w11-accent);
-    color: white;
+    background: var(--theme-accent);
+    color: var(--theme-text-on-accent); /* Ensure contrast */
     border: none;
     width: 48px;
     height: 48px;
     border-radius: 50%;
-    box-shadow: var(--w11-shadow-8);
+    box-shadow: var(--theme-shadow-8);
     cursor: pointer;
     transition: all var(--w11-duration-normal) var(--w11-ease-standard);
     z-index: 9998;
@@ -915,11 +831,11 @@ footer {
 
 .accent-picker-toggle:hover {
     transform: translateY(-50%) scale(1.1);
-    box-shadow: var(--w11-shadow-16);
+    box-shadow: var(--theme-shadow-16);
 }
 
 .accent-picker-toggle.active {
-    background: var(--w11-danger);
+    background: var(--theme-danger);
     transform: translateY(-50%) translateX(-300px);
 }
 
@@ -988,15 +904,10 @@ footer {
 
 /* High contrast mode support */
 @media (prefers-contrast: high) {
-    :root {
-        --w11-surface-stroke: #666666;
-        --w11-text-secondary: #333333;
-    }
-    
-    [data-theme="dark"] {
-        --w11-surface-stroke: #999999;
-        --w11-text-secondary: #cccccc;
-    }
+    /* These might need theme-specific overrides if variables are not enough */
+    /* Example: */
+    /* [data-active-theme="original"] { --theme-surface-stroke: #666; } */
+    /* [data-active-theme="original"][data-theme="dark"] { --theme-surface-stroke: #999; } */
 }
 
 /* Reduced motion support */
@@ -1036,10 +947,11 @@ footer {
     position: fixed;
     top: 70px;
     right: 20px;
-    background: var(--w11-card-bg);
-    border: 1px solid var(--w11-card-stroke);
-    border-radius: var(--w11-radius-large);
-    box-shadow: var(--w11-shadow-16);
+    background: var(--theme-card-bg);
+    backdrop-filter: var(--theme-backdrop-filter);
+    border: 1px solid var(--theme-card-stroke);
+    border-radius: var(--theme-radius-large);
+    box-shadow: var(--theme-shadow-16);
     z-index: 1000;
     width: 280px;
     font-size: 12px;
@@ -1057,10 +969,10 @@ footer {
 }
 
 .accent-color-panel .panel-header {
-    background: var(--w11-bg-secondary);
-    border-bottom: 1px solid var(--w11-surface-stroke);
+    background: var(--theme-bg-secondary);
+    border-bottom: 1px solid var(--theme-surface-stroke);
     padding: 12px 16px;
-    border-radius: var(--w11-radius-large) var(--w11-radius-large) 0 0;
+    border-radius: var(--theme-radius-large) var(--theme-radius-large) 0 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -1070,7 +982,7 @@ footer {
     margin: 0;
     font-size: 14px;
     font-weight: 600;
-    color: var(--w11-text-primary);
+    color: var(--theme-text-primary);
 }
 
 .accent-color-panel .panel-content {
@@ -1087,8 +999,8 @@ footer {
 .color-preset {
     width: 40px;
     height: 40px;
-    border: 2px solid var(--w11-surface-stroke);
-    border-radius: var(--w11-radius-medium);
+    border: 2px solid var(--theme-surface-stroke);
+    border-radius: var(--theme-radius-medium);
     cursor: pointer;
     transition: all var(--w11-duration-fast) var(--w11-ease-standard);
     position: relative;
@@ -1097,12 +1009,12 @@ footer {
 
 .color-preset:hover {
     transform: scale(1.1);
-    border-color: var(--w11-text-primary);
-    box-shadow: var(--w11-shadow-4);
+    border-color: var(--theme-text-primary);
+    box-shadow: var(--theme-shadow-4);
 }
 
 .color-preset.active {
-    border-color: var(--w11-text-primary);
+    border-color: var(--theme-text-primary);
     border-width: 3px;
     transform: scale(1.05);
 }
@@ -1113,7 +1025,7 @@ footer {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    color: white;
+    color: var(--theme-text-on-accent); /* Ensure this is themed */
     font-weight: bold;
     font-size: 16px;
     text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
@@ -1121,14 +1033,14 @@ footer {
 }
 
 .custom-color-section {
-    border-top: 1px solid var(--w11-surface-stroke);
+    border-top: 1px solid var(--theme-surface-stroke);
     padding-top: 16px;
 }
 
 .custom-color-section label {
     font-size: 12px;
     font-weight: 600;
-    color: var(--w11-text-secondary);
+    color: var(--theme-text-secondary);
     margin-bottom: 8px;
     display: block;
 }
@@ -1142,8 +1054,8 @@ footer {
 .custom-color-input {
     width: 40px;
     height: 32px;
-    border: 1px solid var(--w11-surface-stroke);
-    border-radius: var(--w11-radius-small);
+    border: 1px solid var(--theme-surface-stroke);
+    border-radius: var(--theme-radius-small);
     cursor: pointer;
     background: none;
     padding: 0;
@@ -1151,30 +1063,30 @@ footer {
 
 .custom-color-input::-webkit-color-swatch {
     border: none;
-    border-radius: calc(var(--w11-radius-small) - 2px);
+    border-radius: calc(var(--theme-radius-small) - 2px);
 }
 
 .custom-color-input::-moz-color-swatch {
     border: none;
-    border-radius: calc(var(--w11-radius-small) - 2px);
+    border-radius: calc(var(--theme-radius-small) - 2px);
 }
 
 .hex-color-input {
     flex: 1;
     padding: 6px 8px;
-    border: 1px solid var(--w11-surface-stroke);
-    border-radius: var(--w11-radius-small);
-    background: var(--w11-bg-primary);
-    color: var(--w11-text-primary);
-    font-family: 'Cascadia Code', 'Consolas', monospace;
+    border: 1px solid var(--theme-surface-stroke);
+    border-radius: var(--theme-radius-small);
+    background: var(--theme-bg-primary);
+    color: var(--theme-text-primary);
+    font-family: 'Cascadia Code', 'Consolas', monospace; /* Keep specific font */
     font-size: 12px;
     transition: all var(--w11-duration-fast) var(--w11-ease-standard);
 }
 
 .hex-color-input:focus {
-    border-color: var(--w11-accent);
+    border-color: var(--theme-accent);
     outline: none;
-    box-shadow: 0 0 0 2px hsla(var(--w11-accent-hue), var(--w11-accent-saturation), var(--w11-accent-lightness), 0.2);
+    box-shadow: 0 0 0 2px hsla(var(--theme-accent-hue, 210), var(--theme-accent-saturation, 100%), var(--theme-accent-lightness, 50%), 0.2);
 }
 
 /* Footer Controls */
@@ -1188,21 +1100,21 @@ footer {
 .footer-btn {
     background: none;
     border: none;
-    color: var(--w11-text-secondary);
+    color: var(--theme-text-secondary);
     font-size: 14px;
     cursor: pointer;
     padding: 4px;
-    border-radius: var(--w11-radius-small);
+    border-radius: var(--theme-radius-small);
     transition: all var(--w11-duration-fast) var(--w11-ease-standard);
 }
 
 .footer-btn:hover {
-    color: var(--w11-accent);
-    background: var(--w11-bg-tertiary);
+    color: var(--theme-accent);
+    background: var(--theme-bg-tertiary);
 }
 
 .footer-separator {
-    color: var(--w11-text-disabled);
+    color: var(--theme-text-disabled);
     font-size: 12px;
 }
 
@@ -1212,10 +1124,11 @@ footer {
     position: fixed;
     bottom: 20px;
     right: 20px;
-    background: var(--w11-card-bg);
-    border: 1px solid var(--w11-card-stroke);
-    border-radius: var(--w11-radius-large);
-    box-shadow: var(--w11-shadow-16);
+    background: var(--theme-card-bg);
+    backdrop-filter: var(--theme-backdrop-filter);
+    border: 1px solid var(--theme-card-stroke);
+    border-radius: var(--theme-radius-large);
+    box-shadow: var(--theme-shadow-16);
     z-index: 1000;
     width: 280px;
     font-size: 12px;
@@ -1235,10 +1148,10 @@ footer {
 
 .widget-header,
 .panel-header {
-    background: var(--w11-bg-secondary);
-    border-bottom: 1px solid var(--w11-surface-stroke);
+    background: var(--theme-bg-secondary);
+    border-bottom: 1px solid var(--theme-surface-stroke);
     padding: 12px 16px;
-    border-radius: var(--w11-radius-large) var(--w11-radius-large) 0 0;
+    border-radius: var(--theme-radius-large) var(--theme-radius-large) 0 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -1249,7 +1162,7 @@ footer {
     margin: 0;
     font-size: 14px;
     font-weight: 600;
-    color: var(--w11-text-primary);
+    color: var(--theme-text-primary);
     display: flex;
     align-items: center;
 }
@@ -1273,14 +1186,14 @@ footer {
 }
 
 .metric-label {
-    color: var(--w11-text-secondary);
+    color: var(--theme-text-secondary);
     font-weight: 500;
 }
 
 .metric-value {
     font-weight: 600;
-    color: var(--w11-text-primary);
-    font-family: 'Cascadia Code', 'Consolas', monospace;
+    color: var(--theme-text-primary);
+    font-family: 'Cascadia Code', 'Consolas', monospace; /* Keep specific font */
     font-size: 11px;
 }
 
@@ -1297,7 +1210,7 @@ footer {
     gap: 8px;
     cursor: pointer;
     font-size: 12px;
-    color: var(--w11-text-primary);
+    color: var(--theme-text-primary);
 }
 
 .accessibility-options .form-check-input {
@@ -1306,7 +1219,7 @@ footer {
 
 .accessibility-options label[for="font-size-slider"] {
     font-size: 12px;
-    color: var(--w11-text-secondary);
+    color: var(--theme-text-secondary);
     margin-bottom: 4px;
 }
 
@@ -1316,15 +1229,17 @@ footer {
 
 /* Accessibility Classes */
 .high-contrast {
-    --w11-surface-stroke: #666666;
-    --w11-text-secondary: #333333;
-    --w11-card-stroke: rgba(0, 0, 0, 0.2);
+    /* Theme specific overrides would be better in theme files */
+    /* --theme-surface-stroke: #666666; */
+    /* --theme-text-secondary: #333333; */
+    /* --theme-card-stroke: rgba(0, 0, 0, 0.2); */
 }
 
 [data-theme="dark"].high-contrast {
-    --w11-surface-stroke: #999999;
-    --w11-text-secondary: #cccccc;
-    --w11-card-stroke: rgba(255, 255, 255, 0.2);
+    /* Theme specific overrides would be better in theme files */
+    /* --theme-surface-stroke: #999999; */
+    /* --theme-text-secondary: #cccccc; */
+    /* --theme-card-stroke: rgba(255, 255, 255, 0.2); */
 }
 
 .large-text {
@@ -1346,7 +1261,7 @@ footer {
 
 /* Enhanced Focus Indicators */
 .keyboard-navigation *:focus {
-    outline: 2px solid var(--w11-accent) !important;
+    outline: 2px solid var(--theme-accent) !important;
     outline-offset: 2px !important;
 }
 
@@ -1355,11 +1270,11 @@ footer {
     position: absolute;
     top: -40px;
     left: 6px;
-    background: var(--w11-accent);
-    color: var(--w11-bg-primary); /* Dark text on magenta */
+    background: var(--theme-accent);
+    color: var(--theme-text-on-accent);
     padding: 8px 12px;
     text-decoration: none;
-    border-radius: var(--w11-radius-small);
+    border-radius: var(--theme-radius-small);
     z-index: 10001;
     transition: top 0.3s;
     font-weight: 600;
@@ -1368,7 +1283,7 @@ footer {
 
 .skip-link:focus {
     top: 6px;
-    color: var(--w11-bg-primary); /* Dark text on magenta */
+    color: var(--theme-text-on-accent);
     text-decoration: none;
 }
 
@@ -1441,14 +1356,14 @@ footer {
     }
 }
 
-/* Dark theme specific adjustments */
-[data-theme="dark"] .accent-color-panel,
+/* Dark theme specific adjustments for panels - now should be handled by theme files or generic variables */
+/* [data-theme="dark"] .accent-color-panel,
 [data-theme="dark"] .system-widget,
 [data-theme="dark"] .accessibility-panel {
-    box-shadow: var(--w11-shadow-16), 0 0 0 1px rgba(255, 255, 255, 0.05);
-}
+    box-shadow: var(--theme-shadow-16), 0 0 0 1px rgba(255, 255, 255, 0.05); // Example
+} */
 
-/* Animation for panel transitions */
+/* Animation for panel transitions - Keep these as they are structural animations */
 @keyframes slideInFromTop {
     from {
         opacity: 0;
@@ -1533,15 +1448,15 @@ footer {
 /* Asegurar que el color se aplique correctamente al icono de cebolla */
 /* These might be redundant if text-success/danger directly apply color, but good for specificity */
 .bi-onion.text-success {
-    color: var(--w11-success) !important;
+    color: var(--theme-success) !important;
 }
 
 .bi-onion.text-danger {
-    color: var(--w11-danger) !important;
+    color: var(--theme-danger) !important;
 }
 
 .bi-onion.text-warning { /* Though the JS doesn't use text-warning for the icon itself */
-    color: var(--w11-warning) !important;
+    color: var(--theme-warning) !important;
 }
 
 /* Animación sutil para el hover del indicador */
@@ -1577,21 +1492,21 @@ footer {
     width: 8px;  /* Slightly larger for visibility */
     height: 8px; /* Slightly larger for visibility */
     border-radius: 50%;
-    border: 1px solid white; /* Assuming navbar background isn't pure white */
+    border: 1px solid white; /* Assuming navbar background isn't pure white - this might need a theme var like --theme-text-on-primary-bg-opposite */
     vertical-align: middle; /* Align with text better */
     margin-left: 4px; /* Give it some space */
 }
 
 .oniux-indicator .status-dot.ready {
-    background-color: var(--w11-success); /* Use new theme color */
+    background-color: var(--theme-success);
 }
 
 .oniux-indicator .status-dot.not-ready {
-    background-color: var(--w11-danger); /* Use new theme color */
+    background-color: var(--theme-danger);
 }
 
 .oniux-indicator .status-dot.unknown {
-    background-color: var(--w11-warning); /* Use new theme color */
+    background-color: var(--theme-warning);
 }
 
 /* Ensure the base icon itself still has the correct font-family (from previous step, ensure it's there) */

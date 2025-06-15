@@ -1,6 +1,6 @@
 <!-- app/templates/base.html - Enhanced with Theme System - Clean Version -->
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-active-theme="original">
 
 <head>
     <meta charset="UTF-8">
@@ -25,6 +25,8 @@
 
     <!-- CoreSecFrame Styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-original.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-retro.css') }}">
     {% block css %}{% endblock %}
 
     <!-- Favicon -->
@@ -40,9 +42,10 @@
 
             const accentColor = localStorage.getItem('accent-color') || '#0078d4';
             const { h, s, l } = hexToHsl(accentColor);
-            document.documentElement.style.setProperty('--w11-accent-hue', h);
-            document.documentElement.style.setProperty('--w11-accent-saturation', s + '%');
-            document.documentElement.style.setProperty('--w11-accent-lightness', l + '%');
+            // Update to use generic theme variable names
+            document.documentElement.style.setProperty('--theme-accent-hue', h);
+            document.documentElement.style.setProperty('--theme-accent-saturation', s + '%');
+            document.documentElement.style.setProperty('--theme-accent-lightness', l + '%');
 
             function hexToHsl(hex) {
                 hex = hex.replace('#', '');
@@ -159,6 +162,29 @@
                                 aria-label="Open accent color picker">
                                 <i class="bi bi-palette" aria-hidden="true"></i>
                             </button>
+                        </li>
+
+                        <!-- Theme Switcher Dropdown -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link btn btn-link dropdown-toggle" href="#" id="themeSwitcherDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Select Theme">
+                                <i class="bi bi-palette2" id="themeSwitcherIcon" aria-hidden="true"></i>
+                                <span class="d-none d-lg-inline ms-1" id="activeThemeLabel">Original</span> <!-- Optional: Display active theme name -->
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="themeSwitcherDropdown">
+                                <li>
+                                    <a class="dropdown-item theme-choice" href="#" data-theme-value="original">
+                                        <i class="bi bi-brightness-high-fill me-2"></i> Original Theme
+                                        <span class="active-theme-indicator ms-auto" data-theme-check="original" style="display: none;">✓</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item theme-choice" href="#" data-theme-value="retro">
+                                        <i class="bi bi-joystick me-2"></i> Retro Theme
+                                        <span class="active-theme-indicator ms-auto" data-theme-check="retro" style="display: none;">✓</span>
+                                    </a>
+                                </li>
+                                <!-- Add more themes here in the future -->
+                            </ul>
                         </li>
 
                         <!-- Oniux Installation Indicator -->
