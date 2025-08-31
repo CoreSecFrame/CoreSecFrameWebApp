@@ -92,6 +92,7 @@ def create_app(config_class=Config):
         from app.gui.routes import gui_bp
         from app.file_manager import bp as file_manager_bp # Import file_manager blueprint
         from app.notes import notes_bp
+        from app.metaspidey import metaspidey_bp
         
         app.register_blueprint(auth_bp)
         app.register_blueprint(core_bp)
@@ -102,6 +103,7 @@ def create_app(config_class=Config):
         app.register_blueprint(gui_bp)
         app.register_blueprint(file_manager_bp, url_prefix='/file_manager') # Register file_manager blueprint
         app.register_blueprint(notes_bp, url_prefix='/notes')
+        app.register_blueprint(metaspidey_bp, url_prefix='/metaspidey')
         
         try:
             from app.gui import init_gui_module, register_gui_commands, gui_context_processor
