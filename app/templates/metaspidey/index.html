@@ -641,43 +641,107 @@
             <div class="col-md-4">
                 <div class="form-section">
                     <h3 class="section-title">
-                        <i class="bi bi-download me-2"></i>Bulk File Downloader
+                        <i class="bi bi-download me-2"></i>File Downloader & Crawler
                     </h3>
                     <form id="download-form">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         
+                        <!-- Mode Selection -->
                         <div class="mb-3">
-                            <label class="form-label">URL Input Method</label>
-                            <div class="mb-2">
-                                {{ download_form.urls.label(class="form-label small mb-1") }}
-                                {{ download_form.urls(class="form-control") }}
-                                <div class="form-text small">Enter URLs directly, one per line</div>
-                            </div>
-                            <div class="mb-2">
-                                {{ download_form.url_file.label(class="form-label small mb-1") }}
-                                {{ download_form.url_file(class="form-control form-control-sm") }}
-                                <div class="form-text small">Or specify path to file containing URLs</div>
+                            {{ download_form.mode.label(class="form-label") }}
+                            {{ download_form.mode(class="form-select", onchange="toggleDownloadMode()") }}
+                            <div class="form-text">Choose between manual URL download or website crawling</div>
+                        </div>
+
+                        <!-- Manual Mode Fields -->
+                        <div id="manual-mode-fields">
+                            <div class="mb-3">
+                                <label class="form-label">URL Input Method</label>
+                                <div class="mb-2">
+                                    {{ download_form.urls.label(class="form-label small mb-1") }}
+                                    {{ download_form.urls(class="form-control") }}
+                                    <div class="form-text small">Enter URLs directly, one per line</div>
+                                </div>
+                                <div class="mb-2">
+                                    {{ download_form.url_file.label(class="form-label small mb-1") }}
+                                    {{ download_form.url_file(class="form-control form-control-sm") }}
+                                    <div class="form-text small">Or upload a file containing URLs</div>
+                                </div>
                             </div>
                         </div>
 
+                        <!-- Crawler Mode Fields -->
+                        <div id="crawler-mode-fields" style="display: none;">
+                            <div class="mb-3">
+                                {{ download_form.start_url.label(class="form-label") }}
+                                {{ download_form.start_url(class="form-control") }}
+                                <div class="form-text">Website to crawl for downloadable files</div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-6">
+                                    {{ download_form.crawl_depth.label(class="form-label small") }}
+                                    {{ download_form.crawl_depth(class="form-select form-select-sm") }}
+                                </div>
+                                <div class="col-6">
+                                    {{ download_form.max_files.label(class="form-label small") }}
+                                    {{ download_form.max_files(class="form-control form-control-sm") }}
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                {{ download_form.extensions.label(class="form-label") }}
+                                {{ download_form.extensions(class="form-control") }}
+                                <div class="form-text">File extensions to download (leave empty for all types)</div>
+                            </div>
+
+                            <!-- Fuzzing Options -->
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    {{ download_form.enable_fuzzing(class="form-check-input") }}
+                                    {{ download_form.enable_fuzzing.label(class="form-check-label") }}
+                                </div>
+                                <div id="fuzzing-options" style="display: none; margin-top: 10px;">
+                                    <label class="form-label small">Fuzzing Categories:</label>
+                                    {% for choice in download_form.fuzzing_types %}
+                                        <div class="form-check form-check-sm">
+                                            {{ choice(class="form-check-input") }}
+                                            {{ choice.label(class="form-check-label small") }}
+                                        </div>
+                                    {% endfor %}
+                                    
+                                    <div class="mt-2">
+                                        {{ download_form.custom_patterns.label(class="form-label small") }}
+                                        {{ download_form.custom_patterns(class="form-control form-control-sm") }}
+                                        <div class="form-text small">Custom file patterns to search for</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Common Settings -->
                         <div class="mb-3">
-                            {{ download_form.output_directory.label(class="form-label") }}
-                            {{ download_form.output_directory(class="form-control") }}
+                            {{ download_form.download_path.label(class="form-label") }}
+                            {{ download_form.download_path(class="form-control") }}
                             <div class="form-text">Optional: Custom download directory</div>
                         </div>
 
                         <div class="settings-group">
                             <h6>Download Settings</h6>
                             <div class="row mb-2">
-                                <div class="col-4">
+                                <div class="col-3">
                                     {{ download_form.max_size.label(class="form-label small") }}
                                     {{ download_form.max_size(class="form-control form-control-sm") }}
                                 </div>
-                                <div class="col-4">
+                                <div class="col-3">
                                     {{ download_form.threads.label(class="form-label small") }}
                                     {{ download_form.threads(class="form-control form-control-sm") }}
                                 </div>
-                                <div class="col-4">
+                                <div class="col-3">
+                                    {{ download_form.delay.label(class="form-label small") }}
+                                    {{ download_form.delay(class="form-control form-control-sm") }}
+                                </div>
+                                <div class="col-3">
                                     {{ download_form.timeout.label(class="form-label small") }}
                                     {{ download_form.timeout(class="form-control form-control-sm") }}
                                 </div>
@@ -774,6 +838,47 @@
     // Initialize MetaSpidey interface
     document.addEventListener('DOMContentLoaded', function() {
         MetaSpidey.init();
+        
+        // Initialize download mode toggle
+        toggleDownloadMode();
+        
+        // Initialize fuzzing options toggle
+        const fuzzingCheckbox = document.querySelector('#enable_fuzzing');
+        if (fuzzingCheckbox) {
+            fuzzingCheckbox.addEventListener('change', toggleFuzzingOptions);
+            toggleFuzzingOptions(); // Initial state
+        }
     });
+    
+    // Toggle between manual and crawler download modes
+    function toggleDownloadMode() {
+        const modeSelect = document.querySelector('#mode');
+        const manualFields = document.querySelector('#manual-mode-fields');
+        const crawlerFields = document.querySelector('#crawler-mode-fields');
+        
+        if (modeSelect && manualFields && crawlerFields) {
+            if (modeSelect.value === 'crawler') {
+                manualFields.style.display = 'none';
+                crawlerFields.style.display = 'block';
+            } else {
+                manualFields.style.display = 'block';
+                crawlerFields.style.display = 'none';
+            }
+        }
+    }
+    
+    // Toggle fuzzing options visibility
+    function toggleFuzzingOptions() {
+        const fuzzingCheckbox = document.querySelector('#enable_fuzzing');
+        const fuzzingOptions = document.querySelector('#fuzzing-options');
+        
+        if (fuzzingCheckbox && fuzzingOptions) {
+            if (fuzzingCheckbox.checked) {
+                fuzzingOptions.style.display = 'block';
+            } else {
+                fuzzingOptions.style.display = 'none';
+            }
+        }
+    }
 </script>
 {% endblock %}

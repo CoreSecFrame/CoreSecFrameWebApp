@@ -147,17 +147,36 @@ class MetaSpidey {
         const form = document.getElementById('download-form');
         const formData = new FormData(form);
         
-        // Check if URLs are provided
-        const urlsTextarea = form.querySelector('[name="urls"]');
-        const urls = urlsTextarea.value.trim().split('\n').filter(url => url.trim());
+        // Get the selected mode
+        const mode = form.querySelector('[name="mode"]').value;
         
-        if (!urls.length) {
-            this.showNotification('Please enter at least one URL to download', 'warning');
-            return;
+        // Mode-specific validation
+        let urls = [];
+        if (mode === 'manual') {
+            // Manual mode - check if URLs are provided
+            const urlsTextarea = form.querySelector('[name="urls"]');
+            const urlFile = form.querySelector('[name="url_file"]');
+            urls = urlsTextarea.value.trim().split('\n').filter(url => url.trim());
+            
+            if (!urls.length && !urlFile.files.length) {
+                this.showNotification('Please enter URLs or upload a file containing URLs', 'warning');
+                return;
+            }
+        } else if (mode === 'crawler') {
+            // Crawler mode - check if start URL is provided
+            const startUrl = form.querySelector('[name="start_url"]').value.trim();
+            
+            if (!startUrl) {
+                this.showNotification('Please enter a website URL to crawl', 'warning');
+                return;
+            }
         }
 
         try {
-            this.showOperationStatus('download', `Starting download of ${urls.length} file(s)...`);
+            const statusMessage = mode === 'crawler' 
+                ? 'Starting file discovery and download...' 
+                : `Starting download of ${urls.length} file(s)...`;
+            this.showOperationStatus('download', statusMessage);
             
             const response = await fetch('/metaspidey/download', {
                 method: 'POST',
@@ -292,8 +311,8 @@ class MetaSpidey {
                     // Update progress if available
                     this.updateOperationProgress(type, result.operation);
                     
-                    // For brute force operations, get real-time results
-                    if (type === 'bruteforce') {
+                    // For brute force and crawler download operations, get real-time results
+                    if (type === 'bruteforce' || (type === 'download' && result.operation.mode === 'crawler')) {
                         await this.updateRealtimeResults(operationId);
                     }
                     
@@ -304,8 +323,8 @@ class MetaSpidey {
                     this.activeOperations.delete(operationId);
                     this.hideOperationStatus(type);
                     
-                    // Get final real-time results for brute force
-                    if (type === 'bruteforce') {
+                    // Get final real-time results for brute force and crawler download
+                    if (type === 'bruteforce' || (type === 'download' && result.operation?.mode === 'crawler')) {
                         await this.updateRealtimeResults(operationId);
                     }
                     
@@ -332,32 +351,98 @@ class MetaSpidey {
             const result = await response.json();
             
             if (result.success && result.results.length > 0) {
-                // Update the found URLs terminal with new results
-                const terminal = document.getElementById('found-urls-terminal');
-                const counter = document.getElementById('found-urls-count');
+                // Determine if this is bruteforce or crawler download results
+                const isCrawlerDownload = result.results.some(r => r.type === 'file_discovered' || r.type === 'page_crawled');
                 
-                if (terminal && counter) {
-                    // Clear and rebuild with all results
-                    terminal.innerHTML = '';
+                if (isCrawlerDownload) {
+                    // Handle crawler download real-time updates
+                    this.updateCrawlerDownloadProgress(result.results);
+                } else {
+                    // Handle brute force results (existing functionality)
+                    const terminal = document.getElementById('found-urls-terminal');
+                    const counter = document.getElementById('found-urls-count');
                     
-                    result.results.forEach(urlResult => {
-                        const statusClass = this.getStatusClass(urlResult.status);
-                        const urlLine = document.createElement('div');
-                        urlLine.className = 'url-found mb-1';
-                        urlLine.innerHTML = `
-                            <span class="badge ${statusClass} me-2">${urlResult.status}</span>
-                            <span class="text-muted me-2">[${urlResult.length}]</span>
-                            <span class="text-break">${urlResult.url}</span>
-                        `;
-                        terminal.appendChild(urlLine);
-                    });
-                    
-                    counter.textContent = result.count;
-                    terminal.scrollTop = terminal.scrollHeight; // Auto-scroll to bottom
+                    if (terminal && counter) {
+                        // Clear and rebuild with all results
+                        terminal.innerHTML = '';
+                        
+                        result.results.forEach(urlResult => {
+                            const statusClass = this.getStatusClass(urlResult.status);
+                            const urlLine = document.createElement('div');
+                            urlLine.className = 'url-found mb-1';
+                            urlLine.innerHTML = `
+                                <span class="badge ${statusClass} me-2">${urlResult.status}</span>
+                                <span class="text-muted me-2">[${urlResult.length}]</span>
+                                <span class="text-break">${urlResult.url}</span>
+                            `;
+                            terminal.appendChild(urlLine);
+                        });
+                        
+                        counter.textContent = result.count;
+                        terminal.scrollTop = terminal.scrollHeight; // Auto-scroll to bottom
+                    }
                 }
             }
         } catch (error) {
             console.error('Error updating real-time results:', error);
+        }
+    }
+
+    updateCrawlerDownloadProgress(results) {
+        // Update download status text with crawling progress
+        const statusText = document.getElementById('download-status-text');
+        
+        // Get latest progress info
+        const latestUpdate = results[results.length - 1];
+        const filesDiscovered = results.filter(r => r.type === 'file_discovered').length;
+        const pagesProcessed = latestUpdate.pages_crawled || 0;
+        
+        if (statusText) {
+            let message = '';
+            if (latestUpdate.type === 'crawl_completed') {
+                message = `Crawling completed. Found ${latestUpdate.total_files} files. Starting downloads...`;
+            } else if (latestUpdate.type === 'file_discovered') {
+                message = `Discovering files... Found ${filesDiscovered} files from ${pagesProcessed} pages`;
+            } else if (latestUpdate.type === 'page_crawled') {
+                message = `Crawling pages... ${pagesProcessed} processed, ${filesDiscovered} files found`;
+            } else {
+                message = `Processing... ${filesDiscovered} files discovered`;
+            }
+            
+            statusText.textContent = message;
+        }
+        
+        // Show discovered files in a simple list (reuse bruteforce terminal area)
+        const terminal = document.getElementById('found-urls-terminal');
+        const counter = document.getElementById('found-urls-count');
+        
+        if (terminal && counter) {
+            // Show the terminal section for crawler downloads
+            const section = document.getElementById('found-urls-section');
+            if (section) section.style.display = 'block';
+            
+            // Update counter
+            counter.textContent = filesDiscovered;
+            
+            // Show discovered files
+            const discoveredFiles = results.filter(r => r.type === 'file_discovered');
+            
+            // Clear and rebuild
+            terminal.innerHTML = '';
+            
+            discoveredFiles.forEach((update, index) => {
+                const file = update.file;
+                const fileRow = document.createElement('div');
+                fileRow.className = 'url-found mb-1';
+                fileRow.innerHTML = `
+                    <span class="badge bg-info me-2">${file.estimated_type || 'File'}</span>
+                    <span class="text-muted me-2">[${file.extension || 'unknown'}]</span>
+                    <span class="text-break" title="${file.url}">${file.filename}</span>
+                `;
+                terminal.appendChild(fileRow);
+            });
+            
+            terminal.scrollTop = terminal.scrollHeight; // Auto-scroll to bottom
         }
     }
 
@@ -635,41 +720,70 @@ class MetaSpidey {
     }
 
     renderDownloadResults(results) {
-        if (!results.results || results.results.length === 0) {
+        // Handle crawler mode results which have nested structure
+        const downloadResults = results.download_results || results;
+        const discoveryResults = results.discovered_files || [];
+        const isCrawlerMode = Boolean(results.discovered_files || results.pages_crawled);
+        
+        if (!downloadResults.results || downloadResults.results.length === 0) {
+            if (isCrawlerMode && discoveryResults.length > 0) {
+                return `
+                    <div class="text-center text-warning py-4">
+                        <i class="bi bi-exclamation-triangle" style="font-size: 2rem;"></i>
+                        <h5 class="mt-3">Files Found But Not Downloaded</h5>
+                        <p>Discovered ${discoveryResults.length} files during crawling, but none were successfully downloaded.</p>
+                        <small class="text-muted">Check download settings and try again.</small>
+                    </div>
+                `;
+            }
             return '<div class="text-center text-muted py-4"><h5>No files downloaded</h5></div>';
         }
 
         let html = `
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5><i class="bi bi-download me-2"></i>Download Results</h5>
+                <h5>
+                    <i class="bi bi-download me-2"></i>
+                    ${isCrawlerMode ? 'Crawler Download Results' : 'Download Results'}
+                </h5>
                 <div class="text-muted">
-                    ${results.successful_downloads}/${results.total_urls} successful 
-                    (${results.success_rate.toFixed(1)}%)
+                    ${downloadResults.successful_downloads}/${downloadResults.total_urls} downloaded
+                    (${downloadResults.success_rate ? downloadResults.success_rate.toFixed(1) : 0}%)
+                    ${isCrawlerMode ? ` • ${results.pages_crawled || 0} pages crawled` : ''}
                 </div>
             </div>
+            
+            ${isCrawlerMode ? `
+                <div class="alert alert-info mb-3">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Crawling Summary:</strong> 
+                    Found ${discoveryResults.length} files from ${results.pages_crawled || 0} pages
+                    ${results.start_url ? ` starting from ${results.start_url}` : ''}
+                    ${results.crawl_depth ? ` (depth: ${results.crawl_depth})` : ''}
+                </div>
+            ` : ''}
             
             <div class="mb-3">
                 <div class="row">
                     <div class="col-md-3">
                         <div class="card bg-success text-white">
                             <div class="card-body text-center">
-                                <h5>${results.successful_downloads}</h5>
-                                <small>Successful</small>
+                                <h5>${downloadResults.successful_downloads || 0}</h5>
+                                <small>Downloaded</small>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <div class="card bg-danger text-white">
+                        <div class="card ${isCrawlerMode ? 'bg-info' : 'bg-danger'} text-white">
                             <div class="card-body text-center">
-                                <h5>${results.failed_downloads}</h5>
-                                <small>Failed</small>
+                                <h5>${isCrawlerMode ? discoveryResults.length : (downloadResults.failed_downloads || 0)}</h5>
+                                <small>${isCrawlerMode ? 'Discovered' : 'Failed'}</small>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <div class="card bg-info text-white">
+                        <div class="card bg-primary text-white">
                             <div class="card-body text-center">
-                                <h5>${results.total_size_human}</h5>
+                                <h5>${downloadResults.total_size_human || '0 B'}</h5>
                                 <small>Total Size</small>
                             </div>
                         </div>
@@ -677,7 +791,7 @@ class MetaSpidey {
                     <div class="col-md-3">
                         <div class="card bg-secondary text-white">
                             <div class="card-body text-center">
-                                <h5>${results.duration}</h5>
+                                <h5>${downloadResults.duration || 'Unknown'}</h5>
                                 <small>Duration</small>
                             </div>
                         </div>
@@ -699,7 +813,7 @@ class MetaSpidey {
                     <tbody>
         `;
 
-        results.results.forEach(result => {
+        downloadResults.results.forEach(result => {
             const statusBadge = result.status === 'success' 
                 ? '<span class="badge bg-success">Success</span>'
                 : '<span class="badge bg-danger">Failed</span>';

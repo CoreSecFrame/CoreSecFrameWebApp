@@ -424,95 +424,198 @@ def analyze_metadata():
 @metaspidey_bp.route('/download', methods=['POST'])
 @login_required
 def start_download():
-    """Start file download operation"""
+    """Start file download operation (manual or crawler mode)"""
     form = DownloadForm()
     
     if form.validate_on_submit():
         try:
-            urls = []
+            operation_id = f"download_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            download_path = form.download_path.data or os.path.expanduser('~/Downloads/MetaSpidey')
+            mode = form.mode.data
             
-            # Get URLs from text input
-            if form.urls.data:
-                urls.extend([url.strip() for url in form.urls.data.split('\n') if url.strip()])
-            
-            # Get URLs from uploaded file
-            if form.url_file.data:
-                try:
-                    file_content = form.url_file.data.read().decode('utf-8', errors='ignore')
-                    file_urls = [url.strip() for url in file_content.split('\n') if url.strip()]
-                    urls.extend(file_urls)
-                except Exception as e:
+            if mode == 'manual':
+                # Manual URL download mode
+                urls = []
+                
+                # Get URLs from text input
+                if form.urls.data:
+                    urls.extend([url.strip() for url in form.urls.data.split('\n') if url.strip()])
+                
+                # Get URLs from uploaded file
+                if form.url_file.data and form.url_file.data.filename:
+                    try:
+                        file_content = form.url_file.data.read().decode('utf-8', errors='ignore')
+                        file_urls = [url.strip() for url in file_content.split('\n') if url.strip()]
+                        urls.extend(file_urls)
+                    except Exception as e:
+                        return jsonify({
+                            'success': False,
+                            'error': f'Error reading uploaded file: {str(e)}'
+                        }), 400
+                
+                if not urls:
                     return jsonify({
                         'success': False,
-                        'error': f'Error reading uploaded file: {str(e)}'
+                        'error': 'No URLs provided in text input or uploaded file'
                     }), 400
-            
-            if not urls:
+                
+                # Remove duplicates while preserving order
+                seen = set()
+                unique_urls = []
+                for url in urls:
+                    if url not in seen:
+                        seen.add(url)
+                        unique_urls.append(url)
+                urls = unique_urls
+                
+                print(f"Processing {len(urls)} URLs for manual download")
+                
+                def download_worker():
+                    try:
+                        downloader = FileDownloader()
+                        results = downloader.download_files(
+                            urls=urls,
+                            download_path=download_path,
+                            max_size_mb=form.max_size.data,
+                            threads=form.threads.data
+                        )
+                        
+                        operation_results[operation_id] = {
+                            'status': 'completed',
+                            'results': results,
+                            'mode': 'manual',
+                            'timestamp': datetime.now().isoformat()
+                        }
+                        
+                    except Exception as e:
+                        operation_results[operation_id] = {
+                            'status': 'error',
+                            'error': str(e),
+                            'mode': 'manual',
+                            'timestamp': datetime.now().isoformat()
+                        }
+                    finally:
+                        if operation_id in active_operations:
+                            del active_operations[operation_id]
+                
+                # Store operation info
+                active_operations[operation_id] = {
+                    'type': 'download',
+                    'mode': 'manual',
+                    'status': 'running',
+                    'urls_count': len(urls),
+                    'download_path': download_path,
+                    'started': datetime.now().isoformat()
+                }
+                
+                message = f'Starting manual download of {len(urls)} file(s)'
+                
+            elif mode == 'crawler':
+                # Crawler mode - discover and download files
+                
+                # Parse extensions
+                extensions = []
+                if form.extensions.data:
+                    extensions = [ext.strip() for ext in form.extensions.data.split(',') if ext.strip()]
+                    # Ensure extensions start with dot
+                    extensions = [ext if ext.startswith('.') else f'.{ext}' for ext in extensions]
+                
+                # Generate fuzzing patterns if enabled
+                fuzzing_patterns = []
+                if form.enable_fuzzing.data:
+                    downloader = FileDownloader()
+                    fuzzing_patterns = downloader.generate_fuzzing_patterns(
+                        common_files='common' in form.fuzzing_types.data,
+                        backup_files='backup' in form.fuzzing_types.data,
+                        config_files='config' in form.fuzzing_types.data,
+                        custom_patterns=[p.strip() for p in form.custom_patterns.data.split('\n') 
+                                       if p.strip()] if form.custom_patterns.data else None
+                    )
+                
+                print(f"Starting crawler-download for {form.start_url.data}")
+                print(f"Extensions: {extensions}")
+                print(f"Fuzzing patterns: {len(fuzzing_patterns)} patterns")
+                
+                def crawler_download_worker():
+                    try:
+                        downloader = FileDownloader()
+                        
+                        # Store real-time results for this operation
+                        realtime_results[operation_id] = []
+                        
+                        def progress_callback(update):
+                            """Store real-time updates for live UI feedback"""
+                            realtime_results[operation_id].append({
+                                'type': update.get('type', 'unknown'),
+                                'timestamp': datetime.now().isoformat(),
+                                **update
+                            })
+                        
+                        results = downloader.crawl_and_download_files(
+                            start_url=form.start_url.data,
+                            download_path=download_path,
+                            max_depth=int(form.crawl_depth.data),
+                            delay=form.delay.data / 1000,  # Convert ms to seconds
+                            allowed_extensions=extensions,
+                            fuzzing_patterns=fuzzing_patterns,
+                            threads=form.threads.data,
+                            max_size_mb=form.max_size.data,
+                            max_files=form.max_files.data,
+                            progress_callback=progress_callback
+                        )
+                        
+                        operation_results[operation_id] = {
+                            'status': 'completed',
+                            'results': results,
+                            'mode': 'crawler',
+                            'timestamp': datetime.now().isoformat()
+                        }
+                        
+                    except Exception as e:
+                        operation_results[operation_id] = {
+                            'status': 'error',
+                            'error': str(e),
+                            'mode': 'crawler',
+                            'timestamp': datetime.now().isoformat()
+                        }
+                    finally:
+                        if operation_id in active_operations:
+                            del active_operations[operation_id]
+                
+                # Store operation info
+                active_operations[operation_id] = {
+                    'type': 'download',
+                    'mode': 'crawler',
+                    'status': 'running',
+                    'start_url': form.start_url.data,
+                    'crawl_depth': int(form.crawl_depth.data),
+                    'extensions': extensions,
+                    'fuzzing_enabled': form.enable_fuzzing.data,
+                    'download_path': download_path,
+                    'started': datetime.now().isoformat()
+                }
+                
+                message = f'Starting crawler-download for {form.start_url.data}'
+                
+            else:
                 return jsonify({
                     'success': False,
-                    'error': 'No URLs provided in text input or uploaded file'
+                    'error': 'Invalid download mode'
                 }), 400
             
-            # Remove duplicates while preserving order
-            seen = set()
-            unique_urls = []
-            for url in urls:
-                if url not in seen:
-                    seen.add(url)
-                    unique_urls.append(url)
-            urls = unique_urls
-            
-            print(f"Processing {len(urls)} URLs for download")
-            
-            operation_id = f"download_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-            
-            # Determine download path
-            download_path = form.download_path.data or os.path.expanduser('~/Downloads/MetaSpidey')
-            
-            def download_worker():
-                try:
-                    downloader = FileDownloader()
-                    results = downloader.download_files(
-                        urls=urls,
-                        download_path=download_path,
-                        max_size_mb=form.max_size.data,
-                        threads=form.threads.data
-                    )
-                    
-                    operation_results[operation_id] = {
-                        'status': 'completed',
-                        'results': results,
-                        'timestamp': datetime.now().isoformat()
-                    }
-                    
-                except Exception as e:
-                    operation_results[operation_id] = {
-                        'status': 'error',
-                        'error': str(e),
-                        'timestamp': datetime.now().isoformat()
-                    }
-                finally:
-                    if operation_id in active_operations:
-                        del active_operations[operation_id]
-            
-            # Store operation info
-            active_operations[operation_id] = {
-                'type': 'download',
-                'status': 'running',
-                'urls_count': len(urls),
-                'download_path': download_path,
-                'started': datetime.now().isoformat()
-            }
-            
             # Start background thread
-            thread = threading.Thread(target=download_worker)
+            if mode == 'manual':
+                thread = threading.Thread(target=download_worker)
+            else:
+                thread = threading.Thread(target=crawler_download_worker)
+                
             thread.daemon = True
             thread.start()
             
             return jsonify({
                 'success': True,
                 'operation_id': operation_id,
-                'message': f'Starting download of {len(urls)} file(s)'
+                'message': message
             })
             
         except Exception as e:
