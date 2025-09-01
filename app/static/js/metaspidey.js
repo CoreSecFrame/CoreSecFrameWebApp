@@ -471,6 +471,7 @@ class MetaSpidey {
                 break;
             case 'metadata':
                 container.innerHTML = this.renderMetadataResults(results);
+                this.initializeMetadataToggles();
                 break;
             case 'download':
                 container.innerHTML = this.renderDownloadResults(results);
@@ -541,10 +542,12 @@ class MetaSpidey {
     }
 
     renderMetadataResults(results) {
-        console.log('Metadata results:', results); // Debug log
+        console.log('Enhanced metadata results:', results); // Debug log
         
         // Handle both direct array and results object
         const fileResults = Array.isArray(results) ? results : (results.results || []);
+        const isDirectoryAnalysis = results.analysis_type === 'directory';
+        const isBatchAnalysis = results.analysis_type === 'batch';
         
         if (!fileResults || fileResults.length === 0) {
             return '<div class="text-center text-muted py-4"><h5>No metadata extracted</h5></div>';
@@ -552,31 +555,47 @@ class MetaSpidey {
 
         let html = `
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5><i class="bi bi-file-text me-2"></i>Metadata Analysis Results</h5>
+                <h5><i class="bi bi-file-text me-2"></i>Advanced Metadata Analysis Results</h5>
                 <div class="text-muted">
-                    Analyzed ${fileResults.length} file(s)
+                    ${fileResults.length} file(s) analyzed
+                    ${isDirectoryAnalysis ? ` • Directory: ${results.directory_path}` : ''}
+                    ${results.analysis_version ? ` • v${results.analysis_version}` : ''}
                 </div>
             </div>
-            <div class="results-list">
         `;
+        
+        // Summary statistics for batch/directory analysis
+        if (results.summary) {
+            html += this.renderAnalysisSummary(results.summary);
+        }
+        
+        html += '<div class="results-list">';
 
         fileResults.forEach((file, index) => {
-            const filename = file.filename || file.basic_metadata?.filename || 'Unknown file';
+            const filename = file.filename || file.basic_info?.filename || 'Unknown file';
+            const category = file.categorization?.primary_category || 'Unknown';
+            const riskLevel = file.categorization?.risk_level || 'low';
+            const isSuspicious = file.categorization?.is_suspicious || false;
+            
+            // Risk level badge
+            const riskBadge = this.getRiskBadge(riskLevel, isSuspicious);
+            const categoryIcon = this.getCategoryIcon(category);
+            
             html += `
-                <div class="card mb-3">
+                <div class="card mb-3 ${isSuspicious ? 'border-warning' : ''}">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0"><i class="bi bi-file-earmark me-2"></i>${filename}</h6>
-                        <button class="btn btn-sm btn-outline-primary" type="button" 
-                                onclick="
-                                    const content = this.parentElement.nextElementSibling;
-                                    const isHidden = content.style.display === 'none';
-                                    content.style.display = isHidden ? 'block' : 'none';
-                                    this.innerHTML = isHidden ? '<i class=\\'bi bi-eye-slash\\'></i> Hide' : '<i class=\\'bi bi-eye\\'></i> Show';
-                                ">
-                            <i class="bi bi-eye"></i> Show
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-${categoryIcon} me-2"></i>
+                            <h6 class="mb-0">${filename}</h6>
+                            <span class="ms-2 badge bg-secondary">${category}</span>
+                            ${riskBadge}
+                        </div>
+                        <button class="btn btn-sm btn-outline-primary metadata-toggle" type="button" 
+                                data-target="metadata-${index}">
+                            <i class="bi bi-eye"></i> Show Details
                         </button>
                     </div>
-                    <div class="card-body" style="display: none;">
+                    <div class="card-body collapse" id="metadata-${index}">
                         ${this.renderFileMetadata(file)}
                     </div>
                 </div>
@@ -588,135 +607,663 @@ class MetaSpidey {
     }
 
     renderFileMetadata(file) {
-        console.log('Rendering metadata for file:', file); // Debug log
+        console.log('Rendering enhanced metadata for file:', file); // Debug log
+        
+        // Handle errors first
+        if (file.error) {
+            return `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Analysis Error:</strong> ${file.error}
+                </div>
+            `;
+        }
+        
+        let html = '<div class="metadata-container">';
+        
+        // Navigation tabs
+        html += this.renderMetadataTabs(file);
+        
+        // Tab content
+        html += '<div class="tab-content mt-3">';
+        
+        // Overview Tab
+        html += '<div class="tab-pane fade show active" id="overview">';
+        html += this.renderOverviewTab(file);
+        html += '</div>';
+        
+        // Security Tab
+        html += '<div class="tab-pane fade" id="security">';
+        html += this.renderSecurityTab(file);
+        html += '</div>';
+        
+        // Technical Tab
+        html += '<div class="tab-pane fade" id="technical">';
+        html += this.renderTechnicalTab(file);
+        html += '</div>';
+        
+        // Type-specific Tab
+        const category = file.categorization?.primary_category || 'Unknown';
+        if (category !== 'Unknown' && category !== 'Other') {
+            html += '<div class="tab-pane fade" id="type-specific">';
+            html += this.renderTypeSpecificTab(file, category);
+            html += '</div>';
+        }
+        
+        html += '</div>'; // Close tab-content
+        html += '</div>'; // Close metadata-container
+        
+        return html;
+    }
+
+    // Enhanced metadata rendering methods
+    renderMetadataTabs(file) {
+        const category = file.categorization?.primary_category || 'Unknown';
+        const hasTypeSpecific = category !== 'Unknown' && category !== 'Other';
+        
+        return `
+            <ul class="nav nav-tabs" id="metadata-tabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab">
+                        <i class="bi bi-house"></i> Overview
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="security-tab" data-bs-toggle="tab" data-bs-target="#security" type="button" role="tab">
+                        <i class="bi bi-shield-check"></i> Security
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="technical-tab" data-bs-toggle="tab" data-bs-target="#technical" type="button" role="tab">
+                        <i class="bi bi-gear"></i> Technical
+                    </button>
+                </li>
+                ${hasTypeSpecific ? `
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="type-specific-tab" data-bs-toggle="tab" data-bs-target="#type-specific" type="button" role="tab">
+                            <i class="bi bi-${this.getCategoryIcon(category)}"></i> ${category}
+                        </button>
+                    </li>
+                ` : ''}
+            </ul>
+        `;
+    }
+
+    renderOverviewTab(file) {
+        const basic = file.basic_info || {};
+        const category = file.categorization || {};
+        
+        return `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6><i class="bi bi-info-circle me-2"></i>File Information</h6>
+                    <table class="table table-sm table-borderless">
+                        <tr><td><strong>Filename:</strong></td><td>${basic.filename || 'Unknown'}</td></tr>
+                        <tr><td><strong>Size:</strong></td><td>${basic.file_size_human || 'Unknown'}</td></tr>
+                        <tr><td><strong>Type:</strong></td><td>${basic.mime_type || 'Unknown'}</td></tr>
+                        <tr><td><strong>Extension:</strong></td><td>${basic.extension || 'None'}</td></tr>
+                        <tr><td><strong>Category:</strong></td><td>
+                            <span class="badge bg-secondary">${category.primary_category || 'Unknown'}</span>
+                        </td></tr>
+                        <tr><td><strong>Classification:</strong></td><td>${category.file_class || 'Unknown'}</td></tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <h6><i class="bi bi-clock me-2"></i>Timestamps</h6>
+                    <table class="table table-sm table-borderless">
+                        <tr><td><strong>Created:</strong></td><td>${basic.created ? new Date(basic.created).toLocaleString() : 'Unknown'}</td></tr>
+                        <tr><td><strong>Modified:</strong></td><td>${basic.modified ? new Date(basic.modified).toLocaleString() : 'Unknown'}</td></tr>
+                        <tr><td><strong>Accessed:</strong></td><td>${basic.accessed ? new Date(basic.accessed).toLocaleString() : 'Unknown'}</td></tr>
+                        <tr><td><strong>Permissions:</strong></td><td>${basic.permissions || 'Unknown'}</td></tr>
+                        <tr><td><strong>Hidden:</strong></td><td>${basic.is_hidden ? 'Yes' : 'No'}</td></tr>
+                        <tr><td><strong>Executable:</strong></td><td>${basic.is_executable ? 'Yes' : 'No'}</td></tr>
+                    </table>
+                </div>
+            </div>
+        `;
+    }
+
+    renderSecurityTab(file) {
+        const security = file.security_analysis || {};
+        const signature = file.signature_analysis || {};
+        const hashes = file.hashes || {};
         
         let html = '<div class="row">';
         
-        // Basic metadata
-        if (file.basic_metadata && !file.basic_metadata.error) {
-            html += `
-                <div class="col-md-6">
-                    <h6><i class="bi bi-info-circle me-2"></i>Basic Information</h6>
-                    <table class="table table-sm table-borderless">
-                        <tr><td><strong>File Path:</strong></td><td>${file.basic_metadata.file_path || 'Unknown'}</td></tr>
-                        <tr><td><strong>Size:</strong></td><td>${file.basic_metadata.file_size_human || 'Unknown'}</td></tr>
-                        <tr><td><strong>MIME Type:</strong></td><td>${file.basic_metadata.mime_type || 'Unknown'}</td></tr>
-                        <tr><td><strong>Extension:</strong></td><td>${file.basic_metadata.extension || 'None'}</td></tr>
-                        <tr><td><strong>Created:</strong></td><td>${file.basic_metadata.created ? new Date(file.basic_metadata.created).toLocaleString() : 'Unknown'}</td></tr>
-                        <tr><td><strong>Modified:</strong></td><td>${file.basic_metadata.modified ? new Date(file.basic_metadata.modified).toLocaleString() : 'Unknown'}</td></tr>
-                        <tr><td><strong>Permissions:</strong></td><td>${file.basic_metadata.permissions || 'Unknown'}</td></tr>
-                    </table>
+        // Risk Assessment
+        html += `
+            <div class="col-md-6">
+                <h6><i class="bi bi-shield-exclamation me-2"></i>Risk Assessment</h6>
+                <div class="mb-3">
+                    ${this.getRiskBadge(security.risk_level, file.categorization?.is_suspicious)}
                 </div>
-            `;
-        } else if (file.basic_metadata?.error) {
-            html += `
-                <div class="col-md-6">
-                    <h6><i class="bi bi-exclamation-triangle me-2"></i>Basic Information</h6>
-                    <div class="alert alert-warning">${file.basic_metadata.error}</div>
-                </div>
-            `;
-        }
-
-        // Hashes
-        if (file.hashes && !file.hashes.error) {
-            html += `
-                <div class="col-md-6">
-                    <h6><i class="bi bi-shield-check me-2"></i>File Hashes</h6>
-                    <table class="table table-sm table-borderless">
-                        ${file.hashes.MD5 ? `<tr><td><strong>MD5:</strong></td><td><code class="small">${file.hashes.MD5}</code></td></tr>` : ''}
-                        ${file.hashes.SHA1 ? `<tr><td><strong>SHA1:</strong></td><td><code class="small">${file.hashes.SHA1}</code></td></tr>` : ''}
-                        ${file.hashes.SHA256 ? `<tr><td><strong>SHA256:</strong></td><td><code class="small">${file.hashes.SHA256}</code></td></tr>` : ''}
-                    </table>
-                </div>
-            `;
-        } else if (file.hashes?.error) {
-            html += `
-                <div class="col-md-6">
-                    <h6><i class="bi bi-exclamation-triangle me-2"></i>File Hashes</h6>
-                    <div class="alert alert-warning">${file.hashes.error}</div>
-                </div>
-            `;
-        }
-
+                ${security.threat_indicators_found?.length > 0 ? `
+                    <div class="alert alert-warning">
+                        <strong>Threat Indicators Found:</strong>
+                        <ul class="mb-0 mt-2">
+                            ${security.threat_indicators_found.map(indicator => `<li><code>${indicator}</code></li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+                ${security.suspicious_patterns?.length > 0 ? `
+                    <div class="alert alert-info">
+                        <strong>Suspicious Patterns:</strong>
+                        <ul class="mb-0 mt-2">
+                            ${security.suspicious_patterns.map(pattern => `<li>${pattern}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+                ${security.security_notes?.length > 0 ? `
+                    <div class="small text-muted">
+                        <strong>Notes:</strong>
+                        <ul class="mb-0">
+                            ${security.security_notes.map(note => `<li>${note}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+        
+        // File Signature Analysis
+        html += `
+            <div class="col-md-6">
+                <h6><i class="bi bi-file-binary me-2"></i>File Signature</h6>
+                <table class="table table-sm table-borderless">
+                    <tr><td><strong>Header (hex):</strong></td><td><code class="small">${signature.file_header ? signature.file_header.substring(0, 32) + '...' : 'N/A'}</code></td></tr>
+                    <tr><td><strong>Detected Type:</strong></td><td>${signature.detected_types?.join(', ') || 'Unknown'}</td></tr>
+                    <tr><td><strong>Extension Suggests:</strong></td><td>${signature.extension_suggests || 'Unknown'}</td></tr>
+                    <tr><td><strong>Signature Match:</strong></td><td>
+                        ${signature.signature_mismatch ? 
+                            '<span class="badge bg-warning">Mismatch</span>' : 
+                            '<span class="badge bg-success">Match</span>'
+                        }
+                    </td></tr>
+                </table>
+            </div>
+        `;
+        
         html += '</div>';
-
-        // Show errors if present
-        if (file.error) {
+        
+        // File Hashes
+        if (hashes && !hashes.error) {
             html += `
-                <div class="mt-3">
-                    <div class="alert alert-danger">
-                        <i class="bi bi-exclamation-triangle me-2"></i>
-                        <strong>Analysis Error:</strong> ${file.error}
-                    </div>
-                </div>
-            `;
-        }
-
-        // Document metadata
-        if (file.document_metadata && !file.document_metadata.error) {
-            html += `
-                <div class="mt-3">
-                    <h6><i class="bi bi-file-text me-2"></i>Document Information</h6>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <table class="table table-sm table-borderless">
-                                <tr><td><strong>Document Type:</strong></td><td>${file.document_metadata.document_type || 'Unknown'}</td></tr>
-                                <tr><td><strong>Has Text Content:</strong></td><td>${file.document_metadata.estimated_text_content ? 'Yes' : 'No'}</td></tr>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        // Deep analysis
-        if (file.deep_analysis && !file.deep_analysis.error) {
-            html += `
-                <div class="mt-3">
-                    <h6><i class="bi bi-graph-up me-2"></i>Deep Analysis</h6>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <table class="table table-sm table-borderless">
-                                <tr><td><strong>Entropy:</strong></td><td>${file.deep_analysis.entropy ? file.deep_analysis.entropy.toFixed(4) : 'N/A'}</td></tr>
-                                <tr><td><strong>Unique Bytes:</strong></td><td>${file.deep_analysis.unique_bytes || 'N/A'}</td></tr>
-                                <tr><td><strong>Analysis Depth:</strong></td><td>${file.deep_analysis.analysis_depth || 'N/A'}</td></tr>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        // Image metadata
-        if (file.image_metadata && !file.image_metadata.error) {
-            html += `
-                <div class="mt-3">
-                    <h6>Image Information</h6>
-                    <div class="row">
-                        <div class="col-md-6">
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6><i class="bi bi-fingerprint me-2"></i>Cryptographic Hashes</h6>
+                        <div class="table-responsive">
                             <table class="table table-sm">
-                                <tr><td><strong>Dimensions:</strong></td><td>${file.image_metadata.width} × ${file.image_metadata.height}</td></tr>
-                                <tr><td><strong>Format:</strong></td><td>${file.image_metadata.format}</td></tr>
-                                <tr><td><strong>Mode:</strong></td><td>${file.image_metadata.mode}</td></tr>
-                                <tr><td><strong>Transparency:</strong></td><td>${file.image_metadata.has_transparency ? 'Yes' : 'No'}</td></tr>
+                                ${hashes.MD5 ? `<tr><td><strong>MD5:</strong></td><td><code class="user-select-all">${hashes.MD5}</code></td></tr>` : ''}
+                                ${hashes.SHA1 ? `<tr><td><strong>SHA1:</strong></td><td><code class="user-select-all">${hashes.SHA1}</code></td></tr>` : ''}
+                                ${hashes.SHA256 ? `<tr><td><strong>SHA256:</strong></td><td><code class="user-select-all">${hashes.SHA256}</code></td></tr>` : ''}
+                                ${hashes.SHA512 ? `<tr><td><strong>SHA512:</strong></td><td><code class="user-select-all">${hashes.SHA512}</code></td></tr>` : ''}
                             </table>
                         </div>
-                        ${file.image_metadata.exif && Object.keys(file.image_metadata.exif).length > 0 ? `
-                            <div class="col-md-6">
-                                <h6>EXIF Data</h6>
-                                <div class="metadata-details small">
-                                    ${Object.entries(file.image_metadata.exif).map(([key, value]) => 
-                                        `<div><strong>${key}:</strong> ${value}</div>`
-                                    ).join('')}
-                                </div>
-                            </div>
-                        ` : ''}
+                        ${hashes.hash_generated_at ? `<small class="text-muted">Generated: ${new Date(hashes.hash_generated_at).toLocaleString()}</small>` : ''}
                     </div>
                 </div>
             `;
         }
-
+        
         return html;
+    }
+
+    renderTechnicalTab(file) {
+        const deep = file.deep_analysis || {};
+        const signature = file.signature_analysis || {};
+        const basic = file.basic_info || {};
+        
+        let html = '<div class="row">';
+        
+        // Entropy Analysis
+        if (deep.entropy !== undefined) {
+            html += `
+                <div class="col-md-6">
+                    <h6><i class="bi bi-graph-up me-2"></i>Entropy Analysis</h6>
+                    <table class="table table-sm table-borderless">
+                        <tr><td><strong>Shannon Entropy:</strong></td><td>${deep.entropy}</td></tr>
+                        <tr><td><strong>Interpretation:</strong></td><td>${deep.entropy_analysis || 'N/A'}</td></tr>
+                    </table>
+                    ${deep.byte_distribution ? `
+                        <h6 class="mt-3">Byte Distribution</h6>
+                        <table class="table table-sm table-borderless">
+                            <tr><td><strong>Unique Bytes:</strong></td><td>${deep.byte_distribution.unique_bytes}/256</td></tr>
+                            <tr><td><strong>Null Bytes:</strong></td><td>${deep.byte_distribution.null_byte_percentage}%</td></tr>
+                            <tr><td><strong>Printable:</strong></td><td>${deep.byte_distribution.printable_percentage}%</td></tr>
+                        </table>
+                    ` : ''}
+                </div>
+            `;
+        }
+        
+        // File Structure
+        html += `
+            <div class="col-md-6">
+                <h6><i class="bi bi-diagram-3 me-2"></i>File Structure</h6>
+                <table class="table table-sm table-borderless">
+                    <tr><td><strong>File Size:</strong></td><td>${basic.file_size_human || 'Unknown'} (${basic.file_size || 0} bytes)</td></tr>
+                    <tr><td><strong>Inode:</strong></td><td>${basic.inode || 'N/A'}</td></tr>
+                    <tr><td><strong>Owner UID:</strong></td><td>${basic.owner_uid || 'N/A'}</td></tr>
+                    <tr><td><strong>Group GID:</strong></td><td>${basic.group_gid || 'N/A'}</td></tr>
+                </table>
+                ${signature.header_analysis ? `
+                    <h6 class="mt-3">Header Analysis</h6>
+                    <table class="table table-sm table-borderless">
+                        <tr><td><strong>Printable Chars:</strong></td><td>${signature.header_analysis.printable_chars || 0}</td></tr>
+                        <tr><td><strong>Null Bytes:</strong></td><td>${signature.header_analysis.null_bytes || 0}</td></tr>
+                        <tr><td><strong>High Entropy:</strong></td><td>${signature.header_analysis.high_entropy_bytes || 0}</td></tr>
+                        <tr><td><strong>Header Entropy:</strong></td><td>${signature.header_analysis.header_entropy || 0}</td></tr>
+                    </table>
+                ` : ''}
+            </div>
+        `;
+        
+        html += '</div>';
+        
+        // Pattern Analysis
+        if (deep.pattern_analysis) {
+            const patterns = deep.pattern_analysis;
+            html += `
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6><i class="bi bi-pattern me-2"></i>Pattern Analysis</h6>
+                        <div class="row">
+                            ${patterns.repeated_sequences?.length > 0 ? `
+                                <div class="col-md-4">
+                                    <strong>Repeated Sequences:</strong>
+                                    <ul class="small">
+                                        ${patterns.repeated_sequences.slice(0, 3).map(seq => 
+                                            `<li>${seq.sequence.substring(0, 16)}... (${seq.count}x, ${seq.length} bytes)</li>`
+                                        ).join('')}
+                                    </ul>
+                                </div>
+                            ` : ''}
+                            ${patterns.url_patterns?.length > 0 ? `
+                                <div class="col-md-4">
+                                    <strong>URLs Found:</strong>
+                                    <ul class="small">
+                                        ${patterns.url_patterns.slice(0, 3).map(url => 
+                                            `<li>${this.truncateText(url, 30)}</li>`
+                                        ).join('')}
+                                    </ul>
+                                </div>
+                            ` : ''}
+                            ${patterns.interesting_strings?.length > 0 ? `
+                                <div class="col-md-4">
+                                    <strong>Interesting Strings:</strong>
+                                    <ul class="small">
+                                        ${patterns.interesting_strings.slice(0, 3).map(str => 
+                                            `<li>${this.truncateText(str, 30)}</li>`
+                                        ).join('')}
+                                    </ul>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        return html;
+    }
+
+    renderTypeSpecificTab(file, category) {
+        switch (category) {
+            case 'Image':
+                return this.renderImageMetadata(file);
+            case 'Document':
+                return this.renderDocumentMetadata(file);
+            case 'Media':
+                return this.renderMediaMetadata(file);
+            case 'Archive':
+                return this.renderArchiveMetadata(file);
+            default:
+                return '<div class="text-muted">No specific metadata available for this file type.</div>';
+        }
+    }
+
+    renderImageMetadata(file) {
+        const image = file.image_metadata || {};
+        
+        if (image.error) {
+            return `<div class="alert alert-warning">${image.error}</div>`;
+        }
+        
+        let html = '<div class="row">';
+        
+        // Basic Image Info
+        html += `
+            <div class="col-md-6">
+                <h6><i class="bi bi-image me-2"></i>Image Properties</h6>
+                <table class="table table-sm table-borderless">
+                    <tr><td><strong>Format:</strong></td><td>${image.format || 'Unknown'}</td></tr>
+                    <tr><td><strong>Dimensions:</strong></td><td>${image.width || 0} × ${image.height || 0} pixels</td></tr>
+                    <tr><td><strong>Color Mode:</strong></td><td>${image.mode || 'Unknown'}</td></tr>
+                    <tr><td><strong>Color Description:</strong></td><td class="small">${image.color_mode || 'N/A'}</td></tr>
+                    <tr><td><strong>Transparency:</strong></td><td>${image.has_transparency ? 'Yes' : 'No'}</td></tr>
+                    ${image.estimated_colors ? `<tr><td><strong>Est. Colors:</strong></td><td>${image.estimated_colors}</td></tr>` : ''}
+                    ${image.estimated_quality ? `<tr><td><strong>Quality Est.:</strong></td><td>${image.estimated_quality}</td></tr>` : ''}
+                </table>
+            </div>
+        `;
+        
+        // Camera/EXIF Info
+        if (image.camera_info) {
+            html += `
+                <div class="col-md-6">
+                    <h6><i class="bi bi-camera me-2"></i>Camera Information</h6>
+                    <table class="table table-sm table-borderless">
+                        ${image.camera_info.camera_make ? `<tr><td><strong>Make:</strong></td><td>${image.camera_info.camera_make}</td></tr>` : ''}
+                        ${image.camera_info.camera_model ? `<tr><td><strong>Model:</strong></td><td>${image.camera_info.camera_model}</td></tr>` : ''}
+                        ${image.camera_info.software ? `<tr><td><strong>Software:</strong></td><td>${image.camera_info.software}</td></tr>` : ''}
+                        ${image.camera_info.date_taken ? `<tr><td><strong>Date Taken:</strong></td><td>${image.camera_info.date_taken}</td></tr>` : ''}
+                        ${image.camera_info.exposure_time ? `<tr><td><strong>Exposure:</strong></td><td>${image.camera_info.exposure_time}</td></tr>` : ''}
+                        ${image.camera_info.aperture ? `<tr><td><strong>Aperture:</strong></td><td>f/${image.camera_info.aperture}</td></tr>` : ''}
+                        ${image.camera_info.iso ? `<tr><td><strong>ISO:</strong></td><td>${image.camera_info.iso}</td></tr>` : ''}
+                    </table>
+                </div>
+            `;
+        }
+        
+        html += '</div>';
+        
+        // Location Info
+        if (image.location_info) {
+            html += `
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6><i class="bi bi-geo-alt me-2"></i>Location Information</h6>
+                        <table class="table table-sm table-borderless">
+                            ${image.location_info.latitude ? `<tr><td><strong>Latitude:</strong></td><td>${image.location_info.latitude}</td></tr>` : ''}
+                            ${image.location_info.longitude ? `<tr><td><strong>Longitude:</strong></td><td>${image.location_info.longitude}</td></tr>` : ''}
+                            ${image.location_info.altitude ? `<tr><td><strong>Altitude:</strong></td><td>${image.location_info.altitude}</td></tr>` : ''}
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+        
+        return html;
+    }
+
+    renderDocumentMetadata(file) {
+        const doc = file.document_metadata || {};
+        
+        if (doc.error) {
+            return `<div class="alert alert-warning">${doc.error}</div>`;
+        }
+        
+        let html = '<div class="row">';
+        
+        // Document Properties
+        html += `
+            <div class="col-md-6">
+                <h6><i class="bi bi-file-text me-2"></i>Document Properties</h6>
+                <table class="table table-sm table-borderless">
+                    <tr><td><strong>Document Type:</strong></td><td>${doc.document_type || 'Unknown'}</td></tr>
+                    ${doc.num_pages ? `<tr><td><strong>Pages:</strong></td><td>${doc.num_pages}</td></tr>` : ''}
+                    ${doc.num_paragraphs ? `<tr><td><strong>Paragraphs:</strong></td><td>${doc.num_paragraphs}</td></tr>` : ''}
+                    ${doc.num_worksheets ? `<tr><td><strong>Worksheets:</strong></td><td>${doc.num_worksheets}</td></tr>` : ''}
+                    ${doc.word_count ? `<tr><td><strong>Word Count:</strong></td><td>${doc.word_count}</td></tr>` : ''}
+                    ${doc.estimated_text_length ? `<tr><td><strong>Text Length:</strong></td><td>${doc.estimated_text_length} chars</td></tr>` : ''}
+                    <tr><td><strong>Has Content:</strong></td><td>${doc.has_content || doc.has_text_content ? 'Yes' : 'No'}</td></tr>
+                    ${doc.is_encrypted ? `<tr><td><strong>Encrypted:</strong></td><td>Yes</td></tr>` : ''}
+                </table>
+            </div>
+        `;
+        
+        // Document Metadata/Properties
+        const props = doc.core_properties || doc.properties || doc.document_info;
+        if (props) {
+            html += `
+                <div class="col-md-6">
+                    <h6><i class="bi bi-person me-2"></i>Document Metadata</h6>
+                    <table class="table table-sm table-borderless">
+                        ${props.author || props.creator ? `<tr><td><strong>Author:</strong></td><td>${props.author || props.creator}</td></tr>` : ''}
+                        ${props.title ? `<tr><td><strong>Title:</strong></td><td>${props.title}</td></tr>` : ''}
+                        ${props.subject ? `<tr><td><strong>Subject:</strong></td><td>${props.subject}</td></tr>` : ''}
+                        ${props.created ? `<tr><td><strong>Created:</strong></td><td>${new Date(props.created).toLocaleString()}</td></tr>` : ''}
+                        ${props.modified ? `<tr><td><strong>Modified:</strong></td><td>${new Date(props.modified).toLocaleString()}</td></tr>` : ''}
+                        ${props.last_modified_by || props.lastModifiedBy ? `<tr><td><strong>Last Modified By:</strong></td><td>${props.last_modified_by || props.lastModifiedBy}</td></tr>` : ''}
+                        ${props.keywords ? `<tr><td><strong>Keywords:</strong></td><td>${props.keywords}</td></tr>` : ''}
+                    </table>
+                </div>
+            `;
+        }
+        
+        html += '</div>';
+        
+        // Preview or worksheet info
+        if (doc.first_page_preview) {
+            html += `
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6><i class="bi bi-eye me-2"></i>Content Preview</h6>
+                        <div class="border p-2 bg-light small" style="max-height: 150px; overflow-y: auto;">
+                            ${doc.first_page_preview}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        if (doc.worksheets_info) {
+            html += `
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6><i class="bi bi-table me-2"></i>Worksheets</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead><tr><th>Name</th><th>Rows</th><th>Columns</th><th>Has Data</th></tr></thead>
+                                <tbody>
+                                    ${doc.worksheets_info.map(sheet => `
+                                        <tr>
+                                            <td>${sheet.name}</td>
+                                            <td>${sheet.max_row}</td>
+                                            <td>${sheet.max_column}</td>
+                                            <td>${sheet.has_data ? 'Yes' : 'No'}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        return html;
+    }
+
+    renderMediaMetadata(file) {
+        const media = file.media_metadata || {};
+        
+        if (media.error) {
+            return `<div class="alert alert-warning">${media.error}</div>`;
+        }
+        
+        let html = '<div class="row">';
+        
+        // Media Properties
+        html += `
+            <div class="col-md-6">
+                <h6><i class="bi bi-play-circle me-2"></i>Media Properties</h6>
+                <table class="table table-sm table-borderless">
+                    <tr><td><strong>Media Type:</strong></td><td>${media.media_type || 'Unknown'}</td></tr>
+                    <tr><td><strong>Format:</strong></td><td>${media.format || 'Unknown'}</td></tr>
+                    ${media.duration_formatted ? `<tr><td><strong>Duration:</strong></td><td>${media.duration_formatted}</td></tr>` : ''}
+                    ${media.bitrate ? `<tr><td><strong>Bitrate:</strong></td><td>${media.bitrate} bps</td></tr>` : ''}
+                    ${media.sample_rate ? `<tr><td><strong>Sample Rate:</strong></td><td>${media.sample_rate} Hz</td></tr>` : ''}
+                    ${media.channels ? `<tr><td><strong>Channels:</strong></td><td>${media.channels}</td></tr>` : ''}
+                </table>
+            </div>
+        `;
+        
+        // Media Tags
+        const tags = media.common_tags || {};
+        if (Object.keys(tags).length > 0) {
+            html += `
+                <div class="col-md-6">
+                    <h6><i class="bi bi-tags me-2"></i>Media Tags</h6>
+                    <table class="table table-sm table-borderless">
+                        ${tags.title ? `<tr><td><strong>Title:</strong></td><td>${tags.title}</td></tr>` : ''}
+                        ${tags.artist ? `<tr><td><strong>Artist:</strong></td><td>${tags.artist}</td></tr>` : ''}
+                        ${tags.album ? `<tr><td><strong>Album:</strong></td><td>${tags.album}</td></tr>` : ''}
+                        ${tags.date ? `<tr><td><strong>Date:</strong></td><td>${tags.date}</td></tr>` : ''}
+                        ${tags.genre ? `<tr><td><strong>Genre:</strong></td><td>${tags.genre}</td></tr>` : ''}
+                    </table>
+                </div>
+            `;
+        }
+        
+        html += '</div>';
+        
+        return html;
+    }
+
+    renderArchiveMetadata(file) {
+        const archive = file.archive_metadata || {};
+        
+        if (archive.error) {
+            return `<div class="alert alert-warning">${archive.error}</div>`;
+        }
+        
+        let html = '<div class="row">';
+        
+        // Archive Properties
+        html += `
+            <div class="col-md-6">
+                <h6><i class="bi bi-archive me-2"></i>Archive Properties</h6>
+                <table class="table table-sm table-borderless">
+                    <tr><td><strong>Archive Type:</strong></td><td>${archive.archive_type || 'Unknown'}</td></tr>
+                    ${archive.num_files ? `<tr><td><strong>Files:</strong></td><td>${archive.num_files}</td></tr>` : ''}
+                    ${archive.compressed_size ? `<tr><td><strong>Compressed:</strong></td><td>${this.formatBytes(archive.compressed_size)}</td></tr>` : ''}
+                    ${archive.uncompressed_size ? `<tr><td><strong>Uncompressed:</strong></td><td>${this.formatBytes(archive.uncompressed_size)}</td></tr>` : ''}
+                    ${archive.compression_percentage ? `<tr><td><strong>Compression:</strong></td><td>${archive.compression_percentage}%</td></tr>` : ''}
+                </table>
+            </div>
+        `;
+        
+        // File Types Distribution
+        if (archive.file_types_distribution) {
+            html += `
+                <div class="col-md-6">
+                    <h6><i class="bi bi-pie-chart me-2"></i>File Types</h6>
+                    <table class="table table-sm table-borderless">
+                        ${Object.entries(archive.file_types_distribution).map(([ext, count]) => 
+                            `<tr><td><strong>${ext || 'no extension'}:</strong></td><td>${count} files</td></tr>`
+                        ).join('')}
+                    </table>
+                </div>
+            `;
+        }
+        
+        html += '</div>';
+        
+        // File List Preview
+        if (archive.file_list && archive.file_list.length > 0) {
+            html += `
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6><i class="bi bi-list me-2"></i>Archive Contents (first 20 files)</h6>
+                        <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                            <table class="table table-sm">
+                                <thead><tr><th>Filename</th><th>Size</th><th>Compressed</th><th>Modified</th></tr></thead>
+                                <tbody>
+                                    ${archive.file_list.slice(0, 20).map(file => `
+                                        <tr>
+                                            <td class="small">${file.filename}</td>
+                                            <td>${this.formatBytes(file.size)}</td>
+                                            <td>${this.formatBytes(file.compressed_size)}</td>
+                                            <td class="small">${new Date(file.modified).toLocaleDateString()}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        return html;
+    }
+
+    renderAnalysisSummary(summary) {
+        if (!summary) return '';
+        
+        return `
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-graph-up me-2"></i>Analysis Summary</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <h6>File Categories</h6>
+                            <ul class="list-unstyled">
+                                ${Object.entries(summary.file_categories || {}).map(([cat, count]) => 
+                                    `<li><i class="bi bi-${this.getCategoryIcon(cat)} me-1"></i>${cat}: <strong>${count}</strong></li>`
+                                ).join('')}
+                            </ul>
+                        </div>
+                        <div class="col-md-3">
+                            <h6>Risk Levels</h6>
+                            <ul class="list-unstyled">
+                                ${Object.entries(summary.risk_levels || {}).map(([risk, count]) => 
+                                    `<li>${this.getRiskBadge(risk, risk !== 'low')} <strong>${count}</strong></li>`
+                                ).join('')}
+                            </ul>
+                        </div>
+                        <div class="col-md-3">
+                            <h6>Top File Types</h6>
+                            <ul class="list-unstyled">
+                                ${Object.entries(summary.file_types || {}).slice(0, 5).map(([ext, count]) => 
+                                    `<li><code>${ext}</code>: <strong>${count}</strong></li>`
+                                ).join('')}
+                            </ul>
+                        </div>
+                        <div class="col-md-3">
+                            <h6>Statistics</h6>
+                            <ul class="list-unstyled">
+                                <li>Total Size: <strong>${summary.total_size_human || '0 B'}</strong></li>
+                                <li>Errors: <strong>${summary.error_count || 0}</strong></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Utility methods for enhanced metadata display
+    getRiskBadge(riskLevel, isSuspicious) {
+        const badges = {
+            'low': '<span class="badge bg-success">Low Risk</span>',
+            'medium': '<span class="badge bg-warning">Medium Risk</span>',
+            'high': '<span class="badge bg-danger">High Risk</span>'
+        };
+        return badges[riskLevel] || '<span class="badge bg-secondary">Unknown</span>';
+    }
+
+    getCategoryIcon(category) {
+        const icons = {
+            'Image': 'image',
+            'Document': 'file-text',
+            'Media': 'play-circle',
+            'Archive': 'archive',
+            'Text': 'file-text',
+            'Executable': 'cpu',
+            'Other': 'file'
+        };
+        return icons[category] || 'file';
+    }
+
+    formatBytes(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     }
 
     renderDownloadResults(results) {
@@ -1212,6 +1759,29 @@ class MetaSpidey {
     capitalizeFirst(str) {
         return str.charAt(0).toUpperCase() + str.slice(1);
     }
+
+    initializeMetadataToggles() {
+        // Initialize metadata toggle buttons
+        document.querySelectorAll('.metadata-toggle').forEach(button => {
+            button.addEventListener('click', function() {
+                const targetId = this.getAttribute('data-target');
+                const target = document.getElementById(targetId);
+                const icon = this.querySelector('i');
+                
+                if (target) {
+                    target.classList.toggle('show');
+                    
+                    if (target.classList.contains('show')) {
+                        this.innerHTML = '<i class="bi bi-eye-slash"></i> Hide Details';
+                        this.classList.replace('btn-outline-primary', 'btn-primary');
+                    } else {
+                        this.innerHTML = '<i class="bi bi-eye"></i> Show Details';
+                        this.classList.replace('btn-primary', 'btn-outline-primary');
+                    }
+                }
+            });
+        });
+    }
 }
 
 // Global functions for template callbacks
@@ -1227,8 +1797,28 @@ window.viewOperationResults = async function(operationId) {
         const result = await response.json();
 
         if (result.success) {
-            document.getElementById('modal-results-content').innerHTML = 
-                '<pre class="bg-light p-3 rounded">' + JSON.stringify(result.results, null, 2) + '</pre>';
+            // Use appropriate rendering based on operation type
+            let content = '';
+            if (result.type === 'metadata') {
+                content = window.metaspidey.renderMetadataResults(result.results);
+            } else if (result.type === 'crawler') {
+                content = window.metaspidey.renderCrawlerResults(result.results);
+            } else if (result.type === 'download') {
+                content = window.metaspidey.renderDownloadResults(result.results);
+            } else if (result.type === 'bruteforce') {
+                content = window.metaspidey.renderBruteForceResults(result.results);
+            } else {
+                // Fallback to JSON with proper styling
+                content = '<pre class="bg-dark text-light p-3 rounded" style="max-height: 60vh; overflow-y: auto;">' + 
+                         JSON.stringify(result.results, null, 2) + '</pre>';
+            }
+            
+            document.getElementById('modal-results-content').innerHTML = content;
+            
+            // Add event listeners for metadata toggles if it's metadata
+            if (result.type === 'metadata') {
+                window.metaspidey.initializeMetadataToggles();
+            }
             
             const modal = new bootstrap.Modal(document.getElementById('resultsModal'));
             modal.show();

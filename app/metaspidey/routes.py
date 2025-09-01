@@ -245,7 +245,23 @@ def analyze_metadata():
             # Filter out empty files
             uploaded_files = [f for f in uploaded_files if f and f.filename]
             
-            if not uploaded_files and not input_directory:
+            # Read file contents before starting background thread
+            file_data_list = []
+            if uploaded_files:
+                for uploaded_file in uploaded_files:
+                    try:
+                        uploaded_file.seek(0)
+                        file_content = uploaded_file.read()
+                        if file_content:
+                            file_data_list.append({
+                                'filename': secure_filename(uploaded_file.filename),
+                                'content': file_content
+                            })
+                    except Exception as e:
+                        print(f"Error reading uploaded file {uploaded_file.filename}: {str(e)}")
+                        continue
+            
+            if not file_data_list and not input_directory:
                 return jsonify({
                     'success': False,
                     'error': 'No valid files or directory provided'
@@ -265,23 +281,17 @@ def analyze_metadata():
                     }
                     
                     # Process uploaded files
-                    if uploaded_files:
-                        for uploaded_file in uploaded_files:
+                    if file_data_list:
+                        for file_data in file_data_list:
                             temp_path = None
                             try:
                                 # Save uploaded file temporarily with unique name
-                                filename = secure_filename(uploaded_file.filename)
+                                filename = file_data['filename']
+                                file_content = file_data['content']
                                 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
                                 temp_path = os.path.join(tempfile.gettempdir(), f"metaspidey_{timestamp}_{filename}")
                                 
                                 print(f"Saving uploaded file: {filename} -> {temp_path}")
-                                
-                                # Read file content in memory first
-                                uploaded_file.seek(0)
-                                file_content = uploaded_file.read()
-                                
-                                if not file_content:
-                                    raise Exception(f"Uploaded file {filename} is empty or unreadable")
                                 
                                 # Write to temporary file
                                 with open(temp_path, 'wb') as temp_file:
@@ -310,7 +320,7 @@ def analyze_metadata():
                                 print(f"Successfully analyzed: {filename}")
                                 
                             except Exception as e:
-                                error_msg = f'Failed to process {uploaded_file.filename}: {str(e)}'
+                                error_msg = f'Failed to process {filename}: {str(e)}'
                                 print(f"Error: {error_msg}")
                                 print(f"Traceback: {traceback.format_exc()}")
                                 results.append({
