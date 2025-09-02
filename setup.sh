@@ -70,6 +70,220 @@ EOF
     echo ""
 }
 
+# Function to install Bettercap
+install_bettercap() {
+    print_header "=== Installing Bettercap for BetterMITM ==="
+    
+    # Check if bettercap is already installed
+    if command -v bettercap &> /dev/null; then
+        print_success "Bettercap is already installed"
+        bettercap -version 2>/dev/null || print_status "Bettercap version check failed, but binary exists"
+        return 0
+    fi
+    
+    print_status "Installing Bettercap..."
+    
+    if command -v apt-get &> /dev/null; then
+        # Debian/Ubuntu/Kali Linux
+        print_status "Using apt-get to install Bettercap..."
+        
+        # Try to install from repositories first (usually available in Kali)
+        if sudo apt-get update && sudo apt-get install -y bettercap 2>/dev/null; then
+            print_success "Bettercap installed from repositories"
+        else
+            print_status "Repository version not available, installing from binary..."
+            install_bettercap_binary
+        fi
+        
+    elif command -v yum &> /dev/null; then
+        # RHEL/CentOS
+        print_status "RHEL/CentOS detected, installing from binary..."
+        install_bettercap_binary
+        
+    elif command -v dnf &> /dev/null; then
+        # Fedora
+        print_status "Fedora detected, installing from binary..."
+        install_bettercap_binary
+        
+    else
+        print_status "Unknown package manager, installing from binary..."
+        install_bettercap_binary
+    fi
+    
+    # Verify installation
+    if command -v bettercap &> /dev/null; then
+        print_success "Bettercap installed successfully!"
+        
+        # Set up capabilities for non-root operation
+        setup_bettercap_permissions
+        
+        # Create default configuration
+        setup_bettercap_config
+        
+        print_status "Bettercap installation completed"
+    else
+        print_error "Bettercap installation failed"
+        print_warning "BetterMITM module may not work properly without Bettercap"
+        print_warning "You can install it manually later with:"
+        print_warning "  Manual binary: https://github.com/bettercap/bettercap/releases"
+        print_warning "  Or from source: go install github.com/bettercap/bettercap@latest"
+    fi
+}
+
+# Function to install Bettercap from binary
+install_bettercap_binary() {
+    print_status "Downloading Bettercap binary..."
+    
+    # Detect architecture
+    ARCH=$(uname -m)
+    case $ARCH in
+        x86_64|amd64)
+            BETTERCAP_ARCH="amd64"
+            ;;
+        i386|i686)
+            BETTERCAP_ARCH="386"
+            ;;
+        arm64|aarch64)
+            BETTERCAP_ARCH="arm64"
+            ;;
+        armv7l)
+            BETTERCAP_ARCH="armv7"
+            ;;
+        *)
+            print_error "Unsupported architecture: $ARCH"
+            return 1
+            ;;
+    esac
+    
+    # Get the latest release URL
+    print_status "Detecting latest Bettercap version..."
+    LATEST_URL=$(curl -s https://api.github.com/repos/bettercap/bettercap/releases/latest | grep "browser_download_url.*linux_${BETTERCAP_ARCH}.zip" | cut -d '"' -f 4)
+    
+    if [ -z "$LATEST_URL" ]; then
+        print_error "Failed to get Bettercap download URL"
+        return 1
+    fi
+    
+    print_status "Downloading from: $LATEST_URL"
+    
+    # Create temporary directory
+    TEMP_DIR=$(mktemp -d)
+    TEMP_FILE="$TEMP_DIR/bettercap.zip"
+    
+    # Download
+    if curl -L -o "$TEMP_FILE" "$LATEST_URL"; then
+        print_status "Download completed, extracting..."
+        
+        # Extract
+        cd "$TEMP_DIR"
+        if unzip -q "$TEMP_FILE"; then
+            # Find the bettercap binary
+            BETTERCAP_BIN=$(find "$TEMP_DIR" -name "bettercap" -type f)
+            
+            if [ -n "$BETTERCAP_BIN" ] && [ -f "$BETTERCAP_BIN" ]; then
+                # Install to /usr/local/bin
+                if sudo cp "$BETTERCAP_BIN" /usr/local/bin/bettercap; then
+                    sudo chmod +x /usr/local/bin/bettercap
+                    print_success "Bettercap binary installed to /usr/local/bin/bettercap"
+                else
+                    print_error "Failed to copy Bettercap binary"
+                    rm -rf "$TEMP_DIR"
+                    return 1
+                fi
+            else
+                print_error "Bettercap binary not found in downloaded archive"
+                rm -rf "$TEMP_DIR"
+                return 1
+            fi
+        else
+            print_error "Failed to extract Bettercap archive"
+            rm -rf "$TEMP_DIR"
+            return 1
+        fi
+    else
+        print_error "Failed to download Bettercap"
+        rm -rf "$TEMP_DIR"
+        return 1
+    fi
+    
+    # Cleanup
+    rm -rf "$TEMP_DIR"
+    return 0
+}
+
+# Function to set up Bettercap permissions
+setup_bettercap_permissions() {
+    print_status "Setting up Bettercap permissions..."
+    
+    BETTERCAP_PATH=$(which bettercap)
+    if [ -z "$BETTERCAP_PATH" ]; then
+        print_error "Bettercap binary not found in PATH"
+        return 1
+    fi
+    
+    # Set capabilities for raw socket access
+    if sudo setcap cap_net_raw,cap_net_admin=eip "$BETTERCAP_PATH" 2>/dev/null; then
+        print_success "Network capabilities set for Bettercap"
+        print_status "Bettercap can now run without root privileges for most operations"
+    else
+        print_warning "Failed to set network capabilities"
+        print_warning "You may need to run Bettercap as root for some operations"
+        print_warning "Alternative: sudo $BETTERCAP_PATH"
+    fi
+}
+
+# Function to create Bettercap configuration
+setup_bettercap_config() {
+    print_status "Creating Bettercap configuration..."
+    
+    # Create bettercap config directory
+    mkdir -p "$HOME/.bettercap"
+    
+    # Create default configuration for API
+    cat > "$HOME/.bettercap/config.yml" << 'EOF'
+# Bettercap Configuration for BetterMITM
+api:
+  rest:
+    enabled: true
+    port: 8081
+    username: admin
+    password: admin123
+    certificate: ""
+    key: ""
+    allow_origin: "*"
+
+# Network interface (auto-detect by default)
+interface: ""
+
+# Logging
+log:
+  level: info
+  output: ""
+
+# Default modules
+modules:
+  net.recon:
+    enabled: true
+  net.probe:
+    enabled: false
+  arp.spoof:
+    enabled: false
+  dns.spoof:
+    enabled: false
+  http.proxy:
+    enabled: false
+  net.sniff:
+    enabled: false
+EOF
+    
+    if [ -f "$HOME/.bettercap/config.yml" ]; then
+        print_success "Bettercap configuration created at ~/.bettercap/config.yml"
+        chmod 600 "$HOME/.bettercap/config.yml"
+    else
+        print_error "Failed to create Bettercap configuration"
+    fi
+}
+
 # Function to check system requirements
 # Function to check system requirements
 check_requirements() {
@@ -96,6 +310,9 @@ check_requirements() {
 
     # Add dependencies for Oniux
     missing_deps+=("tor" "iproute2" "cargo")
+    
+    # Add dependencies for BetterMITM (Bettercap)
+    missing_deps+=("wget" "curl" "unzip" "libpcap-dev" "libusb-1.0-0-dev" "libnetfilter-queue-dev")
 
     
     # Check tmux
@@ -349,6 +566,9 @@ check_requirements() {
         print_warning "  cargo install --git https://gitlab.torproject.org/tpo/core/oniux"
         print_warning "  And add $HOME/.cargo/bin to your PATH in .bashrc/.zshrc"
     fi
+    
+    # Install Bettercap for BetterMITM module
+    install_bettercap
     
     # ========== NUEVA SECCIÓN: INSTALL COMMON GUI APPS ==========
     print_status "Installing common GUI applications for testing..."

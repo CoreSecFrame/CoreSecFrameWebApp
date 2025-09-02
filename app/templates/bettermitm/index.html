@@ -1,0 +1,666 @@
+{% extends "base.html" %}
+{% set title = "BetterMITM - Advanced Network Security Interface" %}
+
+{% block css %}
+<style>
+    .bettermitm-header {
+        background: linear-gradient(135deg, var(--w11-danger) 0%, var(--w11-danger-dark1) 100%);
+        color: white;
+        border-radius: var(--w11-radius-large);
+        margin-bottom: 2rem;
+        box-shadow: var(--w11-shadow-4);
+    }
+
+    .control-panel {
+        background: var(--w11-card-bg);
+        border: 1px solid var(--w11-card-stroke);
+        border-radius: var(--w11-radius-medium);
+        box-shadow: var(--w11-shadow-2);
+        backdrop-filter: blur(10px);
+        margin-bottom: 1rem;
+    }
+
+    .device-card {
+        background: var(--w11-card-bg);
+        border: 1px solid var(--w11-card-stroke);
+        border-radius: var(--w11-radius-small);
+        transition: all var(--w11-duration-fast) var(--w11-ease-standard);
+    }
+
+    .device-card:hover {
+        box-shadow: var(--w11-shadow-4);
+        transform: translateY(-1px);
+    }
+
+    .device-card.targeted {
+        border-color: var(--w11-danger);
+        background: linear-gradient(135deg, var(--w11-danger-bg) 0%, var(--w11-card-bg) 100%);
+    }
+
+    .attack-indicator {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 0.5rem;
+    }
+
+    .attack-indicator.active {
+        background: var(--w11-danger);
+        animation: pulse 2s infinite;
+    }
+
+    .attack-indicator.inactive {
+        background: var(--w11-text-tertiary);
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+    }
+
+    .status-indicator {
+        position: relative;
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 0.5rem;
+    }
+
+    .status-indicator.online {
+        background: var(--w11-success);
+    }
+
+    .status-indicator.offline {
+        background: var(--w11-text-tertiary);
+    }
+
+    .bettercap-status {
+        padding: 1rem;
+        border-radius: var(--w11-radius-small);
+        margin-bottom: 1rem;
+    }
+
+    .bettercap-status.running {
+        background: var(--w11-success-bg);
+        border: 1px solid var(--w11-success);
+        color: var(--w11-success);
+    }
+
+    .bettercap-status.stopped {
+        background: var(--w11-danger-bg);
+        border: 1px solid var(--w11-danger);
+        color: var(--w11-danger);
+    }
+
+    .console-output {
+        background: var(--w11-bg-primary);
+        color: var(--w11-text-primary);
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        font-size: 0.85rem;
+        padding: 1rem;
+        border-radius: var(--w11-radius-small);
+        height: 300px;
+        overflow-y: auto;
+        border: 1px solid var(--w11-surface-stroke);
+        white-space: pre-wrap;
+    }
+
+    .network-map {
+        background: var(--w11-bg-secondary);
+        border: 1px solid var(--w11-surface-stroke);
+        border-radius: var(--w11-radius-medium);
+        padding: 1rem;
+        min-height: 400px;
+    }
+
+    .attack-controls {
+        background: var(--w11-bg-tertiary);
+        border-radius: var(--w11-radius-small);
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .quick-attack-btn {
+        margin: 0.25rem;
+        font-size: 0.8rem;
+        padding: 0.375rem 0.75rem;
+    }
+
+    .device-info-modal .modal-content {
+        background: var(--w11-card-bg);
+        border: 1px solid var(--w11-card-stroke);
+    }
+
+    .packet-capture {
+        max-height: 250px;
+        overflow-y: auto;
+        font-family: monospace;
+        font-size: 0.8rem;
+        background: var(--w11-bg-primary);
+        border: 1px solid var(--w11-surface-stroke);
+        border-radius: var(--w11-radius-small);
+        padding: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- BetterMITM Header -->
+<section class="bettermitm-header py-4 px-4 mb-4">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-shield-exclamation me-3" style="font-size: 2.5rem;"></i>
+        <div>
+            <h1 class="h2 mb-1">BetterMITM</h1>
+            <p class="mb-0 opacity-90">Advanced Bettercap GUI Interface for Network Security Testing</p>
+        </div>
+        <div class="ms-auto">
+            <button class="btn btn-light me-2" onclick="refreshAll()">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+            <button class="btn btn-outline-light" onclick="cleanupAll()">
+                <i class="bi bi-stop-circle"></i> Stop All
+            </button>
+        </div>
+    </div>
+</section>
+
+<!-- Bettercap Status -->
+<div id="bettercap-status" class="bettercap-status stopped">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <strong><i class="bi bi-cpu me-2"></i>Bettercap Status: </strong>
+            <span id="status-text">Stopped</span>
+        </div>
+        <div>
+            <button id="start-bettercap-btn" class="btn btn-success btn-sm me-2" onclick="startBettercapClick()">
+                <i class="bi bi-play-circle"></i> Start Bettercap
+            </button>
+            <button id="stop-bettercap-btn" class="btn btn-danger btn-sm" disabled onclick="stopBettercapClick()">
+                <i class="bi bi-stop-circle"></i> Stop Bettercap
+            </button>
+        </div>
+    </div>
+    <div class="mt-2">
+        <small>Interface: <span id="current-interface">None</span> | Active Attacks: <span id="active-attacks-count">0</span></small>
+    </div>
+</div>
+
+<!-- Main Interface Tabs -->
+<ul class="nav nav-pills mb-4" id="bettermitm-tabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="dashboard-tab" data-bs-toggle="pill" data-bs-target="#dashboard"
+            type="button" role="tab">
+            <i class="bi bi-speedometer2 me-2"></i>Dashboard
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="network-tab" data-bs-toggle="pill" data-bs-target="#network" type="button"
+            role="tab">
+            <i class="bi bi-diagram-3 me-2"></i>Network Discovery
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="attacks-tab" data-bs-toggle="pill" data-bs-target="#attacks" type="button"
+            role="tab">
+            <i class="bi bi-lightning me-2"></i>Attack Modules
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="sniffer-tab" data-bs-toggle="pill" data-bs-target="#sniffer" type="button"
+            role="tab">
+            <i class="bi bi-search me-2"></i>Packet Sniffer
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="console-tab" data-bs-toggle="pill" data-bs-target="#console" type="button"
+            role="tab">
+            <i class="bi bi-terminal me-2"></i>Console
+        </button>
+    </li>
+</ul>
+
+<!-- Tab Content -->
+<div class="tab-content" id="bettermitm-tab-content">
+    <!-- Dashboard Tab -->
+    <div class="tab-pane fade show active" id="dashboard" role="tabpanel">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="control-panel p-3">
+                    <h5><i class="bi bi-diagram-3 me-2"></i>Network Overview</h5>
+                    <div class="network-map" id="network-map">
+                        <div class="text-center text-muted py-5">
+                            <i class="bi bi-diagram-3" style="font-size: 3rem;"></i>
+                            <h4 class="mt-3">Network Map</h4>
+                            <p>Start Bettercap and begin network discovery to see devices</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="control-panel p-3 mb-3">
+                    <h6><i class="bi bi-bar-chart me-2"></i>Statistics</h6>
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="h4 text-primary" id="total-devices">0</div>
+                            <small class="text-muted">Total Devices</small>
+                        </div>
+                        <div class="col-6">
+                            <div class="h4 text-success" id="active-devices">0</div>
+                            <small class="text-muted">Active</small>
+                        </div>
+                    </div>
+                    <div class="row text-center mt-3">
+                        <div class="col-6">
+                            <div class="h4 text-warning" id="targeted-devices">0</div>
+                            <small class="text-muted">Targeted</small>
+                        </div>
+                        <div class="col-6">
+                            <div class="h4 text-danger" id="under-attack">0</div>
+                            <small class="text-muted">Under Attack</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-panel p-3">
+                    <h6><i class="bi bi-lightning me-2"></i>Quick Actions</h6>
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary btn-sm" onclick="startNetworkScan()">
+                            <i class="bi bi-search me-1"></i>Scan Network
+                        </button>
+                        <button class="btn btn-outline-warning btn-sm" onclick="startARPSpoofAll()">
+                            <i class="bi bi-exclamation-triangle me-1"></i>ARP Spoof All
+                        </button>
+                        <button class="btn btn-outline-info btn-sm" onclick="startPacketCapture()">
+                            <i class="bi bi-record-circle me-1"></i>Start Capture
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="emergencyStop()">
+                            <i class="bi bi-stop-circle me-1"></i>Emergency Stop
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Network Discovery Tab -->
+    <div class="tab-pane fade" id="network" role="tabpanel">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="control-panel p-3">
+                    <h5><i class="bi bi-search me-2"></i>Network Discovery</h5>
+                    <form id="network-scan-form">
+                        <div class="mb-3">
+                            {{ network_scan_form.interface.label(class="form-label") }}
+                            {{ network_scan_form.interface(class="form-select", id="network-interface") }}
+                        </div>
+                        <div class="mb-3">
+                            {{ network_scan_form.scan_type.label(class="form-label") }}
+                            {{ network_scan_form.scan_type(class="form-select") }}
+                        </div>
+                        <div class="mb-3">
+                            {{ network_scan_form.target_range.label(class="form-label") }}
+                            {{ network_scan_form.target_range(class="form-control") }}
+                        </div>
+                        <div class="mb-3">
+                            {{ network_scan_form.timeout.label(class="form-label") }}
+                            {{ network_scan_form.timeout(class="form-control") }}
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-play-circle me-1"></i>Start Scan
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="stopNetworkScan()">
+                                <i class="bi bi-stop-circle me-1"></i>Stop Scan
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div class="control-panel p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5><i class="bi bi-devices me-2"></i>Discovered Devices</h5>
+                        <button class="btn btn-outline-primary btn-sm" onclick="exportDevices()">
+                            <i class="bi bi-download me-1"></i>Export
+                        </button>
+                    </div>
+                    <div id="devices-list">
+                        <div class="text-center text-muted py-5">
+                            <i class="bi bi-devices" style="font-size: 3rem;"></i>
+                            <h4 class="mt-3">No Devices Found</h4>
+                            <p>Start a network scan to discover devices</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attack Modules Tab -->
+    <div class="tab-pane fade" id="attacks" role="tabpanel">
+        <div class="row">
+            <!-- ARP Spoofing -->
+            <div class="col-md-6 mb-3">
+                <div class="control-panel p-3">
+                    <h6><i class="bi bi-exclamation-triangle me-2"></i>ARP Spoofing</h6>
+                    <form id="arp-spoof-form">
+                        <div class="row mb-2">
+                            <div class="col-6">
+                                {{ arp_spoof_form.target_ip.label(class="form-label small") }}
+                                {{ arp_spoof_form.target_ip(class="form-control form-control-sm") }}
+                            </div>
+                            <div class="col-6">
+                                {{ arp_spoof_form.gateway_ip.label(class="form-label small") }}
+                                {{ arp_spoof_form.gateway_ip(class="form-control form-control-sm") }}
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <div class="form-check form-check-inline">
+                                {{ arp_spoof_form.bidirectional(class="form-check-input") }}
+                                {{ arp_spoof_form.bidirectional.label(class="form-check-label small") }}
+                            </div>
+                            <div class="form-check form-check-inline">
+                                {{ arp_spoof_form.continuous(class="form-check-input") }}
+                                {{ arp_spoof_form.continuous.label(class="form-check-label small") }}
+                            </div>
+                        </div>
+                        <div class="d-grid gap-1">
+                            <button type="submit" class="btn btn-warning btn-sm">
+                                <i class="bi bi-play-circle me-1"></i>Start ARP Spoof
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="stopARPSpoof()">
+                                <i class="bi bi-stop-circle me-1"></i>Stop
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- DNS Spoofing -->
+            <div class="col-md-6 mb-3">
+                <div class="control-panel p-3">
+                    <h6><i class="bi bi-globe me-2"></i>DNS Spoofing</h6>
+                    <form id="dns-spoof-form">
+                        <div class="mb-2">
+                            {{ dns_spoof_form.target_domain.label(class="form-label small") }}
+                            {{ dns_spoof_form.target_domain(class="form-control form-control-sm") }}
+                        </div>
+                        <div class="mb-2">
+                            {{ dns_spoof_form.spoofed_ip.label(class="form-label small") }}
+                            {{ dns_spoof_form.spoofed_ip(class="form-control form-control-sm") }}
+                        </div>
+                        <div class="mb-2">
+                            <div class="form-check">
+                                {{ dns_spoof_form.all_domains(class="form-check-input") }}
+                                {{ dns_spoof_form.all_domains.label(class="form-check-label small") }}
+                            </div>
+                        </div>
+                        <div class="d-grid gap-1">
+                            <button type="submit" class="btn btn-info btn-sm">
+                                <i class="bi bi-play-circle me-1"></i>Start DNS Spoof
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="stopDNSSpoof()">
+                                <i class="bi bi-stop-circle me-1"></i>Stop
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- HTTP Proxy -->
+            <div class="col-md-6 mb-3">
+                <div class="control-panel p-3">
+                    <h6><i class="bi bi-arrow-left-right me-2"></i>HTTP Proxy</h6>
+                    <form id="proxy-form">
+                        <div class="mb-2">
+                            {{ proxy_form.proxy_port.label(class="form-label small") }}
+                            {{ proxy_form.proxy_port(class="form-control form-control-sm") }}
+                        </div>
+                        <div class="mb-2">
+                            <div class="form-check">
+                                {{ proxy_form.transparent(class="form-check-input") }}
+                                {{ proxy_form.transparent.label(class="form-check-label small") }}
+                            </div>
+                            <div class="form-check">
+                                {{ proxy_form.log_requests(class="form-check-input") }}
+                                {{ proxy_form.log_requests.label(class="form-check-label small") }}
+                            </div>
+                        </div>
+                        <div class="d-grid gap-1">
+                            <button type="submit" class="btn btn-success btn-sm">
+                                <i class="bi bi-play-circle me-1"></i>Start Proxy
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="stopProxy()">
+                                <i class="bi bi-stop-circle me-1"></i>Stop
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Device Targeting -->
+            <div class="col-md-6 mb-3">
+                <div class="control-panel p-3">
+                    <h6><i class="bi bi-crosshair me-2"></i>Device Targeting</h6>
+                    <form id="device-target-form">
+                        <div class="mb-2">
+                            {{ device_form.device_ip.label(class="form-label small") }}
+                            {{ device_form.device_ip(class="form-control form-control-sm") }}
+                        </div>
+                        <div class="mb-2">
+                            {{ device_form.device_name.label(class="form-label small") }}
+                            {{ device_form.device_name(class="form-control form-control-sm") }}
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-danger btn-sm">
+                                <i class="bi bi-crosshair me-1"></i>Target Device
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Packet Sniffer Tab -->
+    <div class="tab-pane fade" id="sniffer" role="tabpanel">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="control-panel p-3">
+                    <h5><i class="bi bi-search me-2"></i>Packet Sniffer</h5>
+                    <form id="sniffer-form">
+                        <div class="mb-3">
+                            {{ packet_sniffer_form.interface.label(class="form-label") }}
+                            {{ packet_sniffer_form.interface(class="form-select", id="sniffer-interface") }}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Protocols</label>
+                            {% for choice in packet_sniffer_form.protocols %}
+                                <div class="form-check">
+                                    {{ choice(class="form-check-input") }}
+                                    {{ choice.label(class="form-check-label") }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <div class="mb-3">
+                            {{ packet_sniffer_form.filter_expression.label(class="form-label") }}
+                            {{ packet_sniffer_form.filter_expression(class="form-control") }}
+                        </div>
+                        <div class="mb-3">
+                            {{ packet_sniffer_form.max_packets.label(class="form-label") }}
+                            {{ packet_sniffer_form.max_packets(class="form-control") }}
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-play-circle me-1"></i>Start Capture
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="stopSniffer()">
+                                <i class="bi bi-stop-circle me-1"></i>Stop Capture
+                            </button>
+                            <button type="button" class="btn btn-outline-info" onclick="clearCapture()">
+                                <i class="bi bi-trash me-1"></i>Clear
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div class="control-panel p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5><i class="bi bi-list me-2"></i>Captured Packets</h5>
+                        <span class="badge bg-primary" id="packet-count">0 packets</span>
+                    </div>
+                    <div class="packet-capture" id="packet-output">
+                        <div class="text-center text-muted py-5">
+                            <i class="bi bi-search" style="font-size: 2rem;"></i>
+                            <p class="mt-2">No packets captured yet. Start packet capture to see network traffic.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Console Tab -->
+    <div class="tab-pane fade" id="console" role="tabpanel">
+        <div class="control-panel p-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5><i class="bi bi-terminal me-2"></i>Bettercap Console</h5>
+                <div>
+                    <button class="btn btn-outline-secondary btn-sm me-2" onclick="clearConsole()">
+                        <i class="bi bi-trash"></i> Clear
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="saveConsoleLog()">
+                        <i class="bi bi-download"></i> Save Log
+                    </button>
+                </div>
+            </div>
+            
+            <div class="console-output" id="console-output">
+Welcome to BetterMITM Console
+Type 'help' for available commands or use the interface above.
+            </div>
+            
+            <div class="input-group mt-3">
+                <span class="input-group-text">bettercap&gt;</span>
+                <input type="text" class="form-control" id="console-input" placeholder="Enter command...">
+                <button class="btn btn-primary" onclick="executeCommand()">
+                    <i class="bi bi-arrow-return-left"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Device Details Modal -->
+<div class="modal fade" id="deviceModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content device-info-modal">
+            <div class="modal-header">
+                <h5 class="modal-title">Device Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="device-modal-body">
+                <!-- Device details will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-danger" onclick="targetCurrentDevice()">Target Device</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Interface Selection Modal -->
+<div class="modal fade" id="interfaceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Select Network Interface</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Available Network Interfaces:</label>
+                    <select class="form-select" id="interface-select">
+                        {% for interface in interfaces %}
+                        <option value="{{ interface.name }}">{{ interface.name }} ({{ interface.ip }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-text">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Select the network interface to use for Bettercap operations
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="startBettercapWithInterface()">Start Bettercap</button>
+                <button type="button" class="btn btn-warning" onclick="showSudoModal()">
+                    <i class="bi bi-shield-lock me-1"></i>Use Sudo
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sudo Authentication Modal -->
+<div class="modal fade" id="sudoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">
+                    <i class="bi bi-shield-exclamation me-2"></i>Sudo Authentication Required
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Administrator privileges required</strong><br>
+                    Bettercap needs elevated permissions to access network interfaces. Please enter your password to continue.
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Selected Interface:</label>
+                    <div class="form-control-plaintext" id="sudo-interface-display">
+                        <i class="bi bi-ethernet me-1"></i>
+                        <span id="selected-interface-name">eth0</span>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="sudo-password" class="form-label">
+                        <i class="bi bi-key me-1"></i>Password:
+                    </label>
+                    <input type="password" class="form-control" id="sudo-password" 
+                           placeholder="Enter your system password">
+                    <div class="form-text">
+                        Your password will be used once to start Bettercap with sudo privileges
+                    </div>
+                </div>
+                
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <small>
+                        <strong>Security note:</strong> Your password is sent securely and only used to authenticate sudo. 
+                        It is not stored or logged anywhere.
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" onclick="startBettercapWithSudo()" id="sudo-start-btn">
+                    <i class="bi bi-shield-lock me-1"></i>Start with Sudo
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/bettermitm_final.js') }}"></script>
+{% endblock %}

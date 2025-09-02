@@ -152,6 +152,13 @@
                                 <i class="bi bi-search me-1" aria-hidden="true"></i> MetaSpidey
                             </a>
                         </li>
+                        <li class="nav-item" role="none">
+                            <a class="nav-link {% if request.endpoint and 'bettermitm' in request.endpoint %}active{% endif %}"
+                                href="{{ url_for('bettermitm.index') }}" role="menuitem" {% if request.endpoint and 'bettermitm'
+                                in request.endpoint %}aria-current="page" {% endif %}>
+                                <i class="bi bi-shield-exclamation me-1" aria-hidden="true"></i> BetterMITM
+                            </a>
+                        </li>
                         {% endif %}
                     </ul>
 
