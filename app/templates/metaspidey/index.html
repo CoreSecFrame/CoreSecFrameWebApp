@@ -1,0 +1,884 @@
+{% extends "base.html" %}
+{% set title = "MetaSpidey - Web Intelligence & Analysis" %}
+
+{% block css %}
+<style>
+    .metaspidey-header {
+        background: linear-gradient(135deg, var(--w11-accent) 0%, var(--w11-accent-dark1) 100%);
+        color: white;
+        border-radius: var(--w11-radius-large);
+        margin-bottom: 2rem;
+        box-shadow: var(--w11-shadow-4);
+    }
+
+    .tool-card {
+        background: var(--w11-card-bg);
+        border: 1px solid var(--w11-card-stroke);
+        border-radius: var(--w11-radius-medium);
+        box-shadow: var(--w11-shadow-2);
+        transition: all var(--w11-duration-fast) var(--w11-ease-standard);
+        backdrop-filter: blur(10px);
+    }
+
+    .tool-card:hover {
+        box-shadow: var(--w11-shadow-8);
+        transform: translateY(-2px);
+        border-color: var(--w11-accent);
+    }
+
+    .results-container {
+        height: 600px;
+        background: var(--w11-bg-secondary);
+        border: 1px solid var(--w11-surface-stroke);
+        border-radius: var(--w11-radius-medium);
+        color: var(--w11-text-primary);
+        overflow-y: auto;
+        position: relative;
+    }
+
+    .results-list {
+        max-height: 450px;
+        overflow-y: auto;
+        border: 1px solid var(--w11-surface-stroke);
+        border-radius: var(--w11-radius-small);
+        background: var(--w11-bg-primary);
+        padding: 0.5rem;
+    }
+
+    .url-item {
+        padding: 0.5rem;
+        border-bottom: 1px solid var(--w11-surface-stroke);
+        font-family: monospace;
+        font-size: 0.9rem;
+    }
+
+    .url-item:last-child {
+        border-bottom: none;
+    }
+
+    .url-item:hover {
+        background: var(--w11-bg-tertiary);
+    }
+
+    .operation-status {
+        display: none;
+        background: var(--w11-info-bg);
+        border: 1px solid var(--w11-info);
+        border-radius: var(--w11-radius-small);
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .operation-status.active {
+        display: block;
+    }
+
+    .results-table {
+        font-size: 0.875rem;
+        background: var(--w11-bg-solid);
+        color: var(--w11-text-primary);
+    }
+
+    .results-table th {
+        background: var(--w11-bg-tertiary);
+        color: var(--w11-text-primary);
+        border-color: var(--w11-surface-stroke);
+    }
+
+    .results-table td {
+        border-color: var(--w11-surface-stroke);
+        color: var(--w11-text-primary);
+    }
+
+    .form-section {
+        background: var(--w11-card-bg);
+        border: 1px solid var(--w11-card-stroke);
+        border-radius: var(--w11-radius-medium);
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        backdrop-filter: blur(10px);
+        box-shadow: var(--w11-shadow-2);
+    }
+
+    .section-title {
+        color: var(--w11-text-primary);
+        font-weight: 600;
+        margin-bottom: 1rem;
+        border-bottom: 2px solid var(--w11-divider-stroke);
+        padding-bottom: 0.5rem;
+    }
+
+    .form-control, .form-select {
+        background: var(--w11-bg-solid);
+        border: 1px solid var(--w11-surface-stroke);
+        color: var(--w11-text-primary);
+    }
+
+    .form-control:focus, .form-select:focus {
+        background: var(--w11-bg-solid);
+        border-color: var(--w11-accent);
+        box-shadow: 0 0 0 0.2rem hsla(var(--w11-accent-hue), var(--w11-accent-saturation), var(--w11-accent-lightness), 0.25);
+        color: var(--w11-text-primary);
+    }
+
+    .form-label {
+        color: var(--w11-text-primary);
+        font-weight: 500;
+    }
+
+    .form-text {
+        color: var(--w11-text-secondary);
+    }
+
+    .btn-primary {
+        background: var(--w11-accent);
+        border-color: var(--w11-accent);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: var(--w11-accent-dark1);
+        border-color: var(--w11-accent-dark1);
+    }
+
+    .btn-success {
+        background: var(--w11-success);
+        border-color: var(--w11-success);
+    }
+
+    .btn-success:hover {
+        background: var(--w11-success-light);
+        border-color: var(--w11-success-light);
+    }
+
+    .btn-info {
+        background: var(--w11-info);
+        border-color: var(--w11-info);
+    }
+
+    .btn-warning {
+        background: var(--w11-warning);
+        border-color: var(--w11-warning);
+        color: var(--w11-text-primary);
+    }
+
+    .nav-pills .nav-link {
+        color: var(--w11-text-secondary);
+        border-radius: var(--w11-radius-small);
+    }
+
+    .nav-pills .nav-link.active {
+        background: var(--w11-accent);
+        color: white;
+    }
+
+    .nav-pills .nav-link:hover {
+        background: var(--w11-bg-tertiary);
+        color: var(--w11-text-primary);
+    }
+
+    .terminal-output {
+        background: var(--w11-bg-primary);
+        color: var(--w11-text-primary);
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        padding: 1rem;
+        border-radius: var(--w11-radius-small);
+        height: 300px;
+        overflow-y: auto;
+        border: 1px solid var(--w11-surface-stroke);
+    }
+
+    .status-badge-200 {
+        background-color: #28a745 !important;
+        color: white;
+    }
+
+    .status-badge-redirect {
+        background-color: #ffc107 !important;
+        color: black;
+    }
+
+    .status-badge-error {
+        background-color: #dc3545 !important;
+        color: white;
+    }
+
+    .url-found {
+        font-size: 0.9rem;
+        padding: 0.25rem 0;
+        border-bottom: 1px solid var(--w11-surface-stroke);
+    }
+
+    .url-found:last-child {
+        border-bottom: none;
+    }
+        border: 1px solid var(--w11-surface-stroke);
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .url-found {
+        color: var(--w11-success);
+        font-family: monospace;
+    }
+
+    .status-badge-200 {
+        background: var(--w11-success-bg);
+        color: var(--w11-success);
+    }
+
+    .status-badge-redirect {
+        background: var(--w11-warning-bg);
+        color: var(--w11-warning);
+    }
+
+    .status-badge-error {
+        background: var(--w11-danger-bg);
+        color: var(--w11-danger);
+    }
+
+    .checkbox-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .checkbox-group .form-check {
+        margin-right: 1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .settings-group {
+        background: var(--w11-bg-tertiary);
+        border-radius: var(--w11-radius-small);
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .settings-group h6 {
+        color: var(--w11-text-primary);
+        margin-bottom: 0.75rem;
+        font-weight: 600;
+    }
+
+    .progress {
+        background: var(--w11-bg-tertiary);
+    }
+
+    .progress-bar {
+        background: var(--w11-accent);
+    }
+
+    .alert-info {
+        background: var(--w11-info-bg);
+        border-color: var(--w11-info);
+        color: var(--w11-text-primary);
+    }
+
+    .metadata-card {
+        background: var(--w11-card-bg);
+        border: 1px solid var(--w11-card-stroke);
+        border-radius: var(--w11-radius-small);
+    }
+
+    .metadata-card .card-header {
+        background: var(--w11-bg-tertiary);
+        border-bottom-color: var(--w11-divider-stroke);
+        color: var(--w11-text-primary);
+    }
+
+    .table {
+        color: var(--w11-text-primary);
+    }
+
+    .table th {
+        border-color: var(--w11-surface-stroke);
+        background: var(--w11-bg-tertiary);
+    }
+
+    .table td {
+        border-color: var(--w11-surface-stroke);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- MetaSpidey Header -->
+<section class="metaspidey-header py-4 px-4 mb-4">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-search me-3" style="font-size: 2.5rem;"></i>
+        <div>
+            <h1 class="h2 mb-1">MetaSpidey</h1>
+            <p class="mb-0 opacity-90">Web Intelligence, Metadata Analysis & File Operations</p>
+        </div>
+    </div>
+</section>
+
+<!-- Tool Selection Tabs -->
+<ul class="nav nav-pills mb-4" id="metaspidey-tabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="crawler-tab" data-bs-toggle="pill" data-bs-target="#crawler"
+            type="button" role="tab">
+            <i class="bi bi-globe me-2"></i>Web Crawler
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="bruteforce-tab" data-bs-toggle="pill" data-bs-target="#bruteforce" type="button"
+            role="tab">
+            <i class="bi bi-lightning me-2"></i>Brute Force
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="downloader-tab" data-bs-toggle="pill" data-bs-target="#downloader" type="button"
+            role="tab">
+            <i class="bi bi-download me-2"></i>File Downloader
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="metadata-tab" data-bs-toggle="pill" data-bs-target="#metadata" type="button"
+            role="tab">
+            <i class="bi bi-file-text me-2"></i>Metadata Analyzer
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="operations-tab" data-bs-toggle="pill" data-bs-target="#operations" type="button"
+            role="tab">
+            <i class="bi bi-list-task me-2"></i>Operations
+        </button>
+    </li>
+</ul>
+
+<!-- Tab Content -->
+<div class="tab-content" id="metaspidey-tab-content">
+    <!-- Web Crawler Tab -->
+    <div class="tab-pane fade show active" id="crawler" role="tabpanel">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <i class="bi bi-globe me-2"></i>Web Crawler Configuration
+                    </h3>
+                    <form id="crawler-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <div class="mb-3">
+                            {{ crawler_form.url.label(class="form-label") }}
+                            {{ crawler_form.url(class="form-control") }}
+                            <div class="form-text">Enter the target website URL to crawl</div>
+                        </div>
+
+                        <div class="mb-3">
+                            {{ crawler_form.depth.label(class="form-label") }}
+                            {{ crawler_form.depth(class="form-select") }}
+                            <div class="form-text" id="depth-description">
+                                Controls how many levels of links the crawler will follow
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-sm-6">
+                                {{ crawler_form.delay.label(class="form-label") }}
+                                {{ crawler_form.delay(class="form-control") }}
+                                <div class="form-text">Delay between requests (ms)</div>
+                            </div>
+                            <div class="col-sm-6">
+                                {{ crawler_form.threads.label(class="form-label") }}
+                                {{ crawler_form.threads(class="form-control") }}
+                                <div class="form-text">Concurrent connections</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            {{ crawler_form.extensions.label(class="form-label") }}
+                            {{ crawler_form.extensions(class="form-control") }}
+                            <div class="form-text">Optional: Filter by file extensions (.pdf,.doc,.txt)</div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-play-circle me-2"></i>Start Crawling
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <div class="results-container p-3">
+                    <div id="crawler-results">
+                        <div class="text-center text-muted py-5">
+                            <i class="bi bi-search" style="font-size: 3rem;"></i>
+                            <h4 class="mt-3">Ready to Crawl</h4>
+                            <p>Configure your crawling parameters and click "Start Crawling" to begin</p>
+                        </div>
+                    </div>
+                    
+                    <div id="crawler-status" class="operation-status">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                            <span id="crawler-status-text">Starting crawler...</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Brute Force Tab -->
+    <div class="tab-pane fade" id="bruteforce" role="tabpanel">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <i class="bi bi-lightning me-2"></i>URL Fuzzing / Brute Force
+                    </h3>
+                    <form id="bruteforce-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <div class="mb-3">
+                            {{ bruteforce_form.fuzz_url.label(class="form-label") }}
+                            {{ bruteforce_form.fuzz_url(class="form-control") }}
+                            <div class="form-text">Use FUZZ as placeholder for wordlist substitution</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Wordlist Source</label>
+                            <div class="mb-2">
+                                {{ bruteforce_form.wordlist_file.label(class="form-label small mb-1") }}
+                                {{ bruteforce_form.wordlist_file(class="form-control form-control-sm") }}
+                            </div>
+                            <div class="mb-2">
+                                {{ bruteforce_form.wordlist_path.label(class="form-label small mb-1") }}
+                                {{ bruteforce_form.wordlist_path(class="form-control form-control-sm") }}
+                            </div>
+                            <div class="form-text">
+                                <small>Provide a wordlist file or specify the path to an existing wordlist on the server</small>
+                            </div>
+                        </div>
+
+                        <div class="settings-group">
+                            <h6>FFUF Settings</h6>
+                            <div class="row mb-2">
+                                <div class="col-6">
+                                    {{ bruteforce_form.threads.label(class="form-label small") }}
+                                    {{ bruteforce_form.threads(class="form-control form-control-sm") }}
+                                </div>
+                                <div class="col-6">
+                                    {{ bruteforce_form.timeout.label(class="form-label small") }}
+                                    {{ bruteforce_form.timeout(class="form-control form-control-sm") }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="settings-group">
+                            <h6>Status Codes to Match</h6>
+                            <div class="checkbox-group">
+                                {% for subfield in bruteforce_form.status_codes %}
+                                <div class="form-check form-check-inline">
+                                    {{ subfield(class="form-check-input") }}
+                                    {{ subfield.label(class="form-check-label small") }}
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="settings-group">
+                            <h6>Recursion Options</h6>
+                            <div class="form-check mb-2">
+                                {{ bruteforce_form.recursion(class="form-check-input") }}
+                                {{ bruteforce_form.recursion.label(class="form-check-label") }}
+                                <div class="form-text small">Enable recursive directory discovery</div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12">
+                                    {{ bruteforce_form.recursion_depth.label(class="form-label small") }}
+                                    {{ bruteforce_form.recursion_depth(class="form-control form-control-sm") }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-warning w-100">
+                            <i class="bi bi-lightning me-2"></i>Start Fuzzing
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <div class="results-container p-3">
+                    <div id="bruteforce-results">
+                        <div class="text-center text-muted py-5">
+                            <i class="bi bi-lightning" style="font-size: 3rem;"></i>
+                            <h4 class="mt-3">Ready to Fuzz</h4>
+                            <p>Configure your fuzzing parameters and wordlist to discover hidden URLs</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Found URLs Terminal -->
+                    <div id="found-urls-section" style="display: none;">
+                        <h5 class="mt-3 mb-2">
+                            <i class="bi bi-list-ul me-2"></i>Found URLs
+                            <span class="badge bg-success" id="found-urls-count">0</span>
+                        </h5>
+                        <div class="terminal-output" id="found-urls-terminal">
+                            <!-- Found URLs will appear here in real-time -->
+                        </div>
+                    </div>
+                    
+                    <div id="bruteforce-status" class="operation-status">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                            <span id="bruteforce-status-text">Starting fuzzer...</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar bg-warning progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Metadata Analyzer Tab -->
+    <div class="tab-pane fade" id="metadata" role="tabpanel">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <i class="bi bi-file-text me-2"></i>Metadata Analysis
+                    </h3>
+                    <form id="metadata-form" enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Input Method</label>
+                            <div class="mb-2">
+                                {{ metadata_form.files.label(class="form-label small mb-1") }}
+                                {{ metadata_form.files(class="form-control form-control-sm", multiple=True) }}
+                                <div class="form-text small">Upload files directly</div>
+                            </div>
+                            <div class="mb-2">
+                                {{ metadata_form.input_directory.label(class="form-label small mb-1") }}
+                                {{ metadata_form.input_directory(class="form-control form-control-sm") }}
+                                <div class="form-text small">Or specify directory path</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            {{ metadata_form.output_file.label(class="form-label") }}
+                            {{ metadata_form.output_file(class="form-control") }}
+                            <div class="form-text">Optional: Save results to JSON file</div>
+                        </div>
+
+                        <div class="settings-group">
+                            <h6>Analysis Options</h6>
+                            <div class="form-check">
+                                {{ metadata_form.extract_exif(class="form-check-input") }}
+                                {{ metadata_form.extract_exif.label(class="form-check-label") }}
+                            </div>
+                            <div class="form-check">
+                                {{ metadata_form.calculate_hashes(class="form-check-input") }}
+                                {{ metadata_form.calculate_hashes.label(class="form-check-label") }}
+                            </div>
+                            <div class="form-check">
+                                {{ metadata_form.deep_analysis(class="form-check-input") }}
+                                {{ metadata_form.deep_analysis.label(class="form-check-label") }}
+                            </div>
+                        </div>
+
+                        <div class="settings-group">
+                            <h6>File Type Filters</h6>
+                            <div class="form-check">
+                                {{ metadata_form.analyze_images(class="form-check-input") }}
+                                {{ metadata_form.analyze_images.label(class="form-check-label") }}
+                            </div>
+                            <div class="form-check">
+                                {{ metadata_form.analyze_documents(class="form-check-input") }}
+                                {{ metadata_form.analyze_documents.label(class="form-check-label") }}
+                            </div>
+                            <div class="form-check">
+                                {{ metadata_form.analyze_executables(class="form-check-input") }}
+                                {{ metadata_form.analyze_executables.label(class="form-check-label") }}
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-file-earmark-text me-2"></i>Analyze Metadata
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <div class="results-container p-3">
+                    <div id="metadata-results">
+                        <div class="text-center text-muted py-5">
+                            <i class="bi bi-file-earmark-text" style="font-size: 3rem;"></i>
+                            <h4 class="mt-3">File Metadata Analyzer</h4>
+                            <p>Upload files to extract comprehensive metadata information</p>
+                        </div>
+                    </div>
+                    
+                    <div id="metadata-status" class="operation-status">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                            <span id="metadata-status-text">Analyzing files...</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Downloader Tab -->
+    <div class="tab-pane fade" id="downloader" role="tabpanel">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <i class="bi bi-download me-2"></i>File Downloader & Crawler
+                    </h3>
+                    <form id="download-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        
+                        <!-- Mode Selection -->
+                        <div class="mb-3">
+                            {{ download_form.mode.label(class="form-label") }}
+                            {{ download_form.mode(class="form-select", onchange="toggleDownloadMode()") }}
+                            <div class="form-text">Choose between manual URL download or website crawling</div>
+                        </div>
+
+                        <!-- Manual Mode Fields -->
+                        <div id="manual-mode-fields">
+                            <div class="mb-3">
+                                <label class="form-label">URL Input Method</label>
+                                <div class="mb-2">
+                                    {{ download_form.urls.label(class="form-label small mb-1") }}
+                                    {{ download_form.urls(class="form-control") }}
+                                    <div class="form-text small">Enter URLs directly, one per line</div>
+                                </div>
+                                <div class="mb-2">
+                                    {{ download_form.url_file.label(class="form-label small mb-1") }}
+                                    {{ download_form.url_file(class="form-control form-control-sm") }}
+                                    <div class="form-text small">Or upload a file containing URLs</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Crawler Mode Fields -->
+                        <div id="crawler-mode-fields" style="display: none;">
+                            <div class="mb-3">
+                                {{ download_form.start_url.label(class="form-label") }}
+                                {{ download_form.start_url(class="form-control") }}
+                                <div class="form-text">Website to crawl for downloadable files</div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-6">
+                                    {{ download_form.crawl_depth.label(class="form-label small") }}
+                                    {{ download_form.crawl_depth(class="form-select form-select-sm") }}
+                                </div>
+                                <div class="col-6">
+                                    {{ download_form.max_files.label(class="form-label small") }}
+                                    {{ download_form.max_files(class="form-control form-control-sm") }}
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                {{ download_form.extensions.label(class="form-label") }}
+                                {{ download_form.extensions(class="form-control") }}
+                                <div class="form-text">File extensions to download (leave empty for all types)</div>
+                            </div>
+
+                            <!-- Fuzzing Options -->
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    {{ download_form.enable_fuzzing(class="form-check-input") }}
+                                    {{ download_form.enable_fuzzing.label(class="form-check-label") }}
+                                </div>
+                                <div id="fuzzing-options" style="display: none; margin-top: 10px;">
+                                    <label class="form-label small">Fuzzing Categories:</label>
+                                    {% for choice in download_form.fuzzing_types %}
+                                        <div class="form-check form-check-sm">
+                                            {{ choice(class="form-check-input") }}
+                                            {{ choice.label(class="form-check-label small") }}
+                                        </div>
+                                    {% endfor %}
+                                    
+                                    <div class="mt-2">
+                                        {{ download_form.custom_patterns.label(class="form-label small") }}
+                                        {{ download_form.custom_patterns(class="form-control form-control-sm") }}
+                                        <div class="form-text small">Custom file patterns to search for</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Common Settings -->
+                        <div class="mb-3">
+                            {{ download_form.download_path.label(class="form-label") }}
+                            {{ download_form.download_path(class="form-control") }}
+                            <div class="form-text">Optional: Custom download directory</div>
+                        </div>
+
+                        <div class="settings-group">
+                            <h6>Download Settings</h6>
+                            <div class="row mb-2">
+                                <div class="col-3">
+                                    {{ download_form.max_size.label(class="form-label small") }}
+                                    {{ download_form.max_size(class="form-control form-control-sm") }}
+                                </div>
+                                <div class="col-3">
+                                    {{ download_form.threads.label(class="form-label small") }}
+                                    {{ download_form.threads(class="form-control form-control-sm") }}
+                                </div>
+                                <div class="col-3">
+                                    {{ download_form.delay.label(class="form-label small") }}
+                                    {{ download_form.delay(class="form-control form-control-sm") }}
+                                </div>
+                                <div class="col-3">
+                                    {{ download_form.timeout.label(class="form-label small") }}
+                                    {{ download_form.timeout(class="form-control form-control-sm") }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-info w-100">
+                            <i class="bi bi-cloud-download me-2"></i>Start Download
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <div class="results-container p-3">
+                    <div id="download-results">
+                        <div class="text-center text-muted py-5">
+                            <i class="bi bi-cloud-download" style="font-size: 3rem;"></i>
+                            <h4 class="mt-3">Bulk File Downloader</h4>
+                            <p>Enter URLs to download multiple files simultaneously</p>
+                        </div>
+                    </div>
+                    
+                    <div id="download-status" class="operation-status">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                            <span id="download-status-text">Downloading files...</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar bg-info progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Operations Tab -->
+    <div class="tab-pane fade" id="operations" role="tabpanel">
+        <div class="form-section">
+            <h3 class="section-title">
+                <i class="bi bi-list-task me-2"></i>Operation History
+            </h3>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <button class="btn btn-outline-primary btn-sm" onclick="refreshOperations()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                    </button>
+                </div>
+                <div class="text-muted small" id="operations-last-updated">
+                    Last updated: Never
+                </div>
+            </div>
+            
+            <div id="operations-list">
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-list-task" style="font-size: 3rem;"></i>
+                    <h4 class="mt-3">No Operations Yet</h4>
+                    <p>Your completed operations will appear here</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Results Modal -->
+<div class="modal fade" id="resultsModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Operation Results</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="modal-results-content">
+                    <!-- Results will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="exportResults()">
+                    <i class="bi bi-download me-1"></i>Export
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/metaspidey.js') }}"></script>
+<script>
+    // Initialize MetaSpidey interface
+    document.addEventListener('DOMContentLoaded', function() {
+        MetaSpidey.init();
+        
+        // Initialize download mode toggle
+        toggleDownloadMode();
+        
+        // Initialize fuzzing options toggle
+        const fuzzingCheckbox = document.querySelector('#enable_fuzzing');
+        if (fuzzingCheckbox) {
+            fuzzingCheckbox.addEventListener('change', toggleFuzzingOptions);
+            toggleFuzzingOptions(); // Initial state
+        }
+    });
+    
+    // Toggle between manual and crawler download modes
+    function toggleDownloadMode() {
+        const modeSelect = document.querySelector('#mode');
+        const manualFields = document.querySelector('#manual-mode-fields');
+        const crawlerFields = document.querySelector('#crawler-mode-fields');
+        
+        if (modeSelect && manualFields && crawlerFields) {
+            if (modeSelect.value === 'crawler') {
+                manualFields.style.display = 'none';
+                crawlerFields.style.display = 'block';
+            } else {
+                manualFields.style.display = 'block';
+                crawlerFields.style.display = 'none';
+            }
+        }
+    }
+    
+    // Toggle fuzzing options visibility
+    function toggleFuzzingOptions() {
+        const fuzzingCheckbox = document.querySelector('#enable_fuzzing');
+        const fuzzingOptions = document.querySelector('#fuzzing-options');
+        
+        if (fuzzingCheckbox && fuzzingOptions) {
+            if (fuzzingCheckbox.checked) {
+                fuzzingOptions.style.display = 'block';
+            } else {
+                fuzzingOptions.style.display = 'none';
+            }
+        }
+    }
+</script>
+{% endblock %}
