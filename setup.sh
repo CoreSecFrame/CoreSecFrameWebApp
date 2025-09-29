@@ -317,7 +317,13 @@ check_requirements() {
     # Install Oniux if cargo was installed
     if command -v cargo &> /dev/null; then
         print_status "Installing Oniux..."
-        if cargo install --git https://gitlab.torproject.org/tpo/core/oniux; then
+	# Expand /tmp to 4G if it's mounted as tmpfs (RAM-based)
+	if mount | grep -qE '^tmpfs on /tmp '; then
+	    print_status "Expanding /tmp tmpfs size to 4G temporarily..."
+	    sudo mount -o remount,size=4G /tmp
+	fi
+
+        if cargo install --git https://gitlab.torproject.org/tpo/core/oniux --tag v0.4.0 oniux; then
             print_success "Oniux installed successfully."
             
             print_status "Updating PATH for Oniux..."
@@ -341,12 +347,12 @@ check_requirements() {
         else
             print_error "Oniux installation failed. This could be due to network issues or problems with the build process."
             print_warning "Please check that Rust/Cargo is correctly installed and up to date, and that you have internet access."
-            print_warning "You can try running 'cargo install --git https://gitlab.torproject.org/tpo/core/oniux' manually."
+            print_warning "You can try running 'cargo install --git https://gitlab.torproject.org/tpo/core/oniux --tag v0.4.0 oniux' manually."
         fi
     else
         print_warning "Cargo (Rust's package manager) was not installed or is not in PATH. Skipping Oniux installation."
         print_warning "If you intended to install Oniux, please ensure cargo is installed and then run:"
-        print_warning "  cargo install --git https://gitlab.torproject.org/tpo/core/oniux"
+        print_warning "  cargo install --git https://gitlab.torproject.org/tpo/core/oniux --tag v0.4.0 oniux"
         print_warning "  And add $HOME/.cargo/bin to your PATH in .bashrc/.zshrc"
     fi
     
@@ -555,7 +561,7 @@ verify_gui_installation() {
         echo
         print_status "For Kali Linux/Debian/Ubuntu:"
         echo "  sudo apt update"
-        echo "  sudo apt install -y xvfb x11vnc x11-utils fluxbox websockify novnc"
+        echo "  sudo apt install -y xvfb x11vnc x11-utils fluxbox websockify novnc cargo"
         echo "  sudo apt install -y firefox-esr gedit xterm gnome-calculator"
     fi
     
