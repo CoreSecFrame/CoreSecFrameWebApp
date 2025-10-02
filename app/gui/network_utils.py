@@ -277,26 +277,31 @@ class VNCConnectionHelper:
     """Helper para generar URLs y conexiones VNC con IPs correctas"""
     
     @staticmethod
-    def get_vnc_host() -> str:
-        """Obtiene el host que debe usarse para conexiones VNC"""
-        return NetworkDetector.get_server_ip()
+    def get_server_ip() -> str:
+        from app.gui.network_utils import NetworkDetector
+        try:
+            return NetworkDetector.get_primary_network_ip()
+        except Exception:
+            return "127.0.0.1"
+
+
     
     @staticmethod
     def get_vnc_connection_string(port: int) -> str:
         """Genera string de conexión VNC"""
-        host = VNCConnectionHelper.get_vnc_host()
+        host = VNCConnectionHelper.get_server_ip()
         return f"{host}:{port}"
     
     @staticmethod
     def get_vnc_url(port: int) -> str:
         """Genera URL VNC"""
-        host = VNCConnectionHelper.get_vnc_host()
+        host = VNCConnectionHelper.get_server_ip()
         return f"vnc://{host}:{port}"
     
     @staticmethod
     def get_novnc_url(port: int, base_url: str = None) -> str:
         """Genera URL para noVNC web client"""
-        host = VNCConnectionHelper.get_vnc_host()
+        host = VNCConnectionHelper.get_server_ip()
         
         if not base_url:
             # Usar el mismo host que la webapp pero puerto diferente
@@ -307,7 +312,7 @@ class VNCConnectionHelper:
     @staticmethod
     def get_connection_info(port: int, display_number: int = None) -> Dict:
         """Genera información completa de conexión"""
-        host = VNCConnectionHelper.get_vnc_host()
+        host = VNCConnectionHelper.get_server_ip()
         
         return {
             'host': host,
