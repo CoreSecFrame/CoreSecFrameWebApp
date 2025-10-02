@@ -188,7 +188,7 @@ class GUISession(db.Model):
             return VNCConnectionHelper.get_vnc_url(self.vnc_port)
         except ImportError:
             return f"vnc://localhost:{self.vnc_port}"
-    
+        
     def get_novnc_url(self, base_url=None):
         """Get noVNC web client URL"""
         if not self.vnc_port:
@@ -197,9 +197,19 @@ class GUISession(db.Model):
             from app.gui.network_utils import VNCConnectionHelper
             return VNCConnectionHelper.get_novnc_url(self.vnc_port, base_url)
         except ImportError:
-            base_url = base_url or "http://localhost:6080"
-            return f"{base_url}/vnc.html?host=localhost&port={self.vnc_port}&autoconnect=true&resize=scale"
-    
+            # Fallback: usar siempre la IP primaria de la interfaz principal de la VM
+            try:
+                from app.gui.network_utils import NetworkDetector
+                host = NetworkDetector.get_primary_network_ip()
+            except Exception:
+                host = "127.0.0.1"
+
+            base_url = base_url or f"http://{host}:6080"
+            return f"{base_url}/vnc.html?host={host}&port={self.vnc_port}&autoconnect=true&resize=scale"
+
+
+
+        
     def get_connection_info(self):
         """Get complete VNC connection information"""
         if not self.vnc_port:
