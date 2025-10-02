@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from app import db
 from app.gui.models import GUIApplication, GUISession, GUICategory, GUISessionLog
 from app.gui.manager import GUISessionManager, GUIEnvironmentDetector
+from app.gui.network_utils import VNCConnectionHelper
 from datetime import datetime
 import traceback
 import shutil # For _test_command_availability and _scan_system_applications
@@ -147,6 +148,9 @@ def index():
             apps_by_category[category] = []
         apps_by_category[category].append(app)
     
+    # Get VNCConnectionHelper for templates
+    from app.gui.network_utils import VNCConnectionHelper
+    
     return render_template(
         'gui/index.html',
         title='GUI Applications',
@@ -159,7 +163,9 @@ def index():
         gui_uses_wslg=env_info['has_wslg'],
         gui_has_wayland=bool(env_info['wayland_display']),
         gui_has_x11=bool(env_info['x11_display']),
-        gui_is_wsl=env_info['is_wsl']
+        gui_is_wsl=env_info['is_wsl'],
+        # Add VNCConnectionHelper
+        vnc_helper=VNCConnectionHelper
     )
 
 
@@ -723,10 +729,10 @@ def api_launch_application(app_id):
             else:
                 instructions = {
                     'primary': f'🖥️ VNC session created on display :{session.display_number}',
-                    'secondary': f'🔗 Connect using VNC client to localhost:{session.vnc_port}',
+                    'secondary': f'🔗 Connect using VNC client to {VNCConnectionHelper.get_vnc_connection_string(session.vnc_port)}',
                     'tips': [
                         '🔌 Use any VNC client (TigerVNC, RealVNC, etc.)',
-                        f'📡 Connect to localhost:{session.vnc_port}',
+                        f'📡 Connect to {VNCConnectionHelper.get_vnc_connection_string(session.vnc_port)}',
                         '🌐 Use the web interface for browser-based access',
                         '⏰ Session will remain active until manually closed',
                         '🎨 Adjust color depth for better performance',
@@ -734,7 +740,7 @@ def api_launch_application(app_id):
                     ],
                     'next_steps': [
                         'Download and install a VNC client if needed',
-                        f'Connect to localhost:{session.vnc_port}',
+                        f'Connect to {VNCConnectionHelper.get_vnc_connection_string(session.vnc_port)}',
                         'Use the session details page for connection help'
                     ]
                 }
